@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>K线复盘训练系统 MVP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <section class="brand-panel">
+          <div>
+            <p class="eyebrow">Stock Replay MVP</p>
+            <h1>K线复盘训练</h1>
+          </div>
+          <span class="mode-pill">保守成交</span>
+        </section>
+
+        <section class="panel search-panel">
+          <label for="stockSearch">搜索股票 / ETF</label>
+          <div class="search-row">
+            <input id="stockSearch" type="search" placeholder="输入代码或名称" autocomplete="off" />
+            <button id="addWatchButton" type="button">加入</button>
+          </div>
+          <div id="searchResults" class="search-results"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-header">
+            <h2>自选</h2>
+            <span id="watchCount">0</span>
+          </div>
+          <div id="watchList" class="watch-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-header">
+            <h2>指标设置</h2>
+            <button id="resetIndicators" class="text-button" type="button">重置</button>
+          </div>
+          <div class="input-grid">
+            <label>MA1<input id="maFast" type="number" min="2" max="250" value="5" /></label>
+            <label>MA2<input id="maMid" type="number" min="2" max="250" value="10" /></label>
+            <label>MA3<input id="maSlow" type="number" min="2" max="250" value="20" /></label>
+          </div>
+          <div class="toggle-grid">
+            <label><input class="indicator-toggle" type="checkbox" value="ma" checked /> MA</label>
+            <label><input class="indicator-toggle" type="checkbox" value="boll" checked /> BOLL</label>
+            <label><input class="indicator-toggle" type="checkbox" value="volume" checked /> 成交量</label>
+            <label><input class="indicator-toggle" type="checkbox" value="kdj" checked /> KDJ</label>
+            <label><input class="indicator-toggle" type="checkbox" value="macd" checked /> MACD</label>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p id="activeMeta" class="eyebrow">请选择标的</p>
+            <h2 id="activeTitle">K线训练台</h2>
+          </div>
+          <div class="topbar-actions">
+            <button id="prevDay" type="button" aria-label="前一天">‹</button>
+            <button id="nextDay" type="button" aria-label="后一天">›</button>
+            <label class="switch">
+              <input id="hideFuture" type="checkbox" checked />
+              <span>隐藏未来</span>
+            </label>
+          </div>
+        </header>
+
+        <section class="chart-stage">
+          <div class="chart-toolbar">
+            <div id="dateRange" class="date-range">-</div>
+            <div id="hoverInfo" class="hover-info">移动到K线上查看行情与指标</div>
+          </div>
+          <canvas id="priceChart" width="1200" height="640"></canvas>
+        </section>
+
+        <section class="dashboard-grid">
+          <form id="tradeForm" class="panel trade-panel">
+            <div class="section-header">
+              <h2>模拟交易</h2>
+              <span id="selectedDate">未选择日期</span>
+            </div>
+            <div class="trade-type">
+              <label><input type="radio" name="side" value="buy" checked /> 买入</label>
+              <label><input type="radio" name="side" value="sell" /> 卖出</label>
+            </div>
+            <div class="input-grid">
+              <label>份额<input id="quantity" type="number" min="1" step="100" value="1000" /></label>
+              <label>手续费<input id="fee" type="number" min="0" step="0.01" value="5" /></label>
+            </div>
+            <label class="full-field">交易笔记<textarea id="tradeNote" rows="4" placeholder="写下买入/卖出理由、情绪状态和事后观察"></textarea></label>
+            <button id="submitTrade" type="submit">记录买卖点</button>
+            <p class="hint">买入按当日最高价成交，卖出按当日最低价成交。</p>
+          </form>
+
+          <section class="panel stats-panel">
+            <div class="section-header">
+              <h2>盈亏与痛感</h2>
+              <button id="clearTrades" class="text-button danger" type="button">清空</button>
+            </div>
+            <div class="stat-grid">
+              <article><span>持仓</span><strong id="positionQty">0</strong></article>
+              <article><span>平均成本</span><strong id="avgCost">-</strong></article>
+              <article><span>已实现</span><strong id="realizedPnl">-</strong></article>
+              <article><span>当前浮盈亏</span><strong id="floatingPnl">-</strong></article>
+              <article><span>最大浮亏</span><strong id="maxPain">-</strong></article>
+              <article><span>总盈亏</span><strong id="totalPnl">-</strong></article>
+            </div>
+            <div class="pain-meter">
+              <span>亏损压力</span>
+              <div><i id="painBar"></i></div>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel history-panel">
+          <div class="section-header">
+            <h2>交易记录与笔记</h2>
+            <span id="tradeCount">0</span>
+          </div>
+          <div id="tradeHistory" class="trade-history"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
