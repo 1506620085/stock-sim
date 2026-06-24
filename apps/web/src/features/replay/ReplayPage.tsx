@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { KLineChartPanel } from "./KLineChartPanel";
 import { instruments, marketData } from "./mockData";
 import type { IndicatorSettings, KLineBar, TradeRecord, TradeSide } from "./types";
 
@@ -35,8 +36,9 @@ export function ReplayPage() {
 
   const activeInstrument = instruments.find((instrument) => instrument.code === activeCode) ?? instruments[0];
   const bars = marketData[activeCode] ?? [];
-  const selectedBar = bars[selectedIndex] ?? bars[0];
-  const visibleEnd = hideFuture ? selectedIndex + 1 : bars.length;
+  const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
+  const selectedBar = bars[normalizedIndex] ?? bars[0];
+  const visibleEnd = hideFuture ? normalizedIndex + 1 : bars.length;
   const visibleStart = Math.max(0, visibleEnd - 120);
   const visibleBars = bars.slice(visibleStart, visibleEnd);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
@@ -53,7 +55,7 @@ export function ReplayPage() {
   function addToWatchlist(code: string) {
     setWatchlist((items) => (items.includes(code) ? items : [...items, code]));
     setActiveCode(code);
-    setSelectedIndex(Math.min(210, (marketData[code] ?? []).length - 1));
+    setSelectedIndex(Math.min(210, Math.max((marketData[code] ?? []).length - 1, 0)));
   }
 
   function updateIndicator<K extends keyof IndicatorSettings>(key: K, value: IndicatorSettings[K]) {
@@ -76,7 +78,7 @@ export function ReplayPage() {
         code: activeCode,
         side: tradeSide,
         date: selectedBar.date,
-        index: selectedIndex,
+        index: normalizedIndex,
         price,
         quantity,
         fee,
@@ -98,7 +100,9 @@ export function ReplayPage() {
         <div className="panel chart-panel">
           <div className="chart-toolbar">
             <div>
-              <p className="eyebrow">{activeInstrument.market} · {activeInstrument.type}</p>
+              <p className="eyebrow">
+                {activeInstrument.market} / {activeInstrument.type}
+              </p>
               <h2>
                 {activeInstrument.code} {activeInstrument.name}
               </h2>
@@ -125,7 +129,7 @@ export function ReplayPage() {
             </span>
           </div>
 
-          <MockChart bars={visibleBars} selectedDate={selectedBar?.date} />
+          <KLineChartPanel bars={visibleBars} code={activeCode} indicators={indicators} selectedDate={selectedBar?.date} />
         </div>
       </section>
 
@@ -181,7 +185,7 @@ function SearchPanel({
                 {instrument.code} {instrument.name}
               </strong>
               <small>
-                {instrument.market} · {instrument.type}
+                {instrument.market} / {instrument.type}
               </small>
             </span>
             <em>{watchlist.includes(instrument.code) ? "已自选" : "可加入"}</em>
@@ -210,7 +214,7 @@ function WatchlistPanel({ activeCode, codes, onSelect }: { activeCode: string; c
                   {instrument.code} {instrument.name}
                 </strong>
                 <small>
-                  {instrument.market} · {instrument.type}
+                  {instrument.market} / {instrument.type}
                 </small>
               </span>
               <em>{marketData[code]?.length ?? 0} 根</em>
@@ -271,49 +275,6 @@ function Toggle({ checked, label, onChange }: { checked: boolean; label: string;
       <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
       <span>{label}</span>
     </label>
-  );
-}
-
-function MockChart({ bars, selectedDate }: { bars: KLineBar[]; selectedDate?: string }) {
-  const width = 920;
-  const height = 460;
-  const priceHeight = 320;
-  const padding = 26;
-  const values = bars.flatMap((bar) => [bar.high, bar.low]);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const candleGap = (width - padding * 2) / Math.max(bars.length, 1);
-  const selectedLocalIndex = bars.findIndex((bar) => bar.date === selectedDate);
-
-  const xFor = (index: number) => padding + index * candleGap + candleGap / 2;
-  const yFor = (value: number) => padding + ((max - value) / range) * (priceHeight - padding);
-  const maxVolume = Math.max(...bars.map((bar) => bar.volume));
-
-  return (
-    <svg className="mock-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="mock K 线图">
-      <rect width={width} height={height} rx={8} />
-      {[0, 1, 2, 3, 4].map((line) => (
-        <line className="grid-line" key={line} x1={padding} x2={width - padding} y1={padding + line * 70} y2={padding + line * 70} />
-      ))}
-      {bars.map((bar, index) => {
-        const up = bar.close >= bar.open;
-        const x = xFor(index);
-        const yOpen = yFor(bar.open);
-        const yClose = yFor(bar.close);
-        const bodyTop = Math.min(yOpen, yClose);
-        const bodyHeight = Math.max(1.5, Math.abs(yOpen - yClose));
-        const volumeHeight = (bar.volume / maxVolume) * 80;
-        return (
-          <g className={up ? "candle up" : "candle down"} key={bar.date}>
-            <line x1={x} x2={x} y1={yFor(bar.high)} y2={yFor(bar.low)} />
-            <rect x={x - Math.max(1.5, candleGap * 0.28)} y={bodyTop} width={Math.max(3, candleGap * 0.56)} height={bodyHeight} />
-            <rect className="volume-bar" x={x - Math.max(1.5, candleGap * 0.24)} y={height - padding - volumeHeight} width={Math.max(3, candleGap * 0.48)} height={volumeHeight} />
-          </g>
-        );
-      })}
-      {selectedLocalIndex >= 0 && <line className="selected-line" x1={xFor(selectedLocalIndex)} x2={xFor(selectedLocalIndex)} y1={padding} y2={height - padding} />}
-    </svg>
   );
 }
 
@@ -426,7 +387,7 @@ function TradeHistory({ trades }: { trades: TradeRecord[] }) {
                 {trade.side === "buy" ? "买入" : "卖出"} {trade.date}
               </strong>
               <span>
-                {formatNumber(trade.price)} · {trade.quantity.toLocaleString("zh-CN")} 份
+                {formatNumber(trade.price)} / {trade.quantity.toLocaleString("zh-CN")} 份
               </span>
               <p>{trade.note || "未填写笔记"}</p>
             </article>
