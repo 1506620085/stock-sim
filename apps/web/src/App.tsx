@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Calculator, CandlestickChart, NotebookPen, Settings } from "lucide-react";
+import { CalculatorsPage } from "./features/calculators/CalculatorsPage";
 import { ReplayPage } from "./features/replay/ReplayPage";
 
 type PageId = "replay" | "calculators" | "stats" | "notes" | "settings";
@@ -100,19 +101,7 @@ function PageContent({ activePage }: { activePage: PageId }) {
   }
 
   if (activePage === "calculators") {
-    return (
-      <section className="page-grid calculator-layout">
-        {["利润成本", "做 T", "涨跌幅", "平均价格"].map((name) => (
-          <article className="panel calculator-card" key={name}>
-            <Calculator aria-hidden="true" size={24} strokeWidth={1.8} />
-            <div>
-              <p className="eyebrow">Calculator</p>
-              <h2>{name}计算器</h2>
-            </div>
-          </article>
-        ))}
-      </section>
-    );
+    return <CalculatorsPage />;
   }
 
   const copy: Record<Exclude<PageId, "replay" | "calculators">, string[]> = {
