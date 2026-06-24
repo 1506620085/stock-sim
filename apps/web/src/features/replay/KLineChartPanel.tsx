@@ -9,7 +9,12 @@ type Props = {
   selectedDate?: string;
 };
 
+const candlePaneId = "candle_pane";
 const indicatorPaneIds = ["volume-pane", "kdj-pane", "macd-pane"];
+const mainPaneHeight = 360;
+const volumePaneHeight = 118;
+const oscillatorPaneHeight = 126;
+const xAxisHeight = 36;
 
 export function KLineChartPanel({ bars, code, indicators, selectedDate }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -29,6 +34,7 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate }: Props)
   );
   const selectedIndex = selectedDate ? bars.findIndex((bar) => bar.date === selectedDate) : -1;
   const selectedLineLeft = selectedIndex >= 0 && bars.length > 0 ? `${((selectedIndex + 0.5) / bars.length) * 100}%` : undefined;
+  const chartHeight = useMemo(() => getChartHeight(indicators), [indicators]);
 
   useEffect(() => {
     if (!containerRef.current || chartRef.current) return;
@@ -82,6 +88,7 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate }: Props)
     });
     chart.resetData();
     syncIndicators(chart, indicators);
+    chart.resize();
 
     if (selectedDate) {
       const timestamp = new Date(`${selectedDate}T00:00:00`).getTime();
@@ -93,7 +100,7 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate }: Props)
 
   return (
     <div className="kline-chart-wrap">
-      <div className="kline-chart" ref={containerRef} />
+      <div className="kline-chart" ref={containerRef} style={{ height: chartHeight }} />
       {selectedLineLeft && (
         <div className="replay-date-line" style={{ left: selectedLineLeft }} aria-hidden="true">
           <span>复盘日</span>
@@ -105,26 +112,37 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate }: Props)
 
 function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
   chart.removeIndicator();
+  chart.setPaneOptions({ id: candlePaneId, height: mainPaneHeight, minHeight: 300 });
 
   if (indicators.showMa) {
-    chart.createIndicator({ name: "MA", calcParams: [indicators.maFast, indicators.maMid, indicators.maSlow] });
+    chart.createIndicator({ name: "MA", calcParams: [indicators.maFast, indicators.maMid, indicators.maSlow] }, { isStack: true, pane: { id: candlePaneId } });
   }
 
   if (indicators.showBoll) {
-    chart.createIndicator({ name: "BOLL", calcParams: [indicators.maSlow] });
+    chart.createIndicator({ name: "BOLL", calcParams: [indicators.maSlow] }, { isStack: true, pane: { id: candlePaneId } });
   }
 
   if (indicators.showVolume) {
-    chart.createIndicator("VOL", { pane: { id: indicatorPaneIds[0], height: 90 } });
+    chart.createIndicator("VOL", { pane: { id: indicatorPaneIds[0], height: volumePaneHeight, minHeight: 96 } });
   }
 
   if (indicators.showKdj) {
-    chart.createIndicator("KDJ", { pane: { id: indicatorPaneIds[1], height: 90 } });
+    chart.createIndicator("KDJ", { pane: { id: indicatorPaneIds[1], height: oscillatorPaneHeight, minHeight: 108 } });
   }
 
   if (indicators.showMacd) {
-    chart.createIndicator("MACD", { pane: { id: indicatorPaneIds[2], height: 110 } });
+    chart.createIndicator("MACD", { pane: { id: indicatorPaneIds[2], height: oscillatorPaneHeight, minHeight: 108 } });
   }
+}
+
+function getChartHeight(indicators: IndicatorSettings) {
+  return (
+    mainPaneHeight +
+    xAxisHeight +
+    (indicators.showVolume ? volumePaneHeight : 0) +
+    (indicators.showKdj ? oscillatorPaneHeight : 0) +
+    (indicators.showMacd ? oscillatorPaneHeight : 0)
+  );
 }
 
 function round(value: number) {
