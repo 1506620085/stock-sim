@@ -13,8 +13,14 @@ const types = {
 
 createServer((request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host}`);
-  const requested = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, "");
-  const target = resolve(join(root, requested === "/" ? "index.html" : requested));
+  const pathname = decodeURIComponent(url.pathname);
+  const requested =
+    pathname === "/"
+      ? "index.html"
+      : normalize(pathname)
+          .replace(/^[/\\]+/, "")
+          .replace(/^(\.\.[/\\])+/, "");
+  const target = resolve(join(root, requested));
 
   if (!target.startsWith(root) || !existsSync(target) || !statSync(target).isFile()) {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });

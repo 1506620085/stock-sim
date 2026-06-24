@@ -91,7 +91,7 @@ function movingAverage(values, period) {
 
 function ema(values, period) {
   const k = 2 / (period + 1);
-  let previous = values[0];
+  let previous = values[0] || 0;
   return values.map((value, index) => {
     previous = index === 0 ? value : value * k + previous * (1 - k);
     return previous;
@@ -168,11 +168,6 @@ function currency(value) {
   });
 }
 
-function percent(value) {
-  if (!Number.isFinite(value)) return "-";
-  return `${value.toFixed(2)}%`;
-}
-
 function activeToggles() {
   return new Set(
     [...document.querySelectorAll(".indicator-toggle")]
@@ -218,12 +213,12 @@ function currentPain(position) {
   if (!position.qty) return { floating: 0, maxPain: 0, total: position.realized, pressure: 0 };
   const bars = marketData[activeCode];
   const current = bars[selectedIndex];
-  const firstBuy = position.trades.find((trade) => trade.side === "buy");
-  const lows = bars.slice(firstBuy.index, selectedIndex + 1).map((bar) => bar.low);
+  const firstOpenBuy = position.trades.find((trade) => trade.side === "buy");
+  const lows = bars.slice(firstOpenBuy.index, selectedIndex + 1).map((bar) => bar.low);
   const lowest = Math.min(...lows);
   const floating = (current.close - position.avgCost) * position.qty;
   const maxPain = (lowest - position.avgCost) * position.qty;
-  const pressure = Math.min(100, Math.abs(Math.min(maxPain, 0)) / Math.max(position.cost, 1) * 100 * 4);
+  const pressure = Math.min(100, (Math.abs(Math.min(maxPain, 0)) / Math.max(position.cost, 1)) * 100 * 4);
   return { floating, maxPain, total: position.realized + floating, pressure };
 }
 
@@ -271,7 +266,7 @@ function drawChart() {
   const macdHeight = toggles.has("macd") ? height * 0.15 : 0;
   const pad = { left: 58, right: 18, top: 20, bottom: 24 };
   const chartWidth = width - pad.left - pad.right;
-  const candleWidth = Math.max(3, chartWidth / bars.length * 0.58);
+  const candleWidth = Math.max(3, (chartWidth / bars.length) * 0.58);
   const xFor = (i) => pad.left + (i + 0.5) * (chartWidth / bars.length);
   const values = bars.flatMap((bar) => [bar.high, bar.low]);
 
@@ -289,7 +284,7 @@ function drawChart() {
   const minPrice = Math.min(...values);
   const maxPrice = Math.max(...values);
   const priceRange = maxPrice - minPrice || 1;
-  const yPrice = (value) => pad.top + (maxPrice - value) / priceRange * (priceHeight - pad.top - 10);
+  const yPrice = (value) => pad.top + ((maxPrice - value) / priceRange) * (priceHeight - pad.top - 10);
 
   chartLayout = { start, end, bars, xFor, yPrice, pad, chartWidth, candleWidth };
 
@@ -387,7 +382,7 @@ function drawOscillator(values, xFor, y, height, keys, colors, label) {
   const all = values.flatMap((item) => keys.map((key) => item[key]));
   const min = Math.min(...all);
   const max = Math.max(...all);
-  const toY = (value) => y + 16 + (max - value) / (max - min || 1) * (height - 24);
+  const toY = (value) => y + 16 + ((max - value) / (max - min || 1)) * (height - 24);
   keys.forEach((key, index) => {
     drawLine(values.map((item, i) => ({ x: xFor(i), y: toY(item[key]) })), colors[index], 1.2);
   });
@@ -399,8 +394,8 @@ function drawMacd(values, xFor, y, height) {
   const all = values.flatMap((item) => [item.dif, item.dea, item.bar]);
   const min = Math.min(...all);
   const max = Math.max(...all);
-  const zero = y + 16 + (max - 0) / (max - min || 1) * (height - 24);
-  const toY = (value) => y + 16 + (max - value) / (max - min || 1) * (height - 24);
+  const zero = y + 16 + ((max - 0) / (max - min || 1)) * (height - 24);
+  const toY = (value) => y + 16 + ((max - value) / (max - min || 1)) * (height - 24);
   values.forEach((item, i) => {
     ctx.fillStyle = item.bar >= 0 ? "rgba(216,58,49,.65)" : "rgba(21,132,95,.65)";
     const barY = toY(item.bar);
@@ -458,7 +453,7 @@ function renderWatchlist() {
       (item) => `
         <button class="stock-row ${item.code === activeCode ? "active" : ""}" data-code="${item.code}" type="button">
           <span><strong>${item.code} ${item.name}</strong><span>${item.market} · ${item.type}</span></span>
-          <span>${marketData[item.code].length}根</span>
+          <span>${marketData[item.code].length} 根</span>
         </button>
       `,
     )
@@ -518,7 +513,7 @@ function renderTrades() {
           `,
         )
         .join("")
-    : `<p class="hint">还没有交易记录。选择一根K线后记录买入或卖出。</p>`;
+    : `<p class="hint">还没有交易记录。选择一根 K 线后记录买入或卖出。</p>`;
 }
 
 function renderAll() {
@@ -622,7 +617,7 @@ canvas.addEventListener("mousemove", (event) => {
   const kdj = indicators.kdj[hoverIndex];
   const macd = indicators.macd[hoverIndex];
   document.querySelector("#hoverInfo").textContent =
-    `${bar.date} 开${currency(bar.open)} 高${currency(bar.high)} 低${currency(bar.low)} 收${currency(bar.close)} ` +
+    `${bar.date} 开 ${currency(bar.open)} 高 ${currency(bar.high)} 低 ${currency(bar.low)} 收 ${currency(bar.close)} ` +
     `KDJ ${currency(kdj.k)}/${currency(kdj.d)}/${currency(kdj.j)} MACD ${currency(macd.bar)}`;
 });
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>K线复盘训练系统 MVP</title>
+    <title>K 线复盘训练系统 MVP</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -12,9 +12,9 @@
         <section class="brand-panel">
           <div>
             <p class="eyebrow">Stock Replay MVP</p>
-            <h1>K线复盘训练</h1>
+            <h1>K 线复盘训练</h1>
           </div>
-          <span class="mode-pill">保守成交</span>
+          <span class="mode-pill">交互原型</span>
         </section>
 
         <section class="panel search-panel">
@@ -58,11 +58,11 @@
         <header class="topbar">
           <div>
             <p id="activeMeta" class="eyebrow">请选择标的</p>
-            <h2 id="activeTitle">K线训练台</h2>
+            <h2 id="activeTitle">K 线训练台</h2>
           </div>
           <div class="topbar-actions">
-            <button id="prevDay" type="button" aria-label="前一天">‹</button>
-            <button id="nextDay" type="button" aria-label="后一天">›</button>
+            <button id="prevDay" type="button" aria-label="前一天">←</button>
+            <button id="nextDay" type="button" aria-label="后一天">→</button>
             <label class="switch">
               <input id="hideFuture" type="checkbox" checked />
               <span>隐藏未来</span>
@@ -73,7 +73,7 @@
         <section class="chart-stage">
           <div class="chart-toolbar">
             <div id="dateRange" class="date-range">-</div>
-            <div id="hoverInfo" class="hover-info">移动到K线上查看行情与指标</div>
+            <div id="hoverInfo" class="hover-info">移动到 K 线上查看行情与指标</div>
           </div>
           <canvas id="priceChart" width="1200" height="640"></canvas>
         </section>
@@ -92,14 +92,17 @@
               <label>份额<input id="quantity" type="number" min="1" step="100" value="1000" /></label>
               <label>手续费<input id="fee" type="number" min="0" step="0.01" value="5" /></label>
             </div>
-            <label class="full-field">交易笔记<textarea id="tradeNote" rows="4" placeholder="写下买入/卖出理由、情绪状态和事后观察"></textarea></label>
+            <label class="full-field">
+              交易笔记
+              <textarea id="tradeNote" rows="4" placeholder="写下买入/卖出理由、情绪状态和事后观察"></textarea>
+            </label>
             <button id="submitTrade" type="submit">记录买卖点</button>
             <p class="hint">买入按当日最高价成交，卖出按当日最低价成交。</p>
           </form>
 
           <section class="panel stats-panel">
             <div class="section-header">
-              <h2>盈亏与痛感</h2>
+              <h2>盈亏与压力</h2>
               <button id="clearTrades" class="text-button danger" type="button">清空</button>
             </div>
             <div class="stat-grid">
