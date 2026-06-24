@@ -1,36 +1,64 @@
-## K 线复盘训练系统 MVP
+# 股票 K 线复盘训练系统
 
-这是第一阶段的静态交互原型，用来验证股票/ETF 自选、历史 K 线、指标、保守成交模拟、盈亏计算和交易笔记的核心体验。
+这是一个用于股票/ETF 历史 K 线复盘训练的本地网站项目。当前仓库已经进入正式工程结构，旧静态 demo 保留在 `prototype/` 中作为交互参考。
 
-当前版本不是正式工程架构：它使用内置示例行情数据、Canvas 手绘图表和浏览器 localStorage 保存交易记录。正式开发请参考 `设计文档.md` 和 `开发内容顺序.md`。
+## 目录结构
 
-### 运行方式
+```text
+apps/
+  web/      React + TypeScript + Vite 前端
+  api/      FastAPI 后端
+docs/       设计文档与开发顺序
+prototype/ 旧静态交互原型
+```
 
-可以直接用浏览器打开 `index.html`。
+## 启动前端
 
-也可以启动本地静态服务：
+正式前端不能直接双击打开 `apps/web/index.html`。Vite 使用 ES module，必须通过本地开发服务器访问，否则浏览器会出现 `file://` CORS 报错。
 
 ```bash
+npm install
+npm run dev:web
+```
+
+然后访问：
+
+```text
+http://127.0.0.1:5173
+```
+
+## 启动后端
+
+```bash
+cd apps/api
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+健康检查：
+
+```text
+http://127.0.0.1:8000/api/health
+```
+
+## 运行旧原型
+
+旧静态原型位于 `prototype/`，它可以直接打开 HTML，也可以运行静态服务：
+
+```bash
+cd prototype
 node serve.mjs
 ```
 
-然后访问 `http://127.0.0.1:5173`。
+然后访问：
 
-### 已实现
+```text
+http://127.0.0.1:5173
+```
 
-- 股票/ETF 搜索与加入自选
-- 内置示例历史日 K 数据生成
-- K 线、成交量、MA、BOLL、KDJ、MACD
-- 自定义 MA 周期
-- 隐藏未来、前后复盘日切换
-- 买入/卖出点高亮
-- 买入按当日最高价，卖出按当日最低价
-- 持仓、平均成本、已实现盈亏、浮动盈亏、最大浮亏、总盈亏
-- 交易笔记与本地保存
+## 文档
 
-### 下一步
-
-- 建立正式前后端项目骨架
-- 接入真实行情数据源
-- 增加后端 API 与数据库
-- 增加逐日回放、区间复盘和错因统计
+- `docs/设计文档.md`
+- `docs/开发内容顺序.md`
