@@ -8,6 +8,10 @@ from app.schemas.core import (
     ReplaySessionCreate,
     ReplaySessionRead,
     ReplaySessionUpdate,
+    PnlSummaryRead,
+    TradeCreate,
+    TradeRead,
+    TradeUpdate,
     WatchlistItemCreate,
     WatchlistItemRead,
 )
@@ -22,6 +26,10 @@ __all__ = [
     "ReplaySessionCreate",
     "ReplaySessionRead",
     "ReplaySessionUpdate",
+    "PnlSummaryRead",
+    "TradeCreate",
+    "TradeRead",
+    "TradeUpdate",
     "WatchlistItemCreate",
     "WatchlistItemRead",
 ]

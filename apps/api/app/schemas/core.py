@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlmodel import Field, SQLModel
@@ -95,3 +96,41 @@ class ReplaySessionRead(ReplaySessionCreate):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class TradeCreate(SQLModel):
+    side: str
+    quantity: Decimal
+    fee: Decimal = Decimal("0")
+    note: str | None = None
+    emotion_score: int | None = None
+
+
+class TradeUpdate(SQLModel):
+    note: str | None = None
+    emotion_score: int | None = None
+
+
+class TradeRead(SQLModel):
+    id: int
+    session_id: int
+    instrument_id: int
+    trade_date: date
+    side: str
+    quantity: float
+    price: float
+    price_rule: str
+    fee: float
+    note: str | None = None
+    emotion_score: int | None = None
+    created_at: datetime
+
+
+class PnlSummaryRead(SQLModel):
+    quantity: float
+    cost: float
+    avg_cost: float
+    realized: float
+    floating_close: float
+    floating_low: float
+    total: float

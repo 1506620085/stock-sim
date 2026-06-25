@@ -36,7 +36,9 @@ export type IndicatorSettings = {
 export type TradeSide = "buy" | "sell";
 
 export type TradeRecord = {
-  id: string;
+  id: string | number;
+  sessionId?: number;
+  instrumentId?: number;
   code: string;
   side: TradeSide;
   date: string;
@@ -45,6 +47,8 @@ export type TradeRecord = {
   quantity: number;
   fee: number;
   note: string;
+  priceRule?: string;
+  emotionScore?: number | null;
 };
 
 export type ReplaySession = {

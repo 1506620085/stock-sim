@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-react";
-import { createInstrument, createReplaySession, loadInstrumentKlines, loadReplaySessions, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
+import { createInstrument, createReplaySession, createSessionTrade, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { instruments as fallbackInstruments, marketData as fallbackMarketData } from "./mockData";
 import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeSide } from "./types";
@@ -148,6 +148,28 @@ export function ReplayPage() {
     };
   }, [activeInstrument.id, bars]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!replaySession || !activeInstrument.id) {
+      return;
+    }
+
+    loadSessionTrades(replaySession.id, activeCode)
+      .then((items) => {
+        if (cancelled) return;
+        const indexedTrades = items.map((trade) => ({
+          ...trade,
+          index: findBarIndexByDate(bars, trade.date),
+        }));
+        setTrades((current) => [...current.filter((trade) => trade.sessionId !== replaySession.id), ...indexedTrades]);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [replaySession?.id, activeInstrument.id, activeCode, bars]);
+
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
   const visibleEnd = hideFuture ? normalizedIndex + 1 : bars.length;
@@ -271,9 +293,32 @@ export function ReplayPage() {
     }
   }
 
-  function submitTrade(event: FormEvent<HTMLFormElement>) {
+  async function submitTrade(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedBar) return;
+
+    if (replaySession && activeInstrument.id) {
+      setErrorMessage("");
+      try {
+        const createdTrade = await createSessionTrade(replaySession.id, activeCode, {
+          side: tradeSide,
+          quantity,
+          fee,
+          note,
+        });
+        setTrades((items) => [
+          ...items,
+          {
+            ...createdTrade,
+            index: findBarIndexByDate(bars, createdTrade.date),
+          },
+        ]);
+        setNote("");
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "交易记录失败");
+      }
+      return;
+    }
 
     const price = tradeSide === "buy" ? selectedBar.high : selectedBar.low;
     setTrades((items) => [
@@ -634,23 +679,33 @@ function TradeHistory({ trades }: { trades: TradeRecord[] }) {
 }
 
 function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar) {
-  let quantity = 0;
-  let cost = 0;
+  const lots: Array<{ quantity: number; unitCost: number }> = [];
   let realized = 0;
 
   for (const trade of [...trades].sort((a, b) => a.index - b.index)) {
     if (trade.side === "buy") {
-      quantity += trade.quantity;
-      cost += trade.price * trade.quantity + trade.fee;
+      lots.push({
+        quantity: trade.quantity,
+        unitCost: (trade.price * trade.quantity + trade.fee) / trade.quantity,
+      });
     } else {
-      const sellQuantity = Math.min(quantity, trade.quantity);
-      const avgCost = quantity > 0 ? cost / quantity : 0;
-      realized += trade.price * sellQuantity - trade.fee - avgCost * sellQuantity;
-      quantity -= sellQuantity;
-      cost -= avgCost * sellQuantity;
+      let remaining = trade.quantity;
+      let consumedCost = 0;
+      for (const lot of lots) {
+        if (remaining <= 0) break;
+        if (lot.quantity <= 0) continue;
+        const matched = Math.min(lot.quantity, remaining);
+        consumedCost += matched * lot.unitCost;
+        lot.quantity -= matched;
+        remaining -= matched;
+      }
+      const soldQuantity = trade.quantity - remaining;
+      realized += trade.price * soldQuantity - trade.fee - consumedCost;
     }
   }
 
+  const quantity = lots.reduce((sum, lot) => sum + lot.quantity, 0);
+  const cost = lots.reduce((sum, lot) => sum + lot.quantity * lot.unitCost, 0);
   const avgCost = quantity > 0 ? cost / quantity : 0;
   const floating = currentBar && quantity > 0 ? (currentBar.close - avgCost) * quantity : 0;
   return {

@@ -1,4 +1,4 @@
-import type { IndicatorSettings, Instrument, KLineBar, ReplaySession } from "./types";
+import type { IndicatorSettings, Instrument, KLineBar, ReplaySession, TradeRecord, TradeSide } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, "") || "http://127.0.0.1:8000";
 
@@ -33,6 +33,20 @@ type ReplaySessionItem = {
   hide_future: boolean;
   adjust_type: string;
   indicator_config: IndicatorSettings;
+};
+
+type TradeItem = {
+  id: number;
+  session_id: number;
+  instrument_id: number;
+  trade_date: string;
+  side: TradeSide;
+  quantity: number;
+  price: number;
+  price_rule: string;
+  fee: number;
+  note: string | null;
+  emotion_score: number | null;
 };
 
 export async function searchInstruments(keyword: string): Promise<Instrument[]> {
@@ -168,6 +182,45 @@ export async function updateReplaySession(
   return toReplaySession(await response.json());
 }
 
+export async function loadSessionTrades(sessionId: number, code: string): Promise<TradeRecord[]> {
+  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/trades`);
+  if (!response.ok) {
+    throw new Error(await extractMessage(response));
+  }
+
+  const items = (await response.json()) as TradeItem[];
+  return items.map((item) => toTradeRecord(item, code));
+}
+
+export async function createSessionTrade(
+  sessionId: number,
+  code: string,
+  payload: {
+    side: TradeSide;
+    quantity: number;
+    fee: number;
+    note: string;
+    emotionScore?: number | null;
+  },
+): Promise<TradeRecord> {
+  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/trades`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      side: payload.side,
+      quantity: payload.quantity,
+      fee: payload.fee,
+      note: payload.note,
+      emotion_score: payload.emotionScore ?? null,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await extractMessage(response));
+  }
+
+  return toTradeRecord(await response.json(), code);
+}
+
 function toInstrument(item: InstrumentSearchItem): Instrument {
   return {
     id: item.id,
@@ -194,6 +247,24 @@ function toReplaySession(item: ReplaySessionItem): ReplaySession {
     hideFuture: item.hide_future,
     adjustType: item.adjust_type,
     indicatorConfig: item.indicator_config,
+  };
+}
+
+function toTradeRecord(item: TradeItem, code: string): TradeRecord {
+  return {
+    id: item.id,
+    sessionId: item.session_id,
+    instrumentId: item.instrument_id,
+    code,
+    side: item.side,
+    date: item.trade_date,
+    index: 0,
+    price: Number(item.price),
+    quantity: Number(item.quantity),
+    fee: Number(item.fee),
+    note: item.note ?? "",
+    priceRule: item.price_rule,
+    emotionScore: item.emotion_score,
   };
 }
 
