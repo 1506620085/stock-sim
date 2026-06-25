@@ -1,4 +1,8 @@
 from app.schemas.core import (
+    DataQualityRead,
+    FeeTemplateCreate,
+    FeeTemplateRead,
+    FeeTemplateUpdate,
     InstrumentCreate,
     InstrumentRead,
     InstrumentSearchRead,
@@ -20,6 +24,10 @@ from app.schemas.core import (
 )
 
 __all__ = [
+    "DataQualityRead",
+    "FeeTemplateCreate",
+    "FeeTemplateRead",
+    "FeeTemplateUpdate",
     "InstrumentCreate",
     "InstrumentRead",
     "InstrumentSearchRead",

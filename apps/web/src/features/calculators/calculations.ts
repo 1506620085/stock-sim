@@ -2,7 +2,9 @@ export type AssetType = "stock" | "etf";
 
 export type FeeSettings = {
   assetType: AssetType;
+  commissionMode: "rate" | "fixed";
   commissionRate: number;
+  fixedCommission: number;
   minCommission: number;
   stampTaxRate: number;
   transferRate: number;
@@ -87,7 +89,9 @@ export type AverageResult = {
 
 export const defaultFeeSettings: FeeSettings = {
   assetType: "stock",
+  commissionMode: "rate",
   commissionRate: 0.025,
+  fixedCommission: 0,
   minCommission: 5,
   stampTaxRate: 0.05,
   transferRate: 0,
@@ -210,6 +214,9 @@ export function calculateAverage(lines: AverageLine[]): AverageResult {
 
 function calculateCommission(amount: number, settings: FeeSettings) {
   if (amount <= 0) return 0;
+  if (settings.commissionMode === "fixed") {
+    return settings.fixedCommission;
+  }
   return Math.max(amount * percentToRate(settings.commissionRate), settings.minCommission);
 }
 

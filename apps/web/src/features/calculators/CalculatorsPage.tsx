@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Calculator, Copy, Plus, Trash2 } from "lucide-react";
+import { loadFeeTemplates, templateToFeeSettings } from "../settings/api";
 import {
   calculateAverage,
   calculateChange,
@@ -67,8 +68,21 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
           <option value="etf">ETF</option>
         </select>
       </label>
-      <NumberField label="佣金费率(%)" value={settings.commissionRate} onChange={(value) => update("commissionRate", value)} step={0.001} />
-      <NumberField label="最低佣金" value={settings.minCommission} onChange={(value) => update("minCommission", value)} step={0.01} />
+      <label>
+        佣金模式
+        <select value={settings.commissionMode} onChange={(event) => update("commissionMode", event.target.value as FeeSettings["commissionMode"])}>
+          <option value="rate">按比例</option>
+          <option value="fixed">固定手续费</option>
+        </select>
+      </label>
+      {settings.commissionMode === "fixed" ? (
+        <NumberField label="固定手续费" value={settings.fixedCommission} onChange={(value) => update("fixedCommission", value)} step={0.01} />
+      ) : (
+        <>
+          <NumberField label="佣金费率(%)" value={settings.commissionRate} onChange={(value) => update("commissionRate", value)} step={0.001} />
+          <NumberField label="最低佣金" value={settings.minCommission} onChange={(value) => update("minCommission", value)} step={0.01} />
+        </>
+      )}
       <NumberField label="印花税率(%)" value={settings.stampTaxRate} onChange={(value) => update("stampTaxRate", value)} step={0.001} />
       <NumberField label="过户费率(%)" value={settings.transferRate} onChange={(value) => update("transferRate", value)} step={0.001} />
     </section>
@@ -76,7 +90,7 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
 }
 
 function ProfitCostCalculator() {
-  const [settings, setSettings] = useState(defaultFeeSettings);
+  const [settings, setSettings] = useTemplateFeeSettings();
   const [buyPrice, setBuyPrice] = useState(10);
   const [sellPrice, setSellPrice] = useState(11.8);
   const [quantity, setQuantity] = useState(1000);
@@ -115,7 +129,7 @@ function ProfitCostCalculator() {
 }
 
 function TCalculator() {
-  const [settings, setSettings] = useState(defaultFeeSettings);
+  const [settings, setSettings] = useTemplateFeeSettings();
   const [baseQuantity, setBaseQuantity] = useState(1000);
   const [baseAvgCost, setBaseAvgCost] = useState(10);
   const [sequence, setSequence] = useState<"buyFirst" | "sellFirst">("buyFirst");
@@ -263,6 +277,27 @@ function AveragePriceCalculator() {
       </div>
     </CalculatorShell>
   );
+}
+
+function useTemplateFeeSettings(): [FeeSettings, (settings: FeeSettings) => void] {
+  const [settings, setSettings] = useState(defaultFeeSettings);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadFeeTemplates()
+      .then((templates) => {
+        if (cancelled) return;
+        const template = templates.find((item) => item.assetType === settings.assetType) ?? templates[0];
+        if (template) setSettings(templateToFeeSettings(template));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return [settings, setSettings];
 }
 
 function CalculatorShell({ children, description, title }: { children: ReactNode; description: string; title: string }) {

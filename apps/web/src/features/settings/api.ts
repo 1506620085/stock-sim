@@ -1,0 +1,212 @@
+import type { FeeSettings } from "../calculators/calculations";
+import type { Instrument } from "../replay/types";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, "") || "http://127.0.0.1:8000";
+
+export type AdjustType = "none" | "qfq" | "hfq";
+export type DataSource = "akshare" | "tushare";
+
+export type AppPreferences = {
+  adjustType: AdjustType;
+  dataSource: DataSource;
+  tushareToken: string;
+};
+
+export type FeeTemplate = {
+  id: number;
+  name: string;
+  assetType: "stock" | "etf";
+  commissionMode: "rate" | "fixed";
+  commissionRate: number;
+  fixedCommission: number;
+  minCommission: number;
+  stampTaxRate: number;
+  transferRate: number;
+  config: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FeeTemplateInput = Omit<FeeTemplate, "id" | "createdAt" | "updatedAt">;
+
+export type DataQuality = {
+  instrumentId: number;
+  symbol: string;
+  name: string;
+  adjustType: AdjustType;
+  source: string;
+  totalRows: number;
+  firstTradeDate: string | null;
+  latestTradeDate: string | null;
+  lastSyncedAt: string | null;
+  missingWeekdays: string[];
+  possibleSuspendedDates: string[];
+};
+
+export const defaultPreferences: AppPreferences = {
+  adjustType: "qfq",
+  dataSource: "akshare",
+  tushareToken: "",
+};
+
+export function loadPreferences(): AppPreferences {
+  try {
+    const raw = localStorage.getItem("stock-sim.preferences");
+    return raw ? { ...defaultPreferences, ...JSON.parse(raw) } : defaultPreferences;
+  } catch {
+    return defaultPreferences;
+  }
+}
+
+export function savePreferences(preferences: AppPreferences) {
+  localStorage.setItem("stock-sim.preferences", JSON.stringify(preferences));
+}
+
+export async function loadFeeTemplates(): Promise<FeeTemplate[]> {
+  const response = await fetch(`${API_BASE}/api/settings/fee-templates`);
+  if (!response.ok) throw new Error(await extractMessage(response));
+  const items = await response.json();
+  return items.map(toFeeTemplate);
+}
+
+export async function createFeeTemplate(input: FeeTemplateInput): Promise<FeeTemplate> {
+  const response = await fetch(`${API_BASE}/api/settings/fee-templates`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(toFeeTemplatePayload(input)),
+  });
+  if (!response.ok) throw new Error(await extractMessage(response));
+  return toFeeTemplate(await response.json());
+}
+
+export async function updateFeeTemplate(id: number, input: FeeTemplateInput): Promise<FeeTemplate> {
+  const response = await fetch(`${API_BASE}/api/settings/fee-templates/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(toFeeTemplatePayload(input)),
+  });
+  if (!response.ok) throw new Error(await extractMessage(response));
+  return toFeeTemplate(await response.json());
+}
+
+export async function deleteFeeTemplate(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/settings/fee-templates/${id}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(await extractMessage(response));
+}
+
+export async function loadInstruments(keyword = ""): Promise<Instrument[]> {
+  const url = new URL(`${API_BASE}/api/instruments`);
+  if (keyword.trim()) url.searchParams.set("keyword", keyword.trim());
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(await extractMessage(response));
+  const items = await response.json();
+  return items.map(toInstrument);
+}
+
+export async function loadDataQuality(instrumentId: number, adjustType: AdjustType): Promise<DataQuality> {
+  const url = new URL(`${API_BASE}/api/settings/data-quality`);
+  url.searchParams.set("instrument_id", String(instrumentId));
+  url.searchParams.set("adjust", adjustType);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(await extractMessage(response));
+  return toDataQuality(await response.json());
+}
+
+export async function syncInstrument(instrumentId: number, adjustType: AdjustType): Promise<{ rows_fetched: number; rows_written: number; latest_trade_date: string | null }> {
+  const url = new URL(`${API_BASE}/api/instruments/${instrumentId}/sync`);
+  url.searchParams.set("adjust", adjustType);
+  const response = await fetch(url, { method: "POST" });
+  if (!response.ok) throw new Error(await extractMessage(response));
+  return response.json();
+}
+
+export function templateToFeeSettings(template: FeeTemplate): FeeSettings {
+  return {
+    assetType: template.assetType,
+    commissionMode: template.commissionMode,
+    commissionRate: template.commissionRate,
+    fixedCommission: template.fixedCommission,
+    minCommission: template.minCommission,
+    stampTaxRate: template.stampTaxRate,
+    transferRate: template.transferRate,
+  };
+}
+
+function toFeeTemplate(item: Record<string, unknown>): FeeTemplate {
+  return {
+    id: Number(item.id),
+    name: String(item.name ?? ""),
+    assetType: item.asset_type === "etf" ? "etf" : "stock",
+    commissionMode: configValue(item.config, "commissionMode") === "fixed" ? "fixed" : "rate",
+    commissionRate: Number(item.commission_rate ?? 0),
+    fixedCommission: Number(configValue(item.config, "fixedCommission") ?? 0),
+    minCommission: Number(item.min_commission ?? 0),
+    stampTaxRate: Number(item.stamp_tax_rate ?? 0),
+    transferRate: Number(item.transfer_rate ?? 0),
+    config: (item.config as Record<string, unknown>) ?? {},
+    createdAt: String(item.created_at ?? ""),
+    updatedAt: String(item.updated_at ?? ""),
+  };
+}
+
+function toFeeTemplatePayload(input: FeeTemplateInput) {
+  return {
+    name: input.name,
+    asset_type: input.assetType,
+    commission_rate: input.commissionRate,
+    min_commission: input.minCommission,
+    stamp_tax_rate: input.stampTaxRate,
+    transfer_rate: input.transferRate,
+    config: {
+      ...input.config,
+      commissionMode: input.commissionMode,
+      fixedCommission: input.fixedCommission,
+    },
+  };
+}
+
+function configValue(config: unknown, key: string) {
+  return config && typeof config === "object" ? (config as Record<string, unknown>)[key] : undefined;
+}
+
+function toInstrument(item: Record<string, unknown>): Instrument {
+  const exchange = String(item.exchange ?? "CN") as Instrument["exchange"];
+  return {
+    id: Number(item.id),
+    code: String(item.code ?? ""),
+    name: String(item.name ?? ""),
+    type: item.asset_type === "etf" ? "ETF" : "股票",
+    market: exchange === "SZ" ? "深证" : "上证",
+    exchange,
+    symbol: String(item.symbol ?? ""),
+    assetType: item.asset_type === "etf" ? "etf" : "stock",
+    source: "database",
+    listDate: item.list_date ? String(item.list_date) : null,
+    isActive: Boolean(item.is_active ?? true),
+  };
+}
+
+function toDataQuality(item: Record<string, unknown>): DataQuality {
+  return {
+    instrumentId: Number(item.instrument_id),
+    symbol: String(item.symbol ?? ""),
+    name: String(item.name ?? ""),
+    adjustType: String(item.adjust_type ?? "qfq") as AdjustType,
+    source: String(item.source ?? "akshare"),
+    totalRows: Number(item.total_rows ?? 0),
+    firstTradeDate: item.first_trade_date ? String(item.first_trade_date) : null,
+    latestTradeDate: item.latest_trade_date ? String(item.latest_trade_date) : null,
+    lastSyncedAt: item.last_synced_at ? String(item.last_synced_at) : null,
+    missingWeekdays: Array.isArray(item.missing_weekdays) ? item.missing_weekdays.map(String) : [],
+    possibleSuspendedDates: Array.isArray(item.possible_suspended_dates) ? item.possible_suspended_dates.map(String) : [],
+  };
+}
+
+async function extractMessage(response: Response) {
+  try {
+    const data = await response.json();
+    return data?.detail || response.statusText || "请求失败";
+  } catch {
+    return response.statusText || "请求失败";
+  }
+}

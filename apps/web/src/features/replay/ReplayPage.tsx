@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-
 import { createInstrument, createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { instruments as fallbackInstruments, marketData as fallbackMarketData } from "./mockData";
+import { loadPreferences } from "../settings/api";
 import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
@@ -21,6 +22,8 @@ const formatNumber = (value: number) =>
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   });
+
+const adjustLabel = (value: string) => ({ none: "不复权", qfq: "前复权", hfq: "后复权" })[value] ?? value;
 
 const fallbackLookup = new Map(fallbackInstruments.map((item) => [item.code, item]));
 
@@ -48,6 +51,8 @@ export function ReplayPage() {
   const [loadingSession, setLoadingSession] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [preferences] = useState(() => loadPreferences());
+  const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +89,7 @@ export function ReplayPage() {
     }
 
     setLoadingBars(true);
-    loadInstrumentKlines(instrumentId, { adjust: "qfq" })
+    loadInstrumentKlines(instrumentId, { adjust: activeAdjustType })
       .then((items) => {
         if (!cancelled) {
           setBars(items.length ? items : fallbackMarketData[activeCode] ?? []);
@@ -103,7 +108,7 @@ export function ReplayPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeCode, activeInstrument.id]);
+  }, [activeAdjustType, activeCode, activeInstrument.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,7 +137,7 @@ export function ReplayPage() {
           startDate,
           currentDate,
           hideFuture,
-          adjustType: "qfq",
+          adjustType: activeAdjustType,
           indicatorConfig: indicators,
         });
         if (!cancelled) applyReplaySession(createdSession, bars);
@@ -147,7 +152,7 @@ export function ReplayPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeInstrument.id, bars]);
+  }, [activeAdjustType, activeInstrument.id, bars]);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +192,7 @@ export function ReplayPage() {
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
   const visibleTrades = hideFuture ? replayTrades : activeTrades;
   const activeDataSource = activeInstrument.source ?? (activeInstrument.id ? "database" : "mock");
+  const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
   const searchResults = useMemo(() => {
     const text = query.trim().toLowerCase();
     const localResults = fallbackInstruments.filter((instrument) => `${instrument.code}${instrument.name}${instrument.type}`.toLowerCase().includes(text));
@@ -292,9 +298,9 @@ export function ReplayPage() {
     setSyncMessage("");
     setErrorMessage("");
     try {
-      const result = await syncInstrumentKlines(activeInstrument.id, { adjust: "qfq" });
+      const result = await syncInstrumentKlines(activeInstrument.id, { adjust: activeAdjustType });
       setSyncMessage(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
-      const refreshed = await loadInstrumentKlines(activeInstrument.id, { adjust: "qfq" });
+      const refreshed = await loadInstrumentKlines(activeInstrument.id, { adjust: activeAdjustType });
       setBars(refreshed);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "同步失败");
@@ -376,6 +382,8 @@ export function ReplayPage() {
               </h2>
               <p className="source-line">
                 数据源：{activeDataSource}
+                {` · 配置源：${configuredDataSource}`}
+                {` · 复权：${adjustLabel(activeAdjustType)}`}
                 {loadingBars ? " · 加载中" : ""}
                 {loadingSession ? " · 复盘状态同步中" : ""}
                 {replaySession ? ` · Session #${replaySession.id}` : ""}

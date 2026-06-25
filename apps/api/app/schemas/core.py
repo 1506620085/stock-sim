@@ -136,6 +136,39 @@ class PnlSummaryRead(SQLModel):
     total: float
 
 
+class FeeTemplateCreate(SQLModel):
+    name: str
+    asset_type: str
+    commission_rate: Decimal
+    min_commission: Decimal = Decimal("0")
+    stamp_tax_rate: Decimal = Decimal("0")
+    transfer_rate: Decimal = Decimal("0")
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class FeeTemplateUpdate(SQLModel):
+    name: str | None = None
+    asset_type: str | None = None
+    commission_rate: Decimal | None = None
+    min_commission: Decimal | None = None
+    stamp_tax_rate: Decimal | None = None
+    transfer_rate: Decimal | None = None
+    config: dict[str, Any] | None = None
+
+
+class FeeTemplateRead(SQLModel):
+    id: int
+    name: str
+    asset_type: str
+    commission_rate: float
+    min_commission: float
+    stamp_tax_rate: float
+    transfer_rate: float
+    config: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+
 class TradeReviewCreate(SQLModel):
     start_trade_id: int | None = None
     end_trade_id: int | None = None
@@ -166,3 +199,17 @@ class StatsSummaryRead(SQLModel):
     calendar: list[dict[str, Any]]
     tag_stats: list[dict[str, Any]]
     recent_reviews: list[TradeReviewRead]
+
+
+class DataQualityRead(SQLModel):
+    instrument_id: int
+    symbol: str
+    name: str
+    adjust_type: str
+    source: str
+    total_rows: int
+    first_trade_date: date | None = None
+    latest_trade_date: date | None = None
+    last_synced_at: datetime | None = None
+    missing_weekdays: list[date] = Field(default_factory=list)
+    possible_suspended_dates: list[date] = Field(default_factory=list)
