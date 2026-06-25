@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Calculator, CandlestickChart, NotebookPen, Settings } from "lucide-react";
 import { CalculatorsPage } from "./features/calculators/CalculatorsPage";
 import { ReplayPage } from "./features/replay/ReplayPage";
+import { StatsPage } from "./features/stats/StatsPage";
 
 type PageId = "replay" | "calculators" | "stats" | "notes" | "settings";
 
@@ -23,7 +24,7 @@ const menuItems: MenuItem[] = [
 const pageMeta: Record<PageId, { eyebrow: string; title: string; badge: string }> = {
   replay: { eyebrow: "Replay", title: "K 线复盘工作台", badge: "默认页面" },
   calculators: { eyebrow: "Tools", title: "交易计算器", badge: "工具箱" },
-  stats: { eyebrow: "Analytics", title: "训练统计", badge: "规划中" },
+  stats: { eyebrow: "Analytics", title: "训练统计", badge: "统计面板" },
   notes: { eyebrow: "Journal", title: "交易笔记", badge: "规划中" },
   settings: { eyebrow: "Preferences", title: "系统设置", badge: "规划中" },
 };
@@ -104,8 +105,11 @@ function PageContent({ activePage }: { activePage: PageId }) {
     return <CalculatorsPage />;
   }
 
-  const copy: Record<Exclude<PageId, "replay" | "calculators">, string[]> = {
-    stats: ["胜率", "盈亏比", "错因标签", "复盘日历"],
+  if (activePage === "stats") {
+    return <StatsPage />;
+  }
+
+  const copy: Record<Exclude<PageId, "replay" | "calculators" | "stats">, string[]> = {
     notes: ["交易笔记", "区间复盘", "情绪记录", "标签归档"],
     settings: ["数据源", "复权方式", "费率模板", "主题配置"],
   };

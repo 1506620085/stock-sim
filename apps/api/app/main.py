@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import health, instruments, replay_sessions, trades, watchlist
+from app.routers import health, instruments, replay_sessions, stats, trades, watchlist
 
 settings = get_settings()
 
@@ -24,3 +24,4 @@ app.include_router(instruments.router)
 app.include_router(watchlist.router)
 app.include_router(replay_sessions.router)
 app.include_router(trades.router)
+app.include_router(stats.router)

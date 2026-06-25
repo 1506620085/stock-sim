@@ -150,3 +150,19 @@ class TradeReviewRead(TradeReviewCreate):
     session_id: int
     created_at: datetime
     updated_at: datetime
+
+
+class StatsSummaryRead(SQLModel):
+    total_sessions: int
+    total_trades: int
+    buy_count: int
+    sell_count: int
+    win_rate: float
+    realized_pnl: float
+    average_profit: float
+    average_loss: float
+    profit_loss_ratio: float
+    review_count: int
+    calendar: list[dict[str, Any]]
+    tag_stats: list[dict[str, Any]]
+    recent_reviews: list[TradeReviewRead]
