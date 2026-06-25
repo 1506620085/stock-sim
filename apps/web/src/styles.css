@@ -501,6 +501,132 @@ textarea {
   margin-top: 14px;
 }
 
+.trade-overlay-layer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.holding-region {
+  position: absolute;
+  top: 34px;
+  bottom: 28px;
+  border: 1px solid rgba(23, 108, 143, 0.24);
+  border-radius: 6px;
+  background: rgba(23, 108, 143, 0.08);
+  pointer-events: none;
+}
+
+.holding-region.profit {
+  border-color: rgba(216, 58, 49, 0.26);
+  background: rgba(216, 58, 49, 0.08);
+}
+
+.holding-region.loss {
+  border-color: rgba(21, 132, 95, 0.26);
+  background: rgba(21, 132, 95, 0.08);
+}
+
+.holding-region span {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 7px;
+  white-space: nowrap;
+}
+
+.trade-marker {
+  position: absolute;
+  display: grid;
+  min-width: 42px;
+  transform: translateX(-50%);
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  box-shadow: 0 8px 18px rgba(22, 36, 31, 0.16);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 6px;
+  pointer-events: auto;
+}
+
+.trade-marker strong,
+.trade-marker span {
+  display: block;
+}
+
+.trade-marker strong {
+  font-size: 14px;
+}
+
+.trade-marker span {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.trade-marker.buy {
+  border-color: #f0b3ad;
+  background: #fff4f2;
+  color: #b52821;
+}
+
+.trade-marker.sell {
+  border-color: #9fd6c4;
+  background: #effaf5;
+  color: #126d50;
+}
+
+.trade-note-popover {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  width: min(320px, calc(100% - 32px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  padding: 14px;
+  pointer-events: auto;
+}
+
+.trade-note-popover h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.trade-note-popover button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+}
+
+.trade-note-popover p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0;
+}
+
+.trade-note-popover div:last-child {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
 .kline-chart {
   display: block;
   width: 100%;

@@ -404,7 +404,7 @@ export function ReplayPage() {
             </span>
           </div>
 
-          <KLineChartPanel bars={visibleBars} code={activeCode} indicators={indicators} selectedDate={selectedBar?.date} />
+          <KLineChartPanel bars={visibleBars} code={activeCode} indicators={indicators} selectedDate={selectedBar?.date} trades={visibleTrades} />
         </div>
       </section>
 
