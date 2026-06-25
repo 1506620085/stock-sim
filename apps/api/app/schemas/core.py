@@ -30,6 +30,39 @@ class InstrumentRead(InstrumentCreate):
     updated_at: datetime
 
 
+class InstrumentSearchRead(InstrumentCreate):
+    id: int | None = None
+    source: str = "database"
+
+
+class KlineDailyRead(SQLModel):
+    id: int
+    instrument_id: int
+    trade_date: date
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    amount: float | None = None
+    adjust_type: str
+    source: str
+    source_updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class KlineSyncResult(SQLModel):
+    instrument_id: int
+    symbol: str
+    adjust_type: str
+    source: str
+    rows_fetched: int
+    rows_written: int
+    latest_trade_date: date | None = None
+    synced_at: datetime
+
+
 class WatchlistItemCreate(SQLModel):
     instrument_id: int
     sort_order: int = 0

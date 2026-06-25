@@ -1,7 +1,10 @@
 from app.schemas.core import (
     InstrumentCreate,
     InstrumentRead,
+    InstrumentSearchRead,
     InstrumentUpdate,
+    KlineDailyRead,
+    KlineSyncResult,
     ReplaySessionCreate,
     ReplaySessionRead,
     ReplaySessionUpdate,
@@ -12,7 +15,10 @@ from app.schemas.core import (
 __all__ = [
     "InstrumentCreate",
     "InstrumentRead",
+    "InstrumentSearchRead",
     "InstrumentUpdate",
+    "KlineDailyRead",
+    "KlineSyncResult",
     "ReplaySessionCreate",
     "ReplaySessionRead",
     "ReplaySessionUpdate",

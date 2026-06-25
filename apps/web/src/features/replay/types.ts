@@ -1,8 +1,15 @@
 export type Instrument = {
+  id?: number | null;
   code: string;
   name: string;
   type: "股票" | "ETF";
   market: "上证" | "深证";
+  exchange?: "SH" | "SZ" | "BJ" | "CN";
+  symbol?: string;
+  assetType?: "stock" | "etf";
+  source?: "mock" | "database" | "akshare";
+  listDate?: string | null;
+  isActive?: boolean;
 };
 
 export type KLineBar = {
@@ -12,6 +19,7 @@ export type KLineBar = {
   low: number;
   close: number;
   volume: number;
+  amount?: number | null;
 };
 
 export type IndicatorSettings = {
