@@ -1,4 +1,4 @@
-import type { IndicatorSettings, Instrument, KLineBar, ReplaySession, TradeRecord, TradeSide } from "./types";
+import type { IndicatorSettings, Instrument, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, "") || "http://127.0.0.1:8000";
 
@@ -47,6 +47,18 @@ type TradeItem = {
   fee: number;
   note: string | null;
   emotion_score: number | null;
+};
+
+type TradeReviewItem = {
+  id: number;
+  session_id: number;
+  start_trade_id: number | null;
+  end_trade_id: number | null;
+  title: string;
+  note: string | null;
+  tags: string[];
+  metrics_snapshot: Record<string, unknown>;
+  created_at: string;
 };
 
 export async function searchInstruments(keyword: string): Promise<Instrument[]> {
@@ -221,6 +233,46 @@ export async function createSessionTrade(
   return toTradeRecord(await response.json(), code);
 }
 
+export async function loadTradeReviews(sessionId: number): Promise<TradeReview[]> {
+  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`);
+  if (!response.ok) {
+    throw new Error(await extractMessage(response));
+  }
+
+  const items = (await response.json()) as TradeReviewItem[];
+  return items.map(toTradeReview);
+}
+
+export async function createTradeReview(
+  sessionId: number,
+  payload: {
+    startTradeId: number | null;
+    endTradeId: number | null;
+    title: string;
+    note: string;
+    tags: string[];
+    metricsSnapshot: Record<string, unknown>;
+  },
+): Promise<TradeReview> {
+  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      start_trade_id: payload.startTradeId,
+      end_trade_id: payload.endTradeId,
+      title: payload.title,
+      note: payload.note,
+      tags: payload.tags,
+      metrics_snapshot: payload.metricsSnapshot,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await extractMessage(response));
+  }
+
+  return toTradeReview(await response.json());
+}
+
 function toInstrument(item: InstrumentSearchItem): Instrument {
   return {
     id: item.id,
@@ -265,6 +317,20 @@ function toTradeRecord(item: TradeItem, code: string): TradeRecord {
     note: item.note ?? "",
     priceRule: item.price_rule,
     emotionScore: item.emotion_score,
+  };
+}
+
+function toTradeReview(item: TradeReviewItem): TradeReview {
+  return {
+    id: item.id,
+    sessionId: item.session_id,
+    startTradeId: item.start_trade_id,
+    endTradeId: item.end_trade_id,
+    title: item.title,
+    note: item.note ?? "",
+    tags: item.tags,
+    metricsSnapshot: item.metrics_snapshot,
+    createdAt: item.created_at,
   };
 }
 

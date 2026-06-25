@@ -61,3 +61,15 @@ export type ReplaySession = {
   adjustType: string;
   indicatorConfig: IndicatorSettings;
 };
+
+export type TradeReview = {
+  id: number;
+  sessionId: number;
+  startTradeId: number | null;
+  endTradeId: number | null;
+  title: string;
+  note: string;
+  tags: string[];
+  metricsSnapshot: Record<string, unknown>;
+  createdAt: string;
+};

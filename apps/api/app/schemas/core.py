@@ -134,3 +134,19 @@ class PnlSummaryRead(SQLModel):
     floating_close: float
     floating_low: float
     total: float
+
+
+class TradeReviewCreate(SQLModel):
+    start_trade_id: int | None = None
+    end_trade_id: int | None = None
+    title: str
+    note: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    metrics_snapshot: dict[str, Any] = Field(default_factory=dict)
+
+
+class TradeReviewRead(TradeReviewCreate):
+    id: int
+    session_id: int
+    created_at: datetime
+    updated_at: datetime

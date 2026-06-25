@@ -946,6 +946,79 @@ textarea {
   font-size: 13px;
 }
 
+.review-panel form {
+  margin-top: 12px;
+}
+
+.review-panel select,
+.review-panel input,
+.review-panel textarea {
+  margin-top: 6px;
+}
+
+.review-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.review-metrics article {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfdfc;
+  padding: 10px;
+}
+
+.review-metrics span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-metrics strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 15px;
+}
+
+.review-message {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.review-list article {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfdfc;
+  padding: 10px;
+}
+
+.review-list strong,
+.review-list span {
+  display: block;
+}
+
+.review-list span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-list p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .placeholder-list {
   display: flex;
   flex-direction: column;

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-react";
-import { createInstrument, createReplaySession, createSessionTrade, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
+import { createInstrument, createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { instruments as fallbackInstruments, marketData as fallbackMarketData } from "./mockData";
-import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeSide } from "./types";
+import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
   maFast: 5,
@@ -37,6 +37,7 @@ export function ReplayPage() {
   const [fee, setFee] = useState(5);
   const [note, setNote] = useState("");
   const [trades, setTrades] = useState<TradeRecord[]>([]);
+  const [tradeReviews, setTradeReviews] = useState<TradeReview[]>([]);
   const [remoteResults, setRemoteResults] = useState<Instrument[]>([]);
   const [bars, setBars] = useState<KLineBar[]>(fallbackMarketData[activeCode] ?? []);
   const [activeInstrument, setActiveInstrument] = useState<Instrument>(fallbackLookup.get(activeCode) ?? fallbackInstruments[0]);
@@ -162,6 +163,12 @@ export function ReplayPage() {
           index: findBarIndexByDate(bars, trade.date),
         }));
         setTrades((current) => [...current.filter((trade) => trade.sessionId !== replaySession.id), ...indexedTrades]);
+      })
+      .catch(() => undefined);
+
+    loadTradeReviews(replaySession.id)
+      .then((items) => {
+        if (!cancelled) setTradeReviews(items);
       })
       .catch(() => undefined);
 
@@ -430,6 +437,13 @@ export function ReplayPage() {
           onSubmit={submitTrade}
         />
         <PnlPanel position={position} />
+        <TradeReviewPanel
+          bars={bars}
+          reviews={tradeReviews}
+          sessionId={replaySession?.id ?? null}
+          trades={activeTrades}
+          onCreate={(review) => setTradeReviews((items) => [review, ...items])}
+        />
         <TradeHistory trades={visibleTrades} />
       </aside>
     </section>
@@ -723,6 +737,144 @@ function TradeHistory({ trades }: { trades: TradeRecord[] }) {
   );
 }
 
+function TradeReviewPanel({
+  bars,
+  reviews,
+  sessionId,
+  trades,
+  onCreate,
+}: {
+  bars: KLineBar[];
+  reviews: TradeReview[];
+  sessionId: number | null;
+  trades: TradeRecord[];
+  onCreate: (review: TradeReview) => void;
+}) {
+  const selectableTrades = [...trades].sort((a, b) => a.index - b.index);
+  const [startTradeId, setStartTradeId] = useState<string>("");
+  const [endTradeId, setEndTradeId] = useState<string>("");
+  const [title, setTitle] = useState("区间复盘");
+  const [tags, setTags] = useState("");
+  const [note, setNote] = useState("");
+  const [message, setMessage] = useState("");
+
+  const metrics = useMemo(
+    () => calculateReviewMetrics(selectableTrades, bars, parseNullableId(startTradeId), parseNullableId(endTradeId)),
+    [selectableTrades, bars, startTradeId, endTradeId],
+  );
+
+  async function submitReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!sessionId) {
+      setMessage("当前是本地 demo 模式，暂不能保存区间复盘。");
+      return;
+    }
+    if (!title.trim()) {
+      setMessage("请填写标题。");
+      return;
+    }
+
+    try {
+      const review = await createTradeReview(sessionId, {
+        startTradeId: parseNullableId(startTradeId),
+        endTradeId: parseNullableId(endTradeId),
+        title: title.trim(),
+        note,
+        tags: tags
+          .split(/[，,]/)
+          .map((item) => item.trim())
+          .filter(Boolean),
+        metricsSnapshot: metrics,
+      });
+      onCreate(review);
+      setNote("");
+      setTags("");
+      setMessage("已保存区间复盘。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "保存区间复盘失败");
+    }
+  }
+
+  return (
+    <section className="panel review-panel">
+      <div className="section-header">
+        <h2>区间复盘</h2>
+        <span>{reviews.length}</span>
+      </div>
+      <form onSubmit={submitReview}>
+        <div className="input-grid two-cols">
+          <label>
+            起点
+            <select value={startTradeId} onChange={(event) => setStartTradeId(event.target.value)}>
+              <option value="">自动</option>
+              {selectableTrades.map((trade) => (
+                <option key={trade.id} value={trade.id}>
+                  {trade.date} {trade.side === "buy" ? "买入" : "卖出"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            终点
+            <select value={endTradeId} onChange={(event) => setEndTradeId(event.target.value)}>
+              <option value="">自动</option>
+              {selectableTrades.map((trade) => (
+                <option key={trade.id} value={trade.id}>
+                  {trade.date} {trade.side === "buy" ? "买入" : "卖出"}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="review-metrics">
+          <article>
+            <span>投入</span>
+            <strong>{formatNumber(metrics.invested)}</strong>
+          </article>
+          <article>
+            <span>收入</span>
+            <strong>{formatNumber(metrics.proceeds)}</strong>
+          </article>
+          <article>
+            <span>盈亏</span>
+            <strong className={metrics.pnl >= 0 ? "positive" : "negative"}>{formatNumber(metrics.pnl)}</strong>
+          </article>
+          <article>
+            <span>收益率</span>
+            <strong className={metrics.pnlRate >= 0 ? "positive" : "negative"}>{formatPercent(metrics.pnlRate)}</strong>
+          </article>
+        </div>
+        <label className="full-field">
+          标题
+          <input value={title} onChange={(event) => setTitle(event.target.value)} />
+        </label>
+        <label className="full-field">
+          标签
+          <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="追高, 未按计划, 放量突破" />
+        </label>
+        <label className="full-field">
+          总结笔记
+          <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} placeholder="总结这段交易的判断、执行和情绪问题" />
+        </label>
+        <button className="primary-button" type="submit">
+          保存区间复盘
+        </button>
+        {message ? <p className="review-message">{message}</p> : null}
+      </form>
+
+      <div className="review-list">
+        {reviews.slice(0, 3).map((review) => (
+          <article key={review.id}>
+            <strong>{review.title}</strong>
+            <span>{review.tags.join(" / ") || "未标记"}</span>
+            <p>{review.note || "未填写总结"}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar, replayBars: KLineBar[] = []) {
   const lots: Array<{ quantity: number; unitCost: number; buyIndex: number }> = [];
   let realized = 0;
@@ -777,6 +929,52 @@ function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar, replayB
     lowPnlCurve,
     total: realized + floatingLow,
   };
+}
+
+function calculateReviewMetrics(trades: TradeRecord[], bars: KLineBar[], startTradeId: number | null, endTradeId: number | null) {
+  const sortedTrades = [...trades].sort((a, b) => a.index - b.index);
+  if (!sortedTrades.length) {
+    return { invested: 0, proceeds: 0, fee: 0, pnl: 0, pnlRate: 0, maxFloatingLoss: 0, startDate: null, endDate: null };
+  }
+
+  const startIndex = startTradeId ? Math.max(0, sortedTrades.findIndex((trade) => Number(trade.id) === startTradeId)) : 0;
+  const fallbackEnd = sortedTrades.length - 1;
+  const endIndex = endTradeId ? sortedTrades.findIndex((trade) => Number(trade.id) === endTradeId) : fallbackEnd;
+  const selectedTrades = sortedTrades.slice(startIndex, Math.max(startIndex, endIndex) + 1);
+  const invested = selectedTrades.filter((trade) => trade.side === "buy").reduce((sum, trade) => sum + trade.price * trade.quantity + trade.fee, 0);
+  const proceeds = selectedTrades.filter((trade) => trade.side === "sell").reduce((sum, trade) => sum + trade.price * trade.quantity - trade.fee, 0);
+  const fee = selectedTrades.reduce((sum, trade) => sum + trade.fee, 0);
+  const pnl = proceeds - invested;
+  const pnlRate = invested > 0 ? (pnl / invested) * 100 : 0;
+  const startTrade = selectedTrades[0];
+  const endTrade = selectedTrades[selectedTrades.length - 1];
+  const rangeBars = bars.slice(startTrade?.index ?? 0, (endTrade?.index ?? 0) + 1);
+  const avgBuyCost = selectedTrades
+    .filter((trade) => trade.side === "buy")
+    .reduce((sum, trade) => sum + trade.price * trade.quantity + trade.fee, 0);
+  const buyQuantity = selectedTrades.filter((trade) => trade.side === "buy").reduce((sum, trade) => sum + trade.quantity, 0);
+  const avgCost = buyQuantity > 0 ? avgBuyCost / buyQuantity : 0;
+  const maxFloatingLoss = avgCost > 0 && buyQuantity > 0 ? Math.min(0, ...rangeBars.map((bar) => (bar.low - avgCost) * buyQuantity)) : 0;
+
+  return {
+    invested,
+    proceeds,
+    fee,
+    pnl,
+    pnlRate,
+    maxFloatingLoss,
+    startDate: startTrade?.date ?? null,
+    endDate: endTrade?.date ?? null,
+  };
+}
+
+function parseNullableId(value: string) {
+  return value ? Number(value) : null;
+}
+
+function formatPercent(value: number) {
+  const prefix = value >= 0 ? "+" : "";
+  return `${prefix}${value.toFixed(2)}%`;
 }
 
 function buildLowPnlCurve(bars: KLineBar[], avgCost: number, quantity: number) {

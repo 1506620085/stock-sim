@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.core.database import get_session
-from app.models import KlineDaily, ReplaySession, Trade
-from app.schemas import PnlSummaryRead, TradeCreate, TradeRead, TradeUpdate
+from app.models import KlineDaily, ReplaySession, Trade, TradeReview
+from app.schemas import PnlSummaryRead, TradeCreate, TradeRead, TradeReviewCreate, TradeReviewRead, TradeUpdate
 from app.services.replay.pnl import calculate_fifo_position
 
 router = APIRouter(tags=["trades"])
@@ -100,6 +100,34 @@ def get_session_pnl(session_id: int, session: Session = Depends(get_session)) ->
     )
 
 
+@router.get("/api/replay-sessions/{session_id}/reviews", response_model=list[TradeReviewRead])
+def list_trade_reviews(session_id: int, session: Session = Depends(get_session)) -> list[TradeReview]:
+    ensure_replay_session(session_id, session)
+    statement = select(TradeReview).where(TradeReview.session_id == session_id).order_by(TradeReview.created_at.desc())
+    return list(session.exec(statement).all())
+
+
+@router.post("/api/replay-sessions/{session_id}/reviews", response_model=TradeReviewRead, status_code=status.HTTP_201_CREATED)
+def create_trade_review(session_id: int, payload: TradeReviewCreate, session: Session = Depends(get_session)) -> TradeReview:
+    ensure_replay_session(session_id, session)
+    validate_review_trade(session_id, payload.start_trade_id, session)
+    validate_review_trade(session_id, payload.end_trade_id, session)
+
+    review = TradeReview(
+        session_id=session_id,
+        start_trade_id=payload.start_trade_id,
+        end_trade_id=payload.end_trade_id,
+        title=payload.title,
+        note=payload.note,
+        tags=payload.tags,
+        metrics_snapshot=payload.metrics_snapshot,
+    )
+    session.add(review)
+    session.commit()
+    session.refresh(review)
+    return review
+
+
 def ensure_replay_session(session_id: int, session: Session) -> ReplaySession:
     replay_session = session.get(ReplaySession, session_id)
     if not replay_session:
@@ -129,3 +157,11 @@ def list_session_trades_until(session_id: int, trade_date, session: Session) -> 
         .order_by(Trade.trade_date, Trade.id)
     )
     return list(session.exec(statement).all())
+
+
+def validate_review_trade(session_id: int, trade_id: int | None, session: Session) -> None:
+    if trade_id is None:
+        return
+    trade = session.get(Trade, trade_id)
+    if not trade or trade.session_id != session_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="review trade must belong to replay session")
