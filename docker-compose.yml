@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: stock-sim-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: stock_sim
+      POSTGRES_USER: stock_sim
+      POSTGRES_PASSWORD: stock_sim
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - stock_sim_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stock_sim -d stock_sim"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  stock_sim_postgres_data:

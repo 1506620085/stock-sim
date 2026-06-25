@@ -1,0 +1,64 @@
+from datetime import date, datetime
+from typing import Any
+
+from sqlmodel import Field, SQLModel
+
+
+class InstrumentCreate(SQLModel):
+    code: str
+    exchange: str
+    symbol: str
+    name: str
+    asset_type: str
+    list_date: date | None = None
+    is_active: bool = True
+
+
+class InstrumentUpdate(SQLModel):
+    code: str | None = None
+    exchange: str | None = None
+    symbol: str | None = None
+    name: str | None = None
+    asset_type: str | None = None
+    list_date: date | None = None
+    is_active: bool | None = None
+
+
+class InstrumentRead(InstrumentCreate):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class WatchlistItemCreate(SQLModel):
+    instrument_id: int
+    sort_order: int = 0
+
+
+class WatchlistItemRead(WatchlistItemCreate):
+    id: int
+    created_at: datetime
+
+
+class ReplaySessionCreate(SQLModel):
+    instrument_id: int
+    name: str
+    start_date: date
+    current_date: date
+    hide_future: bool = True
+    adjust_type: str = "qfq"
+    indicator_config: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReplaySessionUpdate(SQLModel):
+    name: str | None = None
+    current_date: date | None = None
+    hide_future: bool | None = None
+    adjust_type: str | None = None
+    indicator_config: dict[str, Any] | None = None
+
+
+class ReplaySessionRead(ReplaySessionCreate):
+    id: int
+    created_at: datetime
+    updated_at: datetime
