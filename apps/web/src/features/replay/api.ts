@@ -1,4 +1,4 @@
-import type { Instrument, KLineBar } from "./types";
+import type { IndicatorSettings, Instrument, KLineBar, ReplaySession } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, "") || "http://127.0.0.1:8000";
 
@@ -22,6 +22,17 @@ type KlineDailyItem = {
   close: number;
   volume: number;
   amount: number | null;
+};
+
+type ReplaySessionItem = {
+  id: number;
+  instrument_id: number;
+  name: string;
+  start_date: string;
+  current_date: string;
+  hide_future: boolean;
+  adjust_type: string;
+  indicator_config: IndicatorSettings;
 };
 
 export async function searchInstruments(keyword: string): Promise<Instrument[]> {
@@ -91,6 +102,72 @@ export async function loadInstrumentKlines(instrumentId: number, options: { star
   }));
 }
 
+export async function loadReplaySessions(instrumentId: number): Promise<ReplaySession[]> {
+  const response = await fetch(`${API_BASE}/api/replay-sessions?instrument_id=${instrumentId}`);
+  if (!response.ok) {
+    throw new Error(await extractMessage(response));
+  }
+
+  const items = (await response.json()) as ReplaySessionItem[];
+  return items.map(toReplaySession);
+}
+
+export async function createReplaySession(payload: {
+  instrumentId: number;
+  name: string;
+  startDate: string;
+  currentDate: string;
+  hideFuture: boolean;
+  adjustType: string;
+  indicatorConfig: IndicatorSettings;
+}): Promise<ReplaySession> {
+  const response = await fetch(`${API_BASE}/api/replay-sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      instrument_id: payload.instrumentId,
+      name: payload.name,
+      start_date: payload.startDate,
+      current_date: payload.currentDate,
+      hide_future: payload.hideFuture,
+      adjust_type: payload.adjustType,
+      indicator_config: payload.indicatorConfig,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await extractMessage(response));
+  }
+
+  return toReplaySession(await response.json());
+}
+
+export async function updateReplaySession(
+  sessionId: number,
+  payload: Partial<{
+    currentDate: string;
+    hideFuture: boolean;
+    adjustType: string;
+    indicatorConfig: IndicatorSettings;
+  }>,
+): Promise<ReplaySession> {
+  const body: Record<string, unknown> = {};
+  if (payload.currentDate !== undefined) body.current_date = payload.currentDate;
+  if (payload.hideFuture !== undefined) body.hide_future = payload.hideFuture;
+  if (payload.adjustType !== undefined) body.adjust_type = payload.adjustType;
+  if (payload.indicatorConfig !== undefined) body.indicator_config = payload.indicatorConfig;
+
+  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await extractMessage(response));
+  }
+
+  return toReplaySession(await response.json());
+}
+
 function toInstrument(item: InstrumentSearchItem): Instrument {
   return {
     id: item.id,
@@ -104,6 +181,19 @@ function toInstrument(item: InstrumentSearchItem): Instrument {
     source: item.source ?? "database",
     listDate: item.list_date,
     isActive: item.is_active,
+  };
+}
+
+function toReplaySession(item: ReplaySessionItem): ReplaySession {
+  return {
+    id: item.id,
+    instrumentId: item.instrument_id,
+    name: item.name,
+    startDate: item.start_date,
+    currentDate: item.current_date,
+    hideFuture: item.hide_future,
+    adjustType: item.adjust_type,
+    indicatorConfig: item.indicator_config,
   };
 }
 

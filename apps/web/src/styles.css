@@ -473,6 +473,28 @@ textarea {
   font-size: 13px;
 }
 
+.jump-date-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.jump-date-form input {
+  width: 142px;
+  padding: 7px 8px;
+}
+
+.jump-date-form button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 10px;
+}
+
 .kline-chart-wrap {
   position: relative;
   width: 100%;

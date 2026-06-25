@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-react";
-import { createInstrument, loadInstrumentKlines, searchInstruments, syncInstrumentKlines } from "./api";
+import { createInstrument, createReplaySession, loadInstrumentKlines, loadReplaySessions, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { instruments as fallbackInstruments, marketData as fallbackMarketData } from "./mockData";
-import type { Instrument, IndicatorSettings, KLineBar, TradeRecord, TradeSide } from "./types";
+import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
   maFast: 5,
@@ -40,8 +40,11 @@ export function ReplayPage() {
   const [remoteResults, setRemoteResults] = useState<Instrument[]>([]);
   const [bars, setBars] = useState<KLineBar[]>(fallbackMarketData[activeCode] ?? []);
   const [activeInstrument, setActiveInstrument] = useState<Instrument>(fallbackLookup.get(activeCode) ?? fallbackInstruments[0]);
+  const [replaySession, setReplaySession] = useState<ReplaySession | null>(null);
+  const [jumpDate, setJumpDate] = useState("");
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingBars, setLoadingBars] = useState(false);
+  const [loadingSession, setLoadingSession] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
@@ -101,12 +104,58 @@ export function ReplayPage() {
     };
   }, [activeCode, activeInstrument.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const instrumentId = activeInstrument.id;
+    if (!instrumentId || bars.length === 0) {
+      setReplaySession(null);
+      return;
+    }
+
+    setLoadingSession(true);
+    loadReplaySessions(instrumentId)
+      .then(async (sessions) => {
+        if (cancelled) return;
+
+        const existingSession = sessions[0];
+        if (existingSession) {
+          applyReplaySession(existingSession, bars);
+          return;
+        }
+
+        const startDate = bars[0].date;
+        const currentDate = bars[Math.min(210, bars.length - 1)]?.date ?? startDate;
+        const createdSession = await createReplaySession({
+          instrumentId,
+          name: `${activeInstrument.code} ${activeInstrument.name} 复盘`,
+          startDate,
+          currentDate,
+          hideFuture,
+          adjustType: "qfq",
+          indicatorConfig: indicators,
+        });
+        if (!cancelled) applyReplaySession(createdSession, bars);
+      })
+      .catch(() => {
+        if (!cancelled) setReplaySession(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSession(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeInstrument.id, bars]);
+
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
   const visibleEnd = hideFuture ? normalizedIndex + 1 : bars.length;
   const visibleStart = Math.max(0, visibleEnd - 120);
   const visibleBars = bars.slice(visibleStart, visibleEnd);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
+  const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
+  const visibleTrades = hideFuture ? replayTrades : activeTrades;
   const activeDataSource = activeInstrument.source ?? (activeInstrument.id ? "database" : "mock");
   const searchResults = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -120,13 +169,24 @@ export function ReplayPage() {
     });
   }, [query, remoteResults]);
 
-  const position = useMemo(() => calculatePosition(activeTrades, selectedBar), [activeTrades, selectedBar]);
+  const position = useMemo(() => calculatePosition(replayTrades, selectedBar), [replayTrades, selectedBar]);
+
+  function applyReplaySession(session: ReplaySession, sourceBars: KLineBar[]) {
+    const index = findBarIndexByDate(sourceBars, session.currentDate);
+    setReplaySession(session);
+    setHideFuture(session.hideFuture);
+    setIndicators({ ...defaultIndicators, ...session.indicatorConfig });
+    setSelectedIndex(index);
+    setJumpDate(sourceBars[index]?.date ?? session.currentDate);
+  }
 
   function switchInstrument(instrument: Instrument) {
     setKnownInstruments((items) => ({ ...items, [instrument.code]: instrument }));
     setActiveCode(instrument.code);
     setActiveInstrument(instrument);
     setSelectedIndex(0);
+    setJumpDate("");
+    setReplaySession(null);
     setSyncMessage("");
     setErrorMessage("");
   }
@@ -149,11 +209,48 @@ export function ReplayPage() {
   }
 
   function updateIndicator<K extends keyof IndicatorSettings>(key: K, value: IndicatorSettings[K]) {
-    setIndicators((current) => ({ ...current, [key]: value }));
+    setIndicators((current) => {
+      const next = { ...current, [key]: value };
+      if (replaySession) {
+        void updateReplaySession(replaySession.id, { indicatorConfig: next }).then(setReplaySession).catch(() => undefined);
+      }
+      return next;
+    });
   }
 
   function resetIndicators() {
     setIndicators(defaultIndicators);
+    if (replaySession) {
+      void updateReplaySession(replaySession.id, { indicatorConfig: defaultIndicators }).then(setReplaySession).catch(() => undefined);
+    }
+  }
+
+  function updateHideFuture(checked: boolean) {
+    setHideFuture(checked);
+    if (replaySession) {
+      void updateReplaySession(replaySession.id, { hideFuture: checked }).then(setReplaySession).catch(() => undefined);
+    }
+  }
+
+  function moveReplayDate(delta: number) {
+    commitReplayDate(normalizedIndex + delta);
+  }
+
+  function commitReplayDate(rawIndex: number) {
+    if (!bars.length) return;
+    const nextIndex = Math.min(Math.max(rawIndex, 0), bars.length - 1);
+    const nextDate = bars[nextIndex].date;
+    setSelectedIndex(nextIndex);
+    setJumpDate(nextDate);
+    if (replaySession) {
+      void updateReplaySession(replaySession.id, { currentDate: nextDate }).then(setReplaySession).catch(() => undefined);
+    }
+  }
+
+  function jumpToDate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!jumpDate) return;
+    commitReplayDate(findBarIndexByDate(bars, jumpDate));
   }
 
   async function syncCurrentInstrument() {
@@ -227,6 +324,8 @@ export function ReplayPage() {
               <p className="source-line">
                 数据源：{activeDataSource}
                 {loadingBars ? " · 加载中" : ""}
+                {loadingSession ? " · 复盘状态同步中" : ""}
+                {replaySession ? ` · Session #${replaySession.id}` : ""}
                 {syncMessage ? ` · ${syncMessage}` : ""}
                 {errorMessage ? ` · ${errorMessage}` : ""}
               </p>
@@ -235,14 +334,14 @@ export function ReplayPage() {
               <button type="button" onClick={syncCurrentInstrument} aria-label="同步K线">
                 <CloudCog size={18} />
               </button>
-              <button type="button" onClick={() => setSelectedIndex((index) => Math.max(0, index - 1))} aria-label="前一日">
+              <button type="button" onClick={() => moveReplayDate(-1)} aria-label="前一日">
                 <ChevronLeft size={18} />
               </button>
-              <button type="button" onClick={() => setSelectedIndex((index) => Math.min(bars.length - 1, index + 1))} aria-label="后一日">
+              <button type="button" onClick={() => moveReplayDate(1)} aria-label="后一日">
                 <ChevronRight size={18} />
               </button>
               <label className="switch">
-                <input checked={hideFuture} onChange={(event) => setHideFuture(event.target.checked)} type="checkbox" />
+                <input checked={hideFuture} onChange={(event) => updateHideFuture(event.target.checked)} type="checkbox" />
                 <span>隐藏未来</span>
               </label>
             </div>
@@ -250,6 +349,10 @@ export function ReplayPage() {
 
           <div className="chart-meta">
             <span>当前复盘日：{selectedBar?.date ?? "-"}</span>
+            <form className="jump-date-form" onSubmit={jumpToDate}>
+              <input value={jumpDate} onChange={(event) => setJumpDate(event.target.value)} type="date" />
+              <button type="submit">跳转</button>
+            </form>
             <span>
               开 {formatNumber(selectedBar?.open ?? 0)} 高 {formatNumber(selectedBar?.high ?? 0)} 低 {formatNumber(selectedBar?.low ?? 0)} 收{" "}
               {formatNumber(selectedBar?.close ?? 0)}
@@ -274,7 +377,7 @@ export function ReplayPage() {
           onSubmit={submitTrade}
         />
         <PnlPanel position={position} />
-        <TradeHistory trades={activeTrades} />
+        <TradeHistory trades={visibleTrades} />
       </aside>
     </section>
   );
@@ -558,4 +661,14 @@ function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar) {
     floating,
     total: realized + floating,
   };
+}
+
+function findBarIndexByDate(bars: KLineBar[], date: string) {
+  if (!bars.length) return 0;
+  const exactIndex = bars.findIndex((bar) => bar.date === date);
+  if (exactIndex >= 0) return exactIndex;
+
+  const nextIndex = bars.findIndex((bar) => bar.date > date);
+  if (nextIndex < 0) return bars.length - 1;
+  return Math.max(0, nextIndex - 1);
 }

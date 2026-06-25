@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
 from app.core.database import get_session
@@ -11,8 +11,13 @@ router = APIRouter(prefix="/api/replay-sessions", tags=["replay-sessions"])
 
 
 @router.get("", response_model=list[ReplaySessionRead])
-def list_replay_sessions(session: Session = Depends(get_session)) -> list[ReplaySession]:
+def list_replay_sessions(
+    instrument_id: int | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[ReplaySession]:
     statement = select(ReplaySession).order_by(ReplaySession.updated_at.desc())
+    if instrument_id is not None:
+        statement = statement.where(ReplaySession.instrument_id == instrument_id)
     return list(session.exec(statement).all())
 
 

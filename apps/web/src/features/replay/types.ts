@@ -46,3 +46,14 @@ export type TradeRecord = {
   fee: number;
   note: string;
 };
+
+export type ReplaySession = {
+  id: number;
+  instrumentId: number;
+  name: string;
+  startDate: string;
+  currentDate: string;
+  hideFuture: boolean;
+  adjustType: string;
+  indicatorConfig: IndicatorSettings;
+};
