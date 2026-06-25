@@ -175,6 +175,7 @@ export function ReplayPage() {
   const visibleEnd = hideFuture ? normalizedIndex + 1 : bars.length;
   const visibleStart = Math.max(0, visibleEnd - 120);
   const visibleBars = bars.slice(visibleStart, visibleEnd);
+  const replayBars = bars.slice(0, normalizedIndex + 1);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
   const visibleTrades = hideFuture ? replayTrades : activeTrades;
@@ -191,7 +192,7 @@ export function ReplayPage() {
     });
   }, [query, remoteResults]);
 
-  const position = useMemo(() => calculatePosition(replayTrades, selectedBar), [replayTrades, selectedBar]);
+  const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
 
   function applyReplaySession(session: ReplaySession, sourceBars: KLineBar[]) {
     const index = findBarIndexByDate(sourceBars, session.currentDate);
@@ -404,7 +405,14 @@ export function ReplayPage() {
             </span>
           </div>
 
-          <KLineChartPanel bars={visibleBars} code={activeCode} indicators={indicators} selectedDate={selectedBar?.date} trades={visibleTrades} />
+          <KLineChartPanel
+            bars={visibleBars}
+            code={activeCode}
+            indicators={indicators}
+            painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
+            selectedDate={selectedBar?.date}
+            trades={visibleTrades}
+          />
         </div>
       </section>
 
@@ -622,6 +630,8 @@ function TradePanel({
 }
 
 function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition> }) {
+  const pressurePercent = Math.min(Math.max(position.pressurePercent, 0), 100);
+
   return (
     <section className="panel">
       <div className="section-header">
@@ -645,6 +655,41 @@ function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition>
           <span>当前浮盈亏</span>
           <strong className={position.floating >= 0 ? "positive" : "negative"}>{formatNumber(position.floating)}</strong>
         </article>
+        <article>
+          <span>当前低点浮亏</span>
+          <strong className={position.floatingLow >= 0 ? "positive" : "negative"}>{formatNumber(position.floatingLow)}</strong>
+        </article>
+        <article>
+          <span>买入后最大浮亏</span>
+          <strong className={position.maxFloatingLoss >= 0 ? "positive" : "negative"}>{formatNumber(position.maxFloatingLoss)}</strong>
+        </article>
+      </div>
+      <div className="pressure-block">
+        <div className="pressure-row">
+          <span>浮亏压力</span>
+          <strong>{pressurePercent.toFixed(0)}%</strong>
+        </div>
+        <div className="pressure-track">
+          <span style={{ width: `${pressurePercent}%` }} />
+        </div>
+        <p>
+          最差低点：{position.worstLowDate ?? "-"}
+          {position.worstLowPrice ? ` / ${formatNumber(position.worstLowPrice)}` : ""}
+        </p>
+      </div>
+      <div className="pain-curve" aria-label="持仓期间每日低点盈亏曲线">
+        {position.lowPnlCurve.length ? (
+          position.lowPnlCurve.map((point) => (
+            <span
+              className={point.pnl >= 0 ? "positive-bar" : "negative-bar"}
+              key={point.date}
+              style={{ height: `${Math.max(8, Math.min(100, Math.abs(point.ratio) * 100))}%` }}
+              title={`${point.date} ${formatNumber(point.pnl)}`}
+            />
+          ))
+        ) : (
+          <em>买入后会显示每日低点压力曲线</em>
+        )}
       </div>
     </section>
   );
@@ -678,8 +723,8 @@ function TradeHistory({ trades }: { trades: TradeRecord[] }) {
   );
 }
 
-function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar) {
-  const lots: Array<{ quantity: number; unitCost: number }> = [];
+function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar, replayBars: KLineBar[] = []) {
+  const lots: Array<{ quantity: number; unitCost: number; buyIndex: number }> = [];
   let realized = 0;
 
   for (const trade of [...trades].sort((a, b) => a.index - b.index)) {
@@ -687,6 +732,7 @@ function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar) {
       lots.push({
         quantity: trade.quantity,
         unitCost: (trade.price * trade.quantity + trade.fee) / trade.quantity,
+        buyIndex: trade.index,
       });
     } else {
       let remaining = trade.quantity;
@@ -708,14 +754,43 @@ function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar) {
   const cost = lots.reduce((sum, lot) => sum + lot.quantity * lot.unitCost, 0);
   const avgCost = quantity > 0 ? cost / quantity : 0;
   const floating = currentBar && quantity > 0 ? (currentBar.close - avgCost) * quantity : 0;
+  const floatingLow = currentBar && quantity > 0 ? (currentBar.low - avgCost) * quantity : 0;
+  const openLots = lots.filter((lot) => lot.quantity > 0);
+  const firstOpenIndex = openLots.length ? Math.min(...openLots.map((lot) => lot.buyIndex)) : -1;
+  const holdingBars = firstOpenIndex >= 0 ? replayBars.slice(firstOpenIndex) : [];
+  const worstBar = holdingBars.reduce<KLineBar | undefined>((worst, bar) => (!worst || bar.low < worst.low ? bar : worst), undefined);
+  const maxFloatingLoss = worstBar && quantity > 0 ? (worstBar.low - avgCost) * quantity : 0;
+  const lowPnlCurve = buildLowPnlCurve(holdingBars, avgCost, quantity);
+  const pressurePercent = cost > 0 && maxFloatingLoss < 0 ? Math.min(100, (Math.abs(maxFloatingLoss) / cost) * 100) : 0;
+
   return {
     quantity,
     cost,
     avgCost,
     realized,
     floating,
-    total: realized + floating,
+    floatingLow,
+    maxFloatingLoss,
+    worstLowDate: worstBar?.date,
+    worstLowPrice: worstBar?.low,
+    pressurePercent,
+    lowPnlCurve,
+    total: realized + floatingLow,
   };
+}
+
+function buildLowPnlCurve(bars: KLineBar[], avgCost: number, quantity: number) {
+  if (!bars.length || quantity <= 0 || avgCost <= 0) return [];
+
+  const points = bars.map((bar) => ({
+    date: bar.date,
+    pnl: (bar.low - avgCost) * quantity,
+  }));
+  const maxAbs = Math.max(...points.map((point) => Math.abs(point.pnl)), 1);
+  return points.slice(-48).map((point) => ({
+    ...point,
+    ratio: point.pnl / maxAbs,
+  }));
 }
 
 function findBarIndexByDate(bars: KLineBar[], date: string) {

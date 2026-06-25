@@ -8,6 +8,7 @@ type Props = {
   indicators: IndicatorSettings;
   selectedDate?: string;
   trades?: TradeRecord[];
+  painPoint?: { date?: string; price?: number };
 };
 
 const candlePaneId = "candle_pane";
@@ -17,7 +18,7 @@ const volumePaneHeight = 118;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
 
-export function KLineChartPanel({ bars, code, indicators, selectedDate, trades = [] }: Props) {
+export function KLineChartPanel({ bars, code, indicators, selectedDate, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const [activeTrade, setActiveTrade] = useState<TradeRecord | null>(null);
@@ -38,6 +39,7 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, trades =
   const selectedLineLeft = selectedIndex >= 0 && bars.length > 0 ? `${((selectedIndex + 0.5) / bars.length) * 100}%` : undefined;
   const chartHeight = useMemo(() => getChartHeight(indicators), [indicators]);
   const visibleTradeOverlays = useMemo(() => getTradeOverlays(bars, trades), [bars, trades]);
+  const painMarker = useMemo(() => getPainMarker(bars, painPoint), [bars, painPoint]);
 
   useEffect(() => {
     if (!containerRef.current || chartRef.current) return;
@@ -129,6 +131,12 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, trades =
           </button>
         ))}
 
+        {painMarker ? (
+          <div className="pain-point-marker" style={{ left: `${painMarker.left}%`, top: painMarker.top }}>
+            最差低点
+          </div>
+        ) : null}
+
         {activeTrade ? (
           <div className="trade-note-popover">
             <div className="section-header">
@@ -214,6 +222,17 @@ function getTradeOverlays(bars: KLineBar[], trades: TradeRecord[]) {
 
   const regions = buildHoldingRegions(visibleTrades, bars, priceRange);
   return { markers, regions };
+}
+
+function getPainMarker(bars: KLineBar[], painPoint?: { date?: string; price?: number }) {
+  if (!painPoint?.date || painPoint.price === undefined || !bars.length) return null;
+  const index = bars.findIndex((bar) => bar.date === painPoint.date);
+  if (index < 0) return null;
+  const priceRange = getMainPanePriceRange(bars);
+  return {
+    left: ((index + 0.5) / bars.length) * 100,
+    top: `${priceToTop(painPoint.price, priceRange) + 28}px`,
+  };
 }
 
 function buildHoldingRegions(
