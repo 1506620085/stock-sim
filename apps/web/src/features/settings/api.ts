@@ -1,7 +1,6 @@
+import { API_BASE, extractErrorMessage } from "../../api/client";
 import type { FeeSettings } from "../calculators/calculations";
 import type { Instrument } from "../replay/types";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, "") || "http://127.0.0.1:8000";
 
 export type AdjustType = "none" | "qfq" | "hfq";
 export type DataSource = "akshare" | "tushare";
@@ -64,7 +63,7 @@ export function savePreferences(preferences: AppPreferences) {
 
 export async function loadFeeTemplates(): Promise<FeeTemplate[]> {
   const response = await fetch(`${API_BASE}/api/settings/fee-templates`);
-  if (!response.ok) throw new Error(await extractMessage(response));
+  if (!response.ok) throw new Error(await extractErrorMessage(response));
   const items = await response.json();
   return items.map(toFeeTemplate);
 }
@@ -75,7 +74,7 @@ export async function createFeeTemplate(input: FeeTemplateInput): Promise<FeeTem
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(toFeeTemplatePayload(input)),
   });
-  if (!response.ok) throw new Error(await extractMessage(response));
+  if (!response.ok) throw new Error(await extractErrorMessage(response));
   return toFeeTemplate(await response.json());
 }
 
@@ -85,20 +84,20 @@ export async function updateFeeTemplate(id: number, input: FeeTemplateInput): Pr
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(toFeeTemplatePayload(input)),
   });
-  if (!response.ok) throw new Error(await extractMessage(response));
+  if (!response.ok) throw new Error(await extractErrorMessage(response));
   return toFeeTemplate(await response.json());
 }
 
 export async function deleteFeeTemplate(id: number): Promise<void> {
   const response = await fetch(`${API_BASE}/api/settings/fee-templates/${id}`, { method: "DELETE" });
-  if (!response.ok) throw new Error(await extractMessage(response));
+  if (!response.ok) throw new Error(await extractErrorMessage(response));
 }
 
 export async function loadInstruments(keyword = ""): Promise<Instrument[]> {
   const url = new URL(`${API_BASE}/api/instruments`);
   if (keyword.trim()) url.searchParams.set("keyword", keyword.trim());
   const response = await fetch(url);
-  if (!response.ok) throw new Error(await extractMessage(response));
+  if (!response.ok) throw new Error(await extractErrorMessage(response));
   const items = await response.json();
   return items.map(toInstrument);
 }
@@ -108,7 +107,7 @@ export async function loadDataQuality(instrumentId: number, adjustType: AdjustTy
   url.searchParams.set("instrument_id", String(instrumentId));
   url.searchParams.set("adjust", adjustType);
   const response = await fetch(url);
-  if (!response.ok) throw new Error(await extractMessage(response));
+  if (!response.ok) throw new Error(await extractErrorMessage(response));
   return toDataQuality(await response.json());
 }
 
@@ -116,7 +115,7 @@ export async function syncInstrument(instrumentId: number, adjustType: AdjustTyp
   const url = new URL(`${API_BASE}/api/instruments/${instrumentId}/sync`);
   url.searchParams.set("adjust", adjustType);
   const response = await fetch(url, { method: "POST" });
-  if (!response.ok) throw new Error(await extractMessage(response));
+  if (!response.ok) throw new Error(await extractErrorMessage(response));
   return response.json();
 }
 
@@ -200,13 +199,4 @@ function toDataQuality(item: Record<string, unknown>): DataQuality {
     missingWeekdays: Array.isArray(item.missing_weekdays) ? item.missing_weekdays.map(String) : [],
     possibleSuspendedDates: Array.isArray(item.possible_suspended_dates) ? item.possible_suspended_dates.map(String) : [],
   };
-}
-
-async function extractMessage(response: Response) {
-  try {
-    const data = await response.json();
-    return data?.detail || response.statusText || "请求失败";
-  } catch {
-    return response.statusText || "请求失败";
-  }
 }

@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+DEFAULT_CORS_ORIGINS = "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:4173,http://localhost:4173"
+
 
 class Settings:
     app_name: str = "Stock Sim API"
@@ -16,6 +18,12 @@ class Settings:
     )
     market_data_provider: str = getenv("MARKET_DATA_PROVIDER", "akshare")
     timezone: str = getenv("TIMEZONE", "Asia/Shanghai")
+    cors_origins: str = getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
+    trust_proxy_headers: bool = getenv("TRUST_PROXY_HEADERS", "false").lower() in {"1", "true", "yes"}
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 @lru_cache

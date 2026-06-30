@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, "") || "http://127.0.0.1:8000";
+import { API_BASE, extractErrorMessage } from "../../api/client";
 
 export type StatsSummary = {
   total_sessions: number;
@@ -19,17 +19,8 @@ export type StatsSummary = {
 export async function loadStatsSummary(): Promise<StatsSummary> {
   const response = await fetch(`${API_BASE}/api/stats/summary`);
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   return response.json();
-}
-
-async function extractMessage(response: Response) {
-  try {
-    const data = await response.json();
-    return data?.detail || response.statusText || "请求失败";
-  } catch {
-    return response.statusText || "请求失败";
-  }
 }

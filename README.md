@@ -27,6 +27,8 @@ npm run dev:web
 http://127.0.0.1:5173
 ```
 
+前端默认通过相对路径 `/api/...` 访问后端；开发时由 Vite 代理到 `http://127.0.0.1:8000`，无需跨域。若需直连后端，可在 `apps/web/.env` 设置 `VITE_API_BASE_URL=http://127.0.0.1:8000`。
+
 ## 启动 PostgreSQL
 
 项目主数据库为 PostgreSQL。可以在仓库根目录启动本地数据库：

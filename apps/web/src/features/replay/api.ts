@@ -1,6 +1,5 @@
+import { API_BASE, extractErrorMessage } from "../../api/client";
 import type { IndicatorSettings, Instrument, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, "") || "http://127.0.0.1:8000";
 
 type InstrumentSearchItem = {
   id: number | null;
@@ -64,7 +63,7 @@ type TradeReviewItem = {
 export async function searchInstruments(keyword: string): Promise<Instrument[]> {
   const response = await fetch(`${API_BASE}/api/instruments/search?keyword=${encodeURIComponent(keyword)}`);
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   const items = (await response.json()) as InstrumentSearchItem[];
@@ -86,7 +85,7 @@ export async function createInstrument(instrument: Instrument): Promise<Instrume
     }),
   });
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
   return toInstrument(await response.json());
 }
@@ -99,7 +98,7 @@ export async function syncInstrumentKlines(instrumentId: number, options: { star
 
   const response = await fetch(url, { method: "POST" });
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   return response.json();
@@ -113,7 +112,7 @@ export async function loadInstrumentKlines(instrumentId: number, options: { star
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   const items = (await response.json()) as KlineDailyItem[];
@@ -131,7 +130,7 @@ export async function loadInstrumentKlines(instrumentId: number, options: { star
 export async function loadReplaySessions(instrumentId: number): Promise<ReplaySession[]> {
   const response = await fetch(`${API_BASE}/api/replay-sessions?instrument_id=${instrumentId}`);
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   const items = (await response.json()) as ReplaySessionItem[];
@@ -161,7 +160,7 @@ export async function createReplaySession(payload: {
     }),
   });
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   return toReplaySession(await response.json());
@@ -188,7 +187,7 @@ export async function updateReplaySession(
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   return toReplaySession(await response.json());
@@ -197,7 +196,7 @@ export async function updateReplaySession(
 export async function loadSessionTrades(sessionId: number, code: string): Promise<TradeRecord[]> {
   const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/trades`);
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   const items = (await response.json()) as TradeItem[];
@@ -227,7 +226,7 @@ export async function createSessionTrade(
     }),
   });
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   return toTradeRecord(await response.json(), code);
@@ -236,7 +235,7 @@ export async function createSessionTrade(
 export async function loadTradeReviews(sessionId: number): Promise<TradeReview[]> {
   const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`);
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   const items = (await response.json()) as TradeReviewItem[];
@@ -267,7 +266,7 @@ export async function createTradeReview(
     }),
   });
   if (!response.ok) {
-    throw new Error(await extractMessage(response));
+    throw new Error(await extractErrorMessage(response));
   }
 
   return toTradeReview(await response.json());
@@ -332,13 +331,4 @@ function toTradeReview(item: TradeReviewItem): TradeReview {
     metricsSnapshot: item.metrics_snapshot,
     createdAt: item.created_at,
   };
-}
-
-async function extractMessage(response: Response) {
-  try {
-    const data = await response.json();
-    return data?.detail || response.statusText || "请求失败";
-  } catch {
-    return response.statusText || "请求失败";
-  }
 }
