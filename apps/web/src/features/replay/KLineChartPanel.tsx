@@ -70,7 +70,14 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, trades =
 
     chartRef.current = chart;
 
-    const resizeObserver = new ResizeObserver(() => chart.resize());
+    let resizeFrame = 0;
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = 0;
+        chart.resize();
+      });
+    });
     resizeObserver.observe(containerRef.current);
 
     return () => {
@@ -93,7 +100,7 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, trades =
     });
     chart.resetData();
     syncIndicators(chart, indicators);
-    chart.resize();
+    scheduleChartResize(chart);
 
     if (selectedDate) {
       const timestamp = new Date(`${selectedDate}T00:00:00`).getTime();
@@ -161,6 +168,12 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, trades =
       )}
     </div>
   );
+}
+
+function scheduleChartResize(chart: Chart) {
+  window.requestAnimationFrame(() => {
+    chart.resize();
+  });
 }
 
 function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
