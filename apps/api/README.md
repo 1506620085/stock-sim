@@ -23,6 +23,12 @@ Run database migrations from `apps/api`:
 alembic upgrade head
 ```
 
+Alternatively, initialize an empty PostgreSQL database with SQL:
+
+```bash
+psql "postgresql://stock_sim:stock_sim@localhost:5432/stock_sim" -f sql/001_init_schema.sql
+```
+
 Start the API:
 
 ```bash
