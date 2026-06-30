@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-react";
+import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
+import type { ApiError } from "../../api/client";
 import { createInstrument, createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { instruments as fallbackInstruments, marketData as fallbackMarketData } from "./mockData";
@@ -49,8 +51,6 @@ export function ReplayPage() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingBars, setLoadingBars] = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string>("");
   const [preferences] = useState(() => loadPreferences());
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
 
@@ -67,8 +67,9 @@ export function ReplayPage() {
       .then((results) => {
         if (!cancelled) setRemoteResults(results);
       })
-      .catch(() => {
+      .catch((error: ApiError) => {
         if (!cancelled) setRemoteResults([]);
+        if (!error?.notified) showError(error instanceof Error ? error.message : "搜索失败");
       })
       .finally(() => {
         if (!cancelled) setLoadingSearch(false);
@@ -223,12 +224,9 @@ export function ReplayPage() {
     setSelectedIndex(0);
     setJumpDate("");
     setReplaySession(null);
-    setSyncMessage("");
-    setErrorMessage("");
   }
 
   async function addToWatchlist(instrument: Instrument) {
-    setErrorMessage("");
     try {
       const savedInstrument = instrument.id || !instrument.symbol ? instrument : await createInstrument(instrument);
       setKnownInstruments((items) => ({ ...items, [savedInstrument.code]: savedInstrument }));
@@ -240,15 +238,20 @@ export function ReplayPage() {
         switchInstrument(instrument);
         return;
       }
-      setErrorMessage(error instanceof Error ? error.message : "标的入库失败");
     }
+  }
+
+  function syncReplaySession(sessionId: number, payload: Parameters<typeof updateReplaySession>[1]) {
+    void updateReplaySession(sessionId, payload)
+      .then(setReplaySession)
+      .catch(() => showError("复盘状态同步失败"));
   }
 
   function updateIndicator<K extends keyof IndicatorSettings>(key: K, value: IndicatorSettings[K]) {
     setIndicators((current) => {
       const next = { ...current, [key]: value };
       if (replaySession) {
-        void updateReplaySession(replaySession.id, { indicatorConfig: next }).then(setReplaySession).catch(() => undefined);
+        syncReplaySession(replaySession.id, { indicatorConfig: next });
       }
       return next;
     });
@@ -257,14 +260,14 @@ export function ReplayPage() {
   function resetIndicators() {
     setIndicators(defaultIndicators);
     if (replaySession) {
-      void updateReplaySession(replaySession.id, { indicatorConfig: defaultIndicators }).then(setReplaySession).catch(() => undefined);
+      syncReplaySession(replaySession.id, { indicatorConfig: defaultIndicators });
     }
   }
 
   function updateHideFuture(checked: boolean) {
     setHideFuture(checked);
     if (replaySession) {
-      void updateReplaySession(replaySession.id, { hideFuture: checked }).then(setReplaySession).catch(() => undefined);
+      syncReplaySession(replaySession.id, { hideFuture: checked });
     }
   }
 
@@ -279,7 +282,7 @@ export function ReplayPage() {
     setSelectedIndex(nextIndex);
     setJumpDate(nextDate);
     if (replaySession) {
-      void updateReplaySession(replaySession.id, { currentDate: nextDate }).then(setReplaySession).catch(() => undefined);
+      syncReplaySession(replaySession.id, { currentDate: nextDate });
     }
   }
 
@@ -291,19 +294,17 @@ export function ReplayPage() {
 
   async function syncCurrentInstrument() {
     if (!activeInstrument.id) {
-      setErrorMessage("当前标的还没有入库，先从搜索结果里加入自选或保存为标的后再同步。");
+      showInfo("当前标的还没有入库，先从搜索结果里加入自选或保存为标的后再同步。");
       return;
     }
 
-    setSyncMessage("");
-    setErrorMessage("");
     try {
       const result = await syncInstrumentKlines(activeInstrument.id, { adjust: activeAdjustType });
-      setSyncMessage(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
+      showSuccess(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
       const refreshed = await loadInstrumentKlines(activeInstrument.id, { adjust: activeAdjustType });
       setBars(refreshed);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "同步失败");
+    } catch {
+      // apiFetch 已弹出错误提示
     }
   }
 
@@ -312,7 +313,6 @@ export function ReplayPage() {
     if (!selectedBar) return;
 
     if (replaySession && activeInstrument.id) {
-      setErrorMessage("");
       try {
         const createdTrade = await createSessionTrade(replaySession.id, activeCode, {
           side: tradeSide,
@@ -328,8 +328,9 @@ export function ReplayPage() {
           },
         ]);
         setNote("");
-      } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "交易记录失败");
+        showSuccess(tradeSide === "buy" ? "买入记录已保存" : "卖出记录已保存");
+      } catch {
+        // apiFetch 已弹出错误提示
       }
       return;
     }
@@ -387,8 +388,6 @@ export function ReplayPage() {
                 {loadingBars ? " · 加载中" : ""}
                 {loadingSession ? " · 复盘状态同步中" : ""}
                 {replaySession ? ` · Session #${replaySession.id}` : ""}
-                {syncMessage ? ` · ${syncMessage}` : ""}
-                {errorMessage ? ` · ${errorMessage}` : ""}
               </p>
             </div>
             <div className="day-controls">
@@ -764,7 +763,6 @@ function TradeReviewPanel({
   const [title, setTitle] = useState("区间复盘");
   const [tags, setTags] = useState("");
   const [note, setNote] = useState("");
-  const [message, setMessage] = useState("");
 
   const metrics = useMemo(
     () => calculateReviewMetrics(selectableTrades, bars, parseNullableId(startTradeId), parseNullableId(endTradeId)),
@@ -774,11 +772,11 @@ function TradeReviewPanel({
   async function submitReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sessionId) {
-      setMessage("当前是本地 demo 模式，暂不能保存区间复盘。");
+      showInfo("当前是本地 demo 模式，暂不能保存区间复盘。");
       return;
     }
     if (!title.trim()) {
-      setMessage("请填写标题。");
+      showError("请填写标题。");
       return;
     }
 
@@ -797,9 +795,9 @@ function TradeReviewPanel({
       onCreate(review);
       setNote("");
       setTags("");
-      setMessage("已保存区间复盘。");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "保存区间复盘失败");
+      showSuccess("已保存区间复盘。");
+    } catch {
+      // apiFetch 已弹出错误提示
     }
   }
 
@@ -867,7 +865,6 @@ function TradeReviewPanel({
         <button className="primary-button" type="submit">
           保存区间复盘
         </button>
-        {message ? <p className="review-message">{message}</p> : null}
       </form>
 
       <div className="review-list">

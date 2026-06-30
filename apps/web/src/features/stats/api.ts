@@ -1,4 +1,4 @@
-import { API_BASE, extractErrorMessage } from "../../api/client";
+import { API_BASE, apiJson } from "../../api/client";
 
 export type StatsSummary = {
   total_sessions: number;
@@ -17,10 +17,5 @@ export type StatsSummary = {
 };
 
 export async function loadStatsSummary(): Promise<StatsSummary> {
-  const response = await fetch(`${API_BASE}/api/stats/summary`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  return response.json();
+  return apiJson(`${API_BASE}/api/stats/summary`);
 }

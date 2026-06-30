@@ -1,4 +1,4 @@
-import { API_BASE, extractErrorMessage } from "../../api/client";
+import { API_BASE, apiFetch, apiJson } from "../../api/client";
 import type { IndicatorSettings, Instrument, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 type InstrumentSearchItem = {
@@ -61,17 +61,12 @@ type TradeReviewItem = {
 };
 
 export async function searchInstruments(keyword: string): Promise<Instrument[]> {
-  const response = await fetch(`${API_BASE}/api/instruments/search?keyword=${encodeURIComponent(keyword)}`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  const items = (await response.json()) as InstrumentSearchItem[];
+  const items = await apiJson<InstrumentSearchItem[]>(`${API_BASE}/api/instruments/search?keyword=${encodeURIComponent(keyword)}`);
   return items.map(toInstrument);
 }
 
 export async function createInstrument(instrument: Instrument): Promise<Instrument> {
-  const response = await fetch(`${API_BASE}/api/instruments`, {
+  const item = await apiJson<InstrumentSearchItem>(`${API_BASE}/api/instruments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -84,10 +79,7 @@ export async function createInstrument(instrument: Instrument): Promise<Instrume
       is_active: instrument.isActive ?? true,
     }),
   });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-  return toInstrument(await response.json());
+  return toInstrument(item);
 }
 
 export async function syncInstrumentKlines(instrumentId: number, options: { start?: string; end?: string; adjust?: string } = {}): Promise<{ rows_fetched: number; rows_written: number; latest_trade_date: string | null; synced_at: string }> {
@@ -96,12 +88,7 @@ export async function syncInstrumentKlines(instrumentId: number, options: { star
   if (options.end) url.searchParams.set("end", options.end);
   if (options.adjust) url.searchParams.set("adjust", options.adjust);
 
-  const response = await fetch(url, { method: "POST" });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  return response.json();
+  return apiJson(url, { method: "POST" });
 }
 
 export async function loadInstrumentKlines(instrumentId: number, options: { start?: string; end?: string; adjust?: string } = {}): Promise<KLineBar[]> {
@@ -110,12 +97,7 @@ export async function loadInstrumentKlines(instrumentId: number, options: { star
   if (options.end) url.searchParams.set("end", options.end);
   if (options.adjust) url.searchParams.set("adjust", options.adjust);
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  const items = (await response.json()) as KlineDailyItem[];
+  const items = await apiJson<KlineDailyItem[]>(url);
   return items.map((item) => ({
     date: item.trade_date,
     open: Number(item.open),
@@ -128,12 +110,7 @@ export async function loadInstrumentKlines(instrumentId: number, options: { star
 }
 
 export async function loadReplaySessions(instrumentId: number): Promise<ReplaySession[]> {
-  const response = await fetch(`${API_BASE}/api/replay-sessions?instrument_id=${instrumentId}`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  const items = (await response.json()) as ReplaySessionItem[];
+  const items = await apiJson<ReplaySessionItem[]>(`${API_BASE}/api/replay-sessions?instrument_id=${instrumentId}`);
   return items.map(toReplaySession);
 }
 
@@ -146,7 +123,7 @@ export async function createReplaySession(payload: {
   adjustType: string;
   indicatorConfig: IndicatorSettings;
 }): Promise<ReplaySession> {
-  const response = await fetch(`${API_BASE}/api/replay-sessions`, {
+  const item = await apiJson<ReplaySessionItem>(`${API_BASE}/api/replay-sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -159,11 +136,7 @@ export async function createReplaySession(payload: {
       indicator_config: payload.indicatorConfig,
     }),
   });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  return toReplaySession(await response.json());
+  return toReplaySession(item);
 }
 
 export async function updateReplaySession(
@@ -181,25 +154,16 @@ export async function updateReplaySession(
   if (payload.adjustType !== undefined) body.adjust_type = payload.adjustType;
   if (payload.indicatorConfig !== undefined) body.indicator_config = payload.indicatorConfig;
 
-  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}`, {
+  const item = await apiJson<ReplaySessionItem>(`${API_BASE}/api/replay-sessions/${sessionId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  return toReplaySession(await response.json());
+  }, { silent: true });
+  return toReplaySession(item);
 }
 
 export async function loadSessionTrades(sessionId: number, code: string): Promise<TradeRecord[]> {
-  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/trades`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  const items = (await response.json()) as TradeItem[];
+  const items = await apiJson<TradeItem[]>(`${API_BASE}/api/replay-sessions/${sessionId}/trades`, undefined, { silent: true });
   return items.map((item) => toTradeRecord(item, code));
 }
 
@@ -214,7 +178,7 @@ export async function createSessionTrade(
     emotionScore?: number | null;
   },
 ): Promise<TradeRecord> {
-  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/trades`, {
+  const item = await apiJson<TradeItem>(`${API_BASE}/api/replay-sessions/${sessionId}/trades`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -225,20 +189,11 @@ export async function createSessionTrade(
       emotion_score: payload.emotionScore ?? null,
     }),
   });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  return toTradeRecord(await response.json(), code);
+  return toTradeRecord(item, code);
 }
 
 export async function loadTradeReviews(sessionId: number): Promise<TradeReview[]> {
-  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  const items = (await response.json()) as TradeReviewItem[];
+  const items = await apiJson<TradeReviewItem[]>(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`, undefined, { silent: true });
   return items.map(toTradeReview);
 }
 
@@ -253,7 +208,7 @@ export async function createTradeReview(
     metricsSnapshot: Record<string, unknown>;
   },
 ): Promise<TradeReview> {
-  const response = await fetch(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`, {
+  const item = await apiJson<TradeReviewItem>(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -265,11 +220,7 @@ export async function createTradeReview(
       metrics_snapshot: payload.metricsSnapshot,
     }),
   });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-
-  return toTradeReview(await response.json());
+  return toTradeReview(item);
 }
 
 function toInstrument(item: InstrumentSearchItem): Instrument {

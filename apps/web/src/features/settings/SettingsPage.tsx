@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CreditCard, Database, RefreshCw, Save, Trash2 } from "lucide-react";
+import { showSuccess } from "../../components/ToastProvider";
 import type { Instrument } from "../replay/types";
 import {
   createFeeTemplate,
@@ -38,7 +39,6 @@ export function SettingsPage() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
-  const [message, setMessage] = useState("");
 
   const selectedTemplate = useMemo(() => feeTemplates.find((item) => item.id === selectedTemplateId) ?? null, [feeTemplates, selectedTemplateId]);
 
@@ -57,9 +57,7 @@ export function SettingsPage() {
           setSelectedInstrumentId(instrumentItems[0].id);
         }
       })
-      .catch((error) => {
-        if (!cancelled) setMessage(error instanceof Error ? error.message : "设置加载失败");
-      });
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
@@ -80,7 +78,7 @@ export function SettingsPage() {
     const next = { ...preferences, ...patch };
     setPreferences(next);
     savePreferences(next);
-    setMessage("设置已保存");
+    showSuccess("设置已保存");
   }
 
   async function refreshDataQuality(instrumentId = selectedInstrumentId, adjustType = preferences.adjustType) {
@@ -88,9 +86,8 @@ export function SettingsPage() {
     try {
       const quality = await loadDataQuality(instrumentId, adjustType);
       setDataQuality(quality);
-      setMessage("");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "数据质量加载失败");
+    } catch {
+      // apiFetch 已弹出错误提示
     }
   }
 
@@ -98,10 +95,10 @@ export function SettingsPage() {
     if (!selectedInstrumentId) return;
     try {
       const result = await syncInstrument(selectedInstrumentId, preferences.adjustType);
-      setMessage(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
+      showSuccess(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
       await refreshDataQuality(selectedInstrumentId, preferences.adjustType);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "重新同步失败");
+    } catch {
+      // apiFetch 已弹出错误提示
     }
   }
 
@@ -110,9 +107,9 @@ export function SettingsPage() {
       const saved = selectedTemplateId ? await updateFeeTemplate(selectedTemplateId, feeForm) : await createFeeTemplate(feeForm);
       setFeeTemplates((items) => [saved, ...items.filter((item) => item.id !== saved.id)].sort((a, b) => a.assetType.localeCompare(b.assetType) || a.name.localeCompare(b.name)));
       setSelectedTemplateId(saved.id);
-      setMessage("费率模板已保存");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "费率模板保存失败");
+      showSuccess("费率模板已保存");
+    } catch {
+      // apiFetch 已弹出错误提示
     }
   }
 
@@ -124,16 +121,14 @@ export function SettingsPage() {
       setFeeTemplates(next);
       setSelectedTemplateId(next[0]?.id ?? null);
       setFeeForm(next[0] ? toForm(next[0]) : emptyFeeForm);
-      setMessage("费率模板已删除");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "费率模板删除失败");
+      showSuccess("费率模板已删除");
+    } catch {
+      // apiFetch 已弹出错误提示
     }
   }
 
   return (
     <section className="settings-page">
-      {message ? <div className="panel settings-message">{message}</div> : null}
-
       <div className="settings-layout">
         <section className="panel settings-panel">
           <div className="section-header">

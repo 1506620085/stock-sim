@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.core.config import get_settings
@@ -8,6 +9,13 @@ from app.routers import health, instruments, replay_sessions, settings as settin
 settings = get_settings()
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    detail = str(exc) if settings.app_env == "development" else "服务器内部错误，请稍后重试"
+    return JSONResponse(status_code=500, content={"detail": detail})
+
 
 if settings.trust_proxy_headers:
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")

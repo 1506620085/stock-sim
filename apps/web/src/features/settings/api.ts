@@ -1,4 +1,4 @@
-import { API_BASE, extractErrorMessage } from "../../api/client";
+import { API_BASE, apiFetch, apiJson } from "../../api/client";
 import type { FeeSettings } from "../calculators/calculations";
 import type { Instrument } from "../replay/types";
 
@@ -62,43 +62,36 @@ export function savePreferences(preferences: AppPreferences) {
 }
 
 export async function loadFeeTemplates(): Promise<FeeTemplate[]> {
-  const response = await fetch(`${API_BASE}/api/settings/fee-templates`);
-  if (!response.ok) throw new Error(await extractErrorMessage(response));
-  const items = await response.json();
+  const items = await apiJson<Record<string, unknown>[]>(`${API_BASE}/api/settings/fee-templates`);
   return items.map(toFeeTemplate);
 }
 
 export async function createFeeTemplate(input: FeeTemplateInput): Promise<FeeTemplate> {
-  const response = await fetch(`${API_BASE}/api/settings/fee-templates`, {
+  const item = await apiJson<Record<string, unknown>>(`${API_BASE}/api/settings/fee-templates`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(toFeeTemplatePayload(input)),
   });
-  if (!response.ok) throw new Error(await extractErrorMessage(response));
-  return toFeeTemplate(await response.json());
+  return toFeeTemplate(item);
 }
 
 export async function updateFeeTemplate(id: number, input: FeeTemplateInput): Promise<FeeTemplate> {
-  const response = await fetch(`${API_BASE}/api/settings/fee-templates/${id}`, {
+  const item = await apiJson<Record<string, unknown>>(`${API_BASE}/api/settings/fee-templates/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(toFeeTemplatePayload(input)),
   });
-  if (!response.ok) throw new Error(await extractErrorMessage(response));
-  return toFeeTemplate(await response.json());
+  return toFeeTemplate(item);
 }
 
 export async function deleteFeeTemplate(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/settings/fee-templates/${id}`, { method: "DELETE" });
-  if (!response.ok) throw new Error(await extractErrorMessage(response));
+  await apiFetch(`${API_BASE}/api/settings/fee-templates/${id}`, { method: "DELETE" });
 }
 
 export async function loadInstruments(keyword = ""): Promise<Instrument[]> {
   const url = new URL(`${API_BASE}/api/instruments`);
   if (keyword.trim()) url.searchParams.set("keyword", keyword.trim());
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(await extractErrorMessage(response));
-  const items = await response.json();
+  const items = await apiJson<Record<string, unknown>[]>(url);
   return items.map(toInstrument);
 }
 
@@ -106,17 +99,13 @@ export async function loadDataQuality(instrumentId: number, adjustType: AdjustTy
   const url = new URL(`${API_BASE}/api/settings/data-quality`);
   url.searchParams.set("instrument_id", String(instrumentId));
   url.searchParams.set("adjust", adjustType);
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(await extractErrorMessage(response));
-  return toDataQuality(await response.json());
+  return toDataQuality(await apiJson<Record<string, unknown>>(url));
 }
 
 export async function syncInstrument(instrumentId: number, adjustType: AdjustType): Promise<{ rows_fetched: number; rows_written: number; latest_trade_date: string | null }> {
   const url = new URL(`${API_BASE}/api/instruments/${instrumentId}/sync`);
   url.searchParams.set("adjust", adjustType);
-  const response = await fetch(url, { method: "POST" });
-  if (!response.ok) throw new Error(await extractErrorMessage(response));
-  return response.json();
+  return apiJson(url, { method: "POST" });
 }
 
 export function templateToFeeSettings(template: FeeTemplate): FeeSettings {

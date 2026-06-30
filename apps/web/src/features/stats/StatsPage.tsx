@@ -20,20 +20,14 @@ const emptySummary: StatsSummary = {
 
 export function StatsPage() {
   const [summary, setSummary] = useState<StatsSummary>(emptySummary);
-  const [message, setMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     loadStatsSummary()
       .then((data) => {
-        if (!cancelled) {
-          setSummary(data);
-          setMessage("");
-        }
+        if (!cancelled) setSummary(data);
       })
-      .catch((error) => {
-        if (!cancelled) setMessage(error instanceof Error ? error.message : "统计加载失败");
-      });
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
@@ -42,8 +36,6 @@ export function StatsPage() {
 
   return (
     <section className="stats-page">
-      {message ? <div className="panel stats-message">{message}</div> : null}
-
       <div className="stats-grid">
         <MetricCard icon={ListChecks} label="复盘次数" value={summary.total_sessions.toLocaleString("zh-CN")} />
         <MetricCard icon={BarChart3} label="交易次数" value={summary.total_trades.toLocaleString("zh-CN")} meta={`买 ${summary.buy_count} / 卖 ${summary.sell_count}`} />
