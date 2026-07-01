@@ -7,6 +7,7 @@ type Props = {
   code: string;
   indicators: IndicatorSettings;
   selectedDate?: string;
+  recenterToken?: number;
   trades?: TradeRecord[];
   painPoint?: { date?: string; price?: number };
 };
@@ -18,7 +19,7 @@ const volumePaneHeight = 118;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
 
-export function KLineChartPanel({ bars, code, indicators, selectedDate, trades = [], painPoint }: Props) {
+export function KLineChartPanel({ bars, code, indicators, selectedDate, recenterToken = 0, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const [activeTrade, setActiveTrade] = useState<TradeRecord | null>(null);
@@ -101,14 +102,14 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, trades =
     chart.resetData();
     syncIndicators(chart, indicators);
     scheduleChartResize(chart);
-
-    if (selectedDate) {
-      const timestamp = new Date(`${selectedDate}T00:00:00`).getTime();
-      chart.scrollToTimestamp(timestamp, 0);
-    } else {
-      chart.scrollToRealTime(0);
-    }
+    scrollChartToSelectedDate(chart, selectedDate);
   }, [chartData, code, indicators, selectedDate]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !recenterToken) return;
+    scrollChartToSelectedDate(chart, selectedDate);
+  }, [recenterToken, selectedDate]);
 
   return (
     <div className="kline-chart-wrap">
@@ -174,6 +175,15 @@ function scheduleChartResize(chart: Chart) {
   window.requestAnimationFrame(() => {
     chart.resize();
   });
+}
+
+function scrollChartToSelectedDate(chart: Chart, selectedDate?: string) {
+  if (selectedDate) {
+    const timestamp = new Date(`${selectedDate}T00:00:00`).getTime();
+    chart.scrollToTimestamp(timestamp, 0);
+    return;
+  }
+  chart.scrollToRealTime(0);
 }
 
 function syncIndicators(chart: Chart, indicators: IndicatorSettings) {

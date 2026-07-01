@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, RefreshCcw, CloudCog } from "lucide-react";
+import { ChevronLeft, ChevronRight, LocateFixed, RefreshCcw, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
@@ -44,6 +44,7 @@ export function ReplayPage() {
   const [syncingBars, setSyncingBars] = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
+  const [recenterToken, setRecenterToken] = useState(0);
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
@@ -203,9 +204,7 @@ export function ReplayPage() {
 
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
-  const visibleEnd = hideFuture ? normalizedIndex + 1 : bars.length;
-  const visibleStart = Math.max(0, visibleEnd - 120);
-  const visibleBars = bars.slice(visibleStart, visibleEnd);
+  const visibleBars = hideFuture ? bars.slice(0, normalizedIndex + 1) : bars;
   const replayBars = bars.slice(0, normalizedIndex + 1);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
@@ -252,6 +251,12 @@ export function ReplayPage() {
     if (replaySession) {
       syncReplaySession(replaySession.id, { hideFuture: checked });
     }
+  }
+
+  function focusReplayDate() {
+    if (!selectedBar?.date) return;
+    setJumpDate(selectedBar.date);
+    setRecenterToken((token) => token + 1);
   }
 
   function moveReplayDate(delta: number) {
@@ -360,10 +365,13 @@ export function ReplayPage() {
               <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步K线">
                 <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
               </button>
-              <button type="button" onClick={() => moveReplayDate(-1)} aria-label="前一日">
+              <button type="button" onClick={() => moveReplayDate(-1)} aria-label="上一天" title="上一天">
                 <ChevronLeft size={18} />
               </button>
-              <button type="button" onClick={() => moveReplayDate(1)} aria-label="后一日">
+              <button type="button" onClick={focusReplayDate} aria-label="回到复盘日" title="回到复盘日">
+                <LocateFixed size={18} />
+              </button>
+              <button type="button" onClick={() => moveReplayDate(1)} aria-label="下一天" title="下一天">
                 <ChevronRight size={18} />
               </button>
               <label className="switch">
@@ -397,6 +405,7 @@ export function ReplayPage() {
               code={activeCode}
               indicators={indicators}
               painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
+              recenterToken={recenterToken}
               selectedDate={selectedBar?.date}
               trades={visibleTrades}
             />
