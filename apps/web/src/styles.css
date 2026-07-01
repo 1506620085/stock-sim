@@ -691,6 +691,23 @@ textarea {
   gap: 16px;
 }
 
+.watchlist-page {
+  min-width: 0;
+}
+
+.watchlist-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .watchlist-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .replay-sidebar,
 .trade-column {
   display: flex;
@@ -733,6 +750,9 @@ textarea {
 .chart-toolbar h2,
 .section-header h2 {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .source-line {

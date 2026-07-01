@@ -4,6 +4,7 @@ import { showError, showInfo, showSuccess } from "../../components/ToastProvider
 import type { ApiError } from "../../api/client";
 import { createInstrument, createReplaySession, createSessionTrade, createTradeReview, addWatchlistItem, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
+import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences } from "../settings/api";
 import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
@@ -72,8 +73,13 @@ export function ReplayPage() {
         }
         setWatchlist(codes);
         setKnownInstruments(known);
-        if (codes[0] && known[codes[0]]) {
-          setActiveInstrument(known[codes[0]]);
+        const pendingCode = sessionStorage.getItem(REPLAY_PENDING_CODE_KEY);
+        if (pendingCode) {
+          sessionStorage.removeItem(REPLAY_PENDING_CODE_KEY);
+        }
+        const initialCode = pendingCode && known[pendingCode] ? pendingCode : codes[0];
+        if (initialCode && known[initialCode]) {
+          setActiveInstrument(known[initialCode]);
           setSelectedIndex(0);
         }
       })

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Calculator, CandlestickChart, NotebookPen, Settings } from "lucide-react";
+import { BarChart3, Calculator, CandlestickChart, NotebookPen, Settings, Star } from "lucide-react";
 import { CalculatorsPage } from "./features/calculators/CalculatorsPage";
 import { ReplayPage } from "./features/replay/ReplayPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { StatsPage } from "./features/stats/StatsPage";
+import { WatchlistPage } from "./features/watchlist/WatchlistPage";
 
-type PageId = "replay" | "calculators" | "stats" | "notes" | "settings";
+type PageId = "watchlist" | "replay" | "calculators" | "stats" | "notes" | "settings";
 
 type MenuItem = {
   id: PageId;
@@ -15,6 +16,7 @@ type MenuItem = {
 };
 
 const menuItems: MenuItem[] = [
+  { id: "watchlist", label: "自选", path: "/watchlist", icon: Star },
   { id: "replay", label: "复盘", path: "/replay", icon: CandlestickChart },
   { id: "calculators", label: "计算器", path: "/calculators", icon: Calculator },
   { id: "stats", label: "统计", path: "/stats", icon: BarChart3 },
@@ -23,6 +25,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const pageMeta: Record<PageId, { eyebrow: string; title: string; badge: string }> = {
+  watchlist: { eyebrow: "Watchlist", title: "自选列表", badge: "自选管理" },
   replay: { eyebrow: "Replay", title: "K 线复盘工作台", badge: "默认页面" },
   calculators: { eyebrow: "Tools", title: "交易计算器", badge: "工具箱" },
   stats: { eyebrow: "Analytics", title: "训练统计", badge: "统计面板" },
@@ -100,6 +103,10 @@ export default function App() {
 }
 
 function PageContent({ activePage }: { activePage: PageId }) {
+  if (activePage === "watchlist") {
+    return <WatchlistPage />;
+  }
+
   if (activePage === "replay") {
     return <ReplayPage />;
   }
@@ -116,7 +123,7 @@ function PageContent({ activePage }: { activePage: PageId }) {
     return <SettingsPage />;
   }
 
-  const copy: Record<Exclude<PageId, "replay" | "calculators" | "stats" | "settings">, string[]> = {
+  const copy: Record<Exclude<PageId, "watchlist" | "replay" | "calculators" | "stats" | "settings">, string[]> = {
     notes: ["交易笔记", "区间复盘", "情绪记录", "标签归档"],
   };
 
