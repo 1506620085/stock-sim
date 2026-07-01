@@ -1,4 +1,5 @@
-from datetime import date
+import re
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -9,16 +10,33 @@ class MarketDataError(RuntimeError):
     pass
 
 
+_CODE_PATTERN = re.compile(r"^(\d{6})(?:\.(SH|SZ|BJ))?$", re.IGNORECASE)
+
+
 def search_instruments(keyword: str) -> list[InstrumentQuote]:
-    akshare = _load_akshare()
-    text = keyword.strip().lower()
-    if not text:
+    code = _normalize_code(keyword)
+    if not code:
         return []
 
-    results: list[InstrumentQuote] = []
-    results.extend(_search_stocks(akshare, text))
-    results.extend(_search_etfs(akshare, text))
-    return _deduplicate(results)[:30]
+    akshare = _load_akshare()
+    if _is_likely_etf_code(code):
+        quote = _fetch_etf_by_code(akshare, code)
+        if quote:
+            return [quote]
+        quote = _fetch_stock_by_code(akshare, code)
+        if quote:
+            return [quote]
+        return []
+
+    quote = _fetch_stock_by_code(akshare, code)
+    if quote:
+        return [quote]
+
+    quote = _fetch_etf_by_code(akshare, code)
+    if quote:
+        return [quote]
+
+    return []
 
 
 def fetch_daily_bars(symbol: str, asset_type: str, start_date: date | None, end_date: date | None, adjust_type: str) -> list[DailyBar]:
@@ -64,51 +82,158 @@ def _load_akshare() -> Any:
     return akshare
 
 
-def _search_stocks(akshare: Any, keyword: str) -> list[InstrumentQuote]:
+def _normalize_code(keyword: str) -> str | None:
+    text = keyword.strip().upper()
+    if not text:
+        return None
+    match = _CODE_PATTERN.fullmatch(text)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _is_likely_etf_code(code: str) -> bool:
+    return code.startswith(("51", "52", "56", "58", "15", "16", "18"))
+
+
+def _fetch_stock_by_code(akshare: Any, code: str) -> InstrumentQuote | None:
+    if _is_likely_etf_code(code):
+        return None
+
+    name = _fetch_stock_name_from_cninfo(akshare, code)
+    if name:
+        return InstrumentQuote(
+            code=code,
+            exchange=_exchange_from_code(code),
+            symbol=_symbol_from_code(code),
+            name=name,
+            asset_type="stock",
+        )
+
+    if _has_stock_history(akshare, code):
+        return InstrumentQuote(
+            code=code,
+            exchange=_exchange_from_code(code),
+            symbol=_symbol_from_code(code),
+            name=_fetch_em_symbol_name(akshare, code) or code,
+            asset_type="stock",
+        )
+
+    return None
+
+
+def _fetch_etf_by_code(akshare: Any, code: str) -> InstrumentQuote | None:
+    if _has_etf_history_sina(akshare, code):
+        return InstrumentQuote(
+            code=code,
+            exchange=_exchange_from_code(code),
+            symbol=_symbol_from_code(code),
+            name=_fetch_em_symbol_name(akshare, code) or code,
+            asset_type="etf",
+        )
+
+    if _has_etf_history_em(akshare, code):
+        return InstrumentQuote(
+            code=code,
+            exchange=_exchange_from_code(code),
+            symbol=_symbol_from_code(code),
+            name=_fetch_em_symbol_name(akshare, code) or code,
+            asset_type="etf",
+        )
+
+    return None
+
+
+def _fetch_stock_name_from_cninfo(akshare: Any, code: str) -> str | None:
     try:
-        frame = akshare.stock_info_a_code_name()
-    except Exception as exc:  # pragma: no cover - depends on external data source.
-        raise MarketDataError(f"AKShare 搜索股票失败：{exc}") from exc
+        frame = akshare.stock_profile_cninfo(symbol=code)
+    except Exception:
+        return None
 
-    quotes: list[InstrumentQuote] = []
-    for row in frame.to_dict("records"):
-        code = str(_pick(row, "code", "代码", "证券代码") or "").strip()
-        name = str(_pick(row, "name", "名称", "证券简称") or "").strip()
-        if not code or not _matches(keyword, code, name):
+    if frame is None or frame.empty:
+        return None
+
+    row = frame.iloc[0].to_dict()
+    listed_code = str(_pick(row, "A股代码", "a股代码", "A 股代码") or "").strip()
+    if listed_code and listed_code != code:
+        return None
+
+    name = str(_pick(row, "A股简称", "a股简称", "公司名称", "公司简称") or "").strip()
+    return name or None
+
+
+def _has_stock_history(akshare: Any, code: str) -> bool:
+    start, end = _recent_date_range(days=15)
+    for symbol in _tx_symbols_for_code(code):
+        try:
+            frame = akshare.stock_zh_a_hist_tx(symbol=symbol, start_date=start, end_date=end, adjust="")
+        except Exception:
             continue
-        quotes.append(InstrumentQuote(code=code, exchange=_exchange_from_code(code), symbol=_symbol_from_code(code), name=name, asset_type="stock"))
-    return quotes
+        if frame is not None and not frame.empty:
+            return True
+    return False
 
 
-def _search_etfs(akshare: Any, keyword: str) -> list[InstrumentQuote]:
+def _has_etf_history_sina(akshare: Any, code: str) -> bool:
+    for symbol in _sina_symbols_for_code(code):
+        try:
+            frame = akshare.fund_etf_hist_sina(symbol=symbol)
+        except Exception:
+            continue
+        if frame is not None and not frame.empty:
+            return True
+    return False
+
+
+def _has_etf_history_em(akshare: Any, code: str) -> bool:
+    start, end = _recent_date_range(days=15)
     try:
-        frame = akshare.fund_etf_spot_em()
-    except Exception as exc:  # pragma: no cover - depends on external data source.
-        raise MarketDataError(f"AKShare 搜索 ETF 失败：{exc}") from exc
+        frame = akshare.fund_etf_hist_em(symbol=code, period="daily", start_date=start, end_date=end, adjust="")
+    except Exception:
+        return False
+    return frame is not None and not frame.empty
 
-    quotes: list[InstrumentQuote] = []
+
+def _fetch_em_symbol_name(akshare: Any, code: str) -> str | None:
+    try:
+        frame = akshare.stock_individual_info_em(symbol=code)
+    except Exception:
+        return None
+
+    if frame is None or frame.empty:
+        return None
+
     for row in frame.to_dict("records"):
-        code = str(_pick(row, "代码", "code") or "").strip()
-        name = str(_pick(row, "名称", "name") or "").strip()
-        if not code or not _matches(keyword, code, name):
-            continue
-        quotes.append(InstrumentQuote(code=code, exchange=_exchange_from_code(code), symbol=_symbol_from_code(code), name=name, asset_type="etf"))
-    return quotes
+        item = str(_pick(row, "item", "项目") or "").strip()
+        if item in {"股票简称", "证券简称", "基金简称", "名称"}:
+            value = str(_pick(row, "value", "值") or "").strip()
+            if value:
+                return value
+    return None
 
 
-def _matches(keyword: str, code: str, name: str) -> bool:
-    return keyword in code.lower() or keyword in name.lower()
+def _recent_date_range(days: int) -> tuple[str, str]:
+    end = date.today()
+    start = end - timedelta(days=days)
+    return start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
 
 
-def _deduplicate(quotes: list[InstrumentQuote]) -> list[InstrumentQuote]:
-    seen: set[str] = set()
-    unique: list[InstrumentQuote] = []
-    for quote in quotes:
-        if quote.symbol in seen:
-            continue
-        seen.add(quote.symbol)
-        unique.append(quote)
-    return unique
+def _tx_symbols_for_code(code: str) -> list[str]:
+    exchange = _exchange_from_code(code)
+    if exchange == "SH":
+        return [f"sh{code}"]
+    if exchange == "SZ":
+        return [f"sz{code}"]
+    return [f"sh{code}", f"sz{code}"]
+
+
+def _sina_symbols_for_code(code: str) -> list[str]:
+    exchange = _exchange_from_code(code)
+    if exchange == "SH":
+        return [f"sh{code}"]
+    if exchange == "SZ":
+        return [f"sz{code}"]
+    return [f"sh{code}", f"sz{code}"]
 
 
 def _symbol_from_code(code: str) -> str:
