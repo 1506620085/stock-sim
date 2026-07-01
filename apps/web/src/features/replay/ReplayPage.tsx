@@ -131,7 +131,7 @@ export function ReplayPage() {
             const result = await syncInstrumentKlines(id, { adjust: activeAdjustType });
             items = await loadInstrumentKlines(id, { adjust: activeAdjustType });
             if (!cancelled && items.length) {
-              showSuccess(`已同步 ${result.rows_written} 条 K 线`);
+              showSuccess(`已同步 ${result.rows_fetched} 条 K 线`);
             } else if (!cancelled) {
               showInfo("暂无 K 线数据，请检查 AKShare 连接或稍后点击同步重试");
             }
@@ -345,7 +345,7 @@ export function ReplayPage() {
       const refreshed = await loadInstrumentKlines(activeInstrument.id, { adjust: activeAdjustType });
       setBars(refreshed);
       if (refreshed.length) {
-        showSuccess(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
+        showSuccess(`已同步 ${result.rows_fetched} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
       } else {
         showInfo("同步完成，但未获取到 K 线数据，请检查 AKShare 或稍后重试");
       }
@@ -462,26 +462,32 @@ export function ReplayPage() {
             </span>
           </div>
 
-          <KLineChartPanel
-            bars={visibleBars}
-            code={activeCode}
-            indicators={indicators}
-            painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
-            selectedDate={selectedBar?.date}
-            trades={visibleTrades}
-          />
-
-          {!loadingBars && !bars.length ? (
-            <div className="panel empty-state chart-empty-state chart-empty-overlay">
+          {loadingBars || syncingBars ? (
+            <div className="panel empty-state chart-empty-state chart-loading-state">
+              <p className="eyebrow">K 线</p>
+              <h2>{syncingBars ? "正在同步行情" : "正在加载行情"}</h2>
+              <p className="empty-copy">请稍候，数据将从 AKShare 写入数据库后显示。</p>
+            </div>
+          ) : bars.length ? (
+            <KLineChartPanel
+              bars={visibleBars}
+              code={activeCode}
+              indicators={indicators}
+              painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
+              selectedDate={selectedBar?.date}
+              trades={visibleTrades}
+            />
+          ) : (
+            <div className="panel empty-state chart-empty-state">
               <p className="eyebrow">K 线</p>
               <h2>暂无行情数据</h2>
               <p className="empty-copy">搜索只返回标的信息，K 线需从 AKShare 同步到数据库后才会显示。请点击上方云同步按钮，或重新选择该标的触发自动同步。</p>
               <button className="primary-button" disabled={syncingBars} onClick={() => void syncCurrentInstrument()} type="button">
                 <CloudCog size={16} className={syncingBars ? "spinning" : undefined} />
-                {syncingBars ? "同步中..." : "同步 K 线"}
+                同步 K 线
               </button>
             </div>
-          ) : null}
+          )}
             </>
           ) : (
             <div className="panel empty-state chart-empty-state">

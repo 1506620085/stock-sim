@@ -27,6 +27,11 @@ def sync_daily_bars(
     if not bars:
         return 0, 0, None
 
+    today = date.today()
+    bars = [bar for bar in bars if bar.trade_date <= today]
+    if not bars:
+        return 0, 0, None
+
     rows = [
         {
             "instrument_id": instrument.id,
@@ -61,8 +66,9 @@ def sync_daily_bars(
         constraint="uq_kline_daily_identity",
         set_=update_columns,
     )
-    result = session.exec(statement)
+    session.exec(statement)
     session.commit()
 
     latest_date = max(bar.trade_date for bar in bars)
-    return len(bars), int(result.rowcount or 0), latest_date
+    # PostgreSQL 批量 upsert 的 rowcount 常为 -1（未知），用实际处理条数代替。
+    return len(bars), len(bars), latest_date

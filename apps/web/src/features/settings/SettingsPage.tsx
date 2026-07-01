@@ -95,7 +95,7 @@ export function SettingsPage() {
     if (!selectedInstrumentId) return;
     try {
       const result = await syncInstrument(selectedInstrumentId, preferences.adjustType);
-      showSuccess(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
+      showSuccess(`已同步 ${result.rows_fetched} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
       await refreshDataQuality(selectedInstrumentId, preferences.adjustType);
     } catch {
       // apiFetch 已弹出错误提示

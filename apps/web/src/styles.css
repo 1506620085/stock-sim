@@ -709,21 +709,16 @@ textarea {
 }
 
 .chart-empty-state {
-  min-height: 360px;
+  min-height: 420px;
   display: grid;
   place-content: center;
-  gap: 8px;
+  gap: 10px;
   text-align: center;
+  margin-top: 14px;
 }
 
-.chart-empty-overlay {
-  position: absolute;
-  inset: auto 24px 24px;
-  z-index: 2;
-  min-height: auto;
-  padding: 20px 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: var(--shadow);
+.chart-loading-state {
+  color: var(--muted);
 }
 
 .chart-toolbar,
