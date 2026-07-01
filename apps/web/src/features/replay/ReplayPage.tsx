@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import type { ApiError } from "../../api/client";
@@ -28,6 +28,7 @@ const adjustLabel = (value: string) => ({ none: "不复权", qfq: "前复权", h
 
 export function ReplayPage() {
   const [query, setQuery] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [knownInstruments, setKnownInstruments] = useState<Record<string, Instrument>>({});
   const [activeInstrument, setActiveInstrument] = useState<Instrument | null>(null);
@@ -49,6 +50,7 @@ export function ReplayPage() {
   const [syncingBars, setSyncingBars] = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
+  const searchRequestId = useRef(0);
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
@@ -85,31 +87,33 @@ export function ReplayPage() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  async function submitSearch() {
     const keyword = query.trim();
+    setSearchKeyword(keyword);
     if (!keyword) {
       setRemoteResults([]);
       return;
     }
 
+    const requestId = ++searchRequestId.current;
     setLoadingSearch(true);
-    searchInstruments(keyword)
-      .then((results) => {
-        if (!cancelled) setRemoteResults(results);
-      })
-      .catch((error: ApiError) => {
-        if (!cancelled) setRemoteResults([]);
-        if (!error?.notified) showError(error instanceof Error ? error.message : "搜索失败");
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingSearch(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [query]);
+    try {
+      const results = await searchInstruments(keyword);
+      if (requestId === searchRequestId.current) {
+        setRemoteResults(results);
+      }
+    } catch (error: unknown) {
+      if (requestId === searchRequestId.current) {
+        setRemoteResults([]);
+        const apiError = error as ApiError;
+        if (!apiError?.notified) showError(error instanceof Error ? error.message : "搜索失败");
+      }
+    } finally {
+      if (requestId === searchRequestId.current) {
+        setLoadingSearch(false);
+      }
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -394,9 +398,11 @@ export function ReplayPage() {
           loading={loadingSearch}
           query={query}
           results={searchResults}
+          searchKeyword={searchKeyword}
           watchlist={watchlist}
           onAdd={(instrument) => void addToWatchlist(instrument)}
           onQueryChange={setQuery}
+          onSearch={() => void submitSearch()}
         />
         <WatchlistPanel
           activeCode={activeCode}
@@ -491,7 +497,6 @@ export function ReplayPage() {
             </>
           ) : (
             <div className="panel empty-state chart-empty-state">
-              <p className="eyebrow">Replay</p>
               <h2>请选择或加入自选标的</h2>
               <p className="empty-copy">搜索股票/ETF 代码并加入自选，同步 K 线后即可开始复盘。</p>
             </div>
@@ -529,32 +534,41 @@ export function ReplayPage() {
 function SearchPanel({
   query,
   results,
+  searchKeyword,
   watchlist,
   loading,
   onAdd,
   onQueryChange,
+  onSearch,
 }: {
   query: string;
   results: Instrument[];
+  searchKeyword: string;
   watchlist: string[];
   loading: boolean;
   onAdd: (instrument: Instrument) => void;
   onQueryChange: (value: string) => void;
+  onSearch: () => void;
 }) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSearch();
+  }
+
   return (
     <section className="panel">
       <label className="field-label" htmlFor="stockSearch">
         搜索股票 / ETF
       </label>
-      <div className="search-row">
+      <form className="search-row" onSubmit={handleSubmit}>
         <input id="stockSearch" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="输入代码或名称" />
-        <button type="button" aria-label="搜索">
+        <button type="submit" aria-label="搜索" disabled={loading}>
           <Search size={16} />
         </button>
-      </div>
+      </form>
       <div className="stock-list compact-list">
         {loading ? <p className="empty-copy">正在搜索行情...</p> : null}
-        {!loading && query.trim() && !results.length ? <p className="empty-copy">未找到匹配标的。</p> : null}
+        {!loading && searchKeyword && !results.length ? <p className="empty-copy">未找到匹配标的。</p> : null}
         {results.map((instrument) => (
           <button className="stock-row" key={`${instrument.source ?? "remote"}-${instrument.code}`} onClick={() => onAdd(instrument)} type="button">
             <span>

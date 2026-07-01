@@ -83,13 +83,15 @@ export default function App() {
       </nav>
 
       <section className="workspace">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">{activeMeta.eyebrow}</p>
-            <h1>{activeMeta.title}</h1>
-          </div>
-          <span className="stage-pill">{activeMeta.badge}</span>
-        </header>
+        {activePage !== "replay" ? (
+          <header className="topbar">
+            <div>
+              <p className="eyebrow">{activeMeta.eyebrow}</p>
+              <h1>{activeMeta.title}</h1>
+            </div>
+            <span className="stage-pill">{activeMeta.badge}</span>
+          </header>
+        ) : null}
 
         <PageContent activePage={activeMenu.id} />
       </section>
