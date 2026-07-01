@@ -5,6 +5,20 @@ const configuredBase = import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/
 /** 默认空字符串，开发/预览时走 Vite `/api` 代理；生产可设 VITE_API_BASE_URL 或由 Nginx 同域转发。 */
 export const API_BASE = configuredBase;
 
+/** 构建 API 路径；避免 API_BASE 为空时 new URL('/api/...') 在浏览器中报错。 */
+export function buildApiUrl(path: string, params?: Record<string, string | undefined>): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const base = API_BASE ? `${API_BASE}${normalizedPath}` : normalizedPath;
+  if (!params) return base;
+
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, value);
+  }
+  const query = search.toString();
+  return query ? `${base}?${query}` : base;
+}
+
 export type ApiFetchOptions = {
   /** 为 true 时不弹出错误提示，由调用方自行处理。 */
   silent?: boolean;

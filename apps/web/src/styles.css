@@ -704,7 +704,26 @@ textarea {
 }
 
 .chart-panel {
+  position: relative;
   min-height: 620px;
+}
+
+.chart-empty-state {
+  min-height: 360px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.chart-empty-overlay {
+  position: absolute;
+  inset: auto 24px 24px;
+  z-index: 2;
+  min-height: auto;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
 }
 
 .chart-toolbar,
@@ -1590,6 +1609,20 @@ textarea {
 
 .toast-close:hover {
   background: rgba(0, 0, 0, 0.06);
+}
+
+.spinning {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes toast-in {

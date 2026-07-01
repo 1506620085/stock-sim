@@ -46,6 +46,7 @@ export function ReplayPage() {
   const [jumpDate, setJumpDate] = useState("");
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingBars, setLoadingBars] = useState(false);
+  const [syncingBars, setSyncingBars] = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
   const [preferences] = useState(() => loadPreferences());
@@ -119,20 +120,37 @@ export function ReplayPage() {
       return;
     }
 
-    setLoadingBars(true);
-    loadInstrumentKlines(instrumentId, { adjust: activeAdjustType })
-      .then((items) => {
+    const id = instrumentId;
+
+    async function loadBars() {
+      setLoadingBars(true);
+      try {
+        let items = await loadInstrumentKlines(id, { adjust: activeAdjustType });
+        if (!items.length) {
+          try {
+            const result = await syncInstrumentKlines(id, { adjust: activeAdjustType });
+            items = await loadInstrumentKlines(id, { adjust: activeAdjustType });
+            if (!cancelled && items.length) {
+              showSuccess(`已同步 ${result.rows_written} 条 K 线`);
+            } else if (!cancelled) {
+              showInfo("暂无 K 线数据，请检查 AKShare 连接或稍后点击同步重试");
+            }
+          } catch {
+            // apiFetch 已弹出错误提示
+          }
+        }
         if (!cancelled) {
           setBars(items);
           setSelectedIndex((current) => Math.min(current, Math.max(items.length - 1, 0)));
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setBars([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoadingBars(false);
-      });
+      }
+    }
+
+    void loadBars();
 
     return () => {
       cancelled = true;
@@ -321,13 +339,23 @@ export function ReplayPage() {
       return;
     }
 
+    setSyncingBars(true);
     try {
       const result = await syncInstrumentKlines(activeInstrument.id, { adjust: activeAdjustType });
-      showSuccess(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
       const refreshed = await loadInstrumentKlines(activeInstrument.id, { adjust: activeAdjustType });
       setBars(refreshed);
-    } catch {
-      // apiFetch 已弹出错误提示
+      if (refreshed.length) {
+        showSuccess(`已同步 ${result.rows_written} 条，最新交易日 ${result.latest_trade_date ?? "-"}`);
+      } else {
+        showInfo("同步完成，但未获取到 K 线数据，请检查 AKShare 或稍后重试");
+      }
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (!apiError?.notified) {
+        showError(error instanceof Error ? error.message : "K 线同步失败");
+      }
+    } finally {
+      setSyncingBars(false);
     }
   }
 
@@ -400,13 +428,14 @@ export function ReplayPage() {
                 {` · 配置源：${configuredDataSource}`}
                 {` · 复权：${adjustLabel(activeAdjustType)}`}
                 {loadingBars ? " · 加载中" : ""}
+                {syncingBars ? " · 同步中" : ""}
                 {loadingSession ? " · 复盘状态同步中" : ""}
                 {replaySession ? ` · Session #${replaySession.id}` : ""}
               </p>
             </div>
             <div className="day-controls">
-              <button type="button" onClick={syncCurrentInstrument} aria-label="同步K线">
-                <CloudCog size={18} />
+              <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步K线">
+                <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
               </button>
               <button type="button" onClick={() => moveReplayDate(-1)} aria-label="前一日">
                 <ChevronLeft size={18} />
@@ -441,6 +470,18 @@ export function ReplayPage() {
             selectedDate={selectedBar?.date}
             trades={visibleTrades}
           />
+
+          {!loadingBars && !bars.length ? (
+            <div className="panel empty-state chart-empty-state chart-empty-overlay">
+              <p className="eyebrow">K 线</p>
+              <h2>暂无行情数据</h2>
+              <p className="empty-copy">搜索只返回标的信息，K 线需从 AKShare 同步到数据库后才会显示。请点击上方云同步按钮，或重新选择该标的触发自动同步。</p>
+              <button className="primary-button" disabled={syncingBars} onClick={() => void syncCurrentInstrument()} type="button">
+                <CloudCog size={16} className={syncingBars ? "spinning" : undefined} />
+                {syncingBars ? "同步中..." : "同步 K 线"}
+              </button>
+            </div>
+          ) : null}
             </>
           ) : (
             <div className="panel empty-state chart-empty-state">

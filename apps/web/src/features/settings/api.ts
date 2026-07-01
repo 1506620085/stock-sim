@@ -1,4 +1,4 @@
-import { API_BASE, apiFetch, apiJson } from "../../api/client";
+import { API_BASE, apiFetch, apiJson, buildApiUrl } from "../../api/client";
 import type { FeeSettings } from "../calculators/calculations";
 import type { Instrument } from "../replay/types";
 
@@ -89,23 +89,25 @@ export async function deleteFeeTemplate(id: number): Promise<void> {
 }
 
 export async function loadInstruments(keyword = ""): Promise<Instrument[]> {
-  const url = new URL(`${API_BASE}/api/instruments`);
-  if (keyword.trim()) url.searchParams.set("keyword", keyword.trim());
-  const items = await apiJson<Record<string, unknown>[]>(url);
+  const items = await apiJson<Record<string, unknown>[]>(
+    buildApiUrl("/api/instruments", keyword.trim() ? { keyword: keyword.trim() } : undefined),
+  );
   return items.map(toInstrument);
 }
 
 export async function loadDataQuality(instrumentId: number, adjustType: AdjustType): Promise<DataQuality> {
-  const url = new URL(`${API_BASE}/api/settings/data-quality`);
-  url.searchParams.set("instrument_id", String(instrumentId));
-  url.searchParams.set("adjust", adjustType);
-  return toDataQuality(await apiJson<Record<string, unknown>>(url));
+  return toDataQuality(
+    await apiJson<Record<string, unknown>>(
+      buildApiUrl("/api/settings/data-quality", {
+        instrument_id: String(instrumentId),
+        adjust: adjustType,
+      }),
+    ),
+  );
 }
 
 export async function syncInstrument(instrumentId: number, adjustType: AdjustType): Promise<{ rows_fetched: number; rows_written: number; latest_trade_date: string | null }> {
-  const url = new URL(`${API_BASE}/api/instruments/${instrumentId}/sync`);
-  url.searchParams.set("adjust", adjustType);
-  return apiJson(url, { method: "POST" });
+  return apiJson(buildApiUrl(`/api/instruments/${instrumentId}/sync`, { adjust: adjustType }), { method: "POST" });
 }
 
 export function templateToFeeSettings(template: FeeTemplate): FeeSettings {

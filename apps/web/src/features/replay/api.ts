@@ -1,4 +1,4 @@
-import { API_BASE, apiFetch, apiJson } from "../../api/client";
+import { API_BASE, apiFetch, apiJson, buildApiUrl } from "../../api/client";
 import type { IndicatorSettings, Instrument, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 type InstrumentSearchItem = {
@@ -83,21 +83,24 @@ export async function createInstrument(instrument: Instrument): Promise<Instrume
 }
 
 export async function syncInstrumentKlines(instrumentId: number, options: { start?: string; end?: string; adjust?: string } = {}): Promise<{ rows_fetched: number; rows_written: number; latest_trade_date: string | null; synced_at: string }> {
-  const url = new URL(`${API_BASE}/api/instruments/${instrumentId}/sync`);
-  if (options.start) url.searchParams.set("start", options.start);
-  if (options.end) url.searchParams.set("end", options.end);
-  if (options.adjust) url.searchParams.set("adjust", options.adjust);
-
-  return apiJson(url, { method: "POST" });
+  return apiJson(
+    buildApiUrl(`/api/instruments/${instrumentId}/sync`, {
+      start: options.start,
+      end: options.end,
+      adjust: options.adjust,
+    }),
+    { method: "POST" },
+  );
 }
 
 export async function loadInstrumentKlines(instrumentId: number, options: { start?: string; end?: string; adjust?: string } = {}): Promise<KLineBar[]> {
-  const url = new URL(`${API_BASE}/api/instruments/${instrumentId}/klines`);
-  if (options.start) url.searchParams.set("start", options.start);
-  if (options.end) url.searchParams.set("end", options.end);
-  if (options.adjust) url.searchParams.set("adjust", options.adjust);
-
-  const items = await apiJson<KlineDailyItem[]>(url);
+  const items = await apiJson<KlineDailyItem[]>(
+    buildApiUrl(`/api/instruments/${instrumentId}/klines`, {
+      start: options.start,
+      end: options.end,
+      adjust: options.adjust,
+    }),
+  );
   return items.map((item) => ({
     date: item.trade_date,
     open: Number(item.open),
