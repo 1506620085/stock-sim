@@ -7,7 +7,7 @@ export type Instrument = {
   exchange?: "SH" | "SZ" | "BJ" | "CN";
   symbol?: string;
   assetType?: "stock" | "etf";
-  source?: "mock" | "database" | "akshare";
+  source?: "database" | "akshare";
   listDate?: string | null;
   isActive?: boolean;
 };

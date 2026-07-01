@@ -192,6 +192,25 @@ export async function createSessionTrade(
   return toTradeRecord(item, code);
 }
 
+type WatchlistItemResponse = {
+  id: number;
+  instrument_id: number;
+  sort_order: number;
+  created_at: string;
+};
+
+export async function loadWatchlist(): Promise<WatchlistItemResponse[]> {
+  return apiJson(`${API_BASE}/api/watchlist`);
+}
+
+export async function addWatchlistItem(instrumentId: number): Promise<WatchlistItemResponse> {
+  return apiJson(`${API_BASE}/api/watchlist`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ instrument_id: instrumentId, sort_order: 0 }),
+  });
+}
+
 export async function loadTradeReviews(sessionId: number): Promise<TradeReview[]> {
   const items = await apiJson<TradeReviewItem[]>(`${API_BASE}/api/replay-sessions/${sessionId}/reviews`, undefined, { silent: true });
   return items.map(toTradeReview);

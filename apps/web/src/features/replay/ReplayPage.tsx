@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import type { ApiError } from "../../api/client";
-import { createInstrument, createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
+import { createInstrument, createReplaySession, createSessionTrade, createTradeReview, addWatchlistItem, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
-import { instruments as fallbackInstruments, marketData as fallbackMarketData } from "./mockData";
-import { loadPreferences } from "../settings/api";
+import { loadInstruments, loadPreferences } from "../settings/api";
 import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
@@ -27,14 +26,12 @@ const formatNumber = (value: number) =>
 
 const adjustLabel = (value: string) => ({ none: "不复权", qfq: "前复权", hfq: "后复权" })[value] ?? value;
 
-const fallbackLookup = new Map(fallbackInstruments.map((item) => [item.code, item]));
-
 export function ReplayPage() {
   const [query, setQuery] = useState("");
-  const [watchlist, setWatchlist] = useState<string[]>(["600519", "510300"]);
-  const [knownInstruments, setKnownInstruments] = useState<Record<string, Instrument>>(() => Object.fromEntries(fallbackInstruments.map((item) => [item.code, item])));
-  const [activeCode, setActiveCode] = useState("600519");
-  const [selectedIndex, setSelectedIndex] = useState(210);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [knownInstruments, setKnownInstruments] = useState<Record<string, Instrument>>({});
+  const [activeInstrument, setActiveInstrument] = useState<Instrument | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [hideFuture, setHideFuture] = useState(true);
   const [indicators, setIndicators] = useState(defaultIndicators);
   const [tradeSide, setTradeSide] = useState<TradeSide>("buy");
@@ -44,15 +41,48 @@ export function ReplayPage() {
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [tradeReviews, setTradeReviews] = useState<TradeReview[]>([]);
   const [remoteResults, setRemoteResults] = useState<Instrument[]>([]);
-  const [bars, setBars] = useState<KLineBar[]>(fallbackMarketData[activeCode] ?? []);
-  const [activeInstrument, setActiveInstrument] = useState<Instrument>(fallbackLookup.get(activeCode) ?? fallbackInstruments[0]);
+  const [bars, setBars] = useState<KLineBar[]>([]);
   const [replaySession, setReplaySession] = useState<ReplaySession | null>(null);
   const [jumpDate, setJumpDate] = useState("");
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingBars, setLoadingBars] = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
+  const [loadingWatchlist, setLoadingWatchlist] = useState(true);
   const [preferences] = useState(() => loadPreferences());
+  const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingWatchlist(true);
+    Promise.all([loadWatchlist(), loadInstruments()])
+      .then(([items, instruments]) => {
+        if (cancelled) return;
+        const byId = new Map(instruments.filter((item) => item.id).map((item) => [item.id as number, item]));
+        const codes: string[] = [];
+        const known: Record<string, Instrument> = {};
+        for (const item of items) {
+          const instrument = byId.get(item.instrument_id);
+          if (!instrument) continue;
+          codes.push(instrument.code);
+          known[instrument.code] = instrument;
+        }
+        setWatchlist(codes);
+        setKnownInstruments(known);
+        if (codes[0] && known[codes[0]]) {
+          setActiveInstrument(known[codes[0]]);
+          setSelectedIndex(0);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setLoadingWatchlist(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,10 +112,10 @@ export function ReplayPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const instrumentId = activeInstrument.id;
+    const instrumentId = activeInstrument?.id;
 
     if (!instrumentId) {
-      setBars(fallbackMarketData[activeCode] ?? []);
+      setBars([]);
       return;
     }
 
@@ -93,14 +123,12 @@ export function ReplayPage() {
     loadInstrumentKlines(instrumentId, { adjust: activeAdjustType })
       .then((items) => {
         if (!cancelled) {
-          setBars(items.length ? items : fallbackMarketData[activeCode] ?? []);
+          setBars(items);
           setSelectedIndex((current) => Math.min(current, Math.max(items.length - 1, 0)));
         }
       })
       .catch(() => {
-        if (!cancelled) {
-          setBars(fallbackMarketData[activeCode] ?? []);
-        }
+        if (!cancelled) setBars([]);
       })
       .finally(() => {
         if (!cancelled) setLoadingBars(false);
@@ -109,11 +137,11 @@ export function ReplayPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeAdjustType, activeCode, activeInstrument.id]);
+  }, [activeAdjustType, activeInstrument?.id]);
 
   useEffect(() => {
     let cancelled = false;
-    const instrumentId = activeInstrument.id;
+    const instrumentId = activeInstrument?.id;
     if (!instrumentId || bars.length === 0) {
       setReplaySession(null);
       return;
@@ -131,7 +159,7 @@ export function ReplayPage() {
         }
 
         const startDate = bars[0].date;
-        const currentDate = bars[Math.min(210, bars.length - 1)]?.date ?? startDate;
+        const currentDate = bars[Math.min(Math.floor(bars.length * 0.6), bars.length - 1)]?.date ?? startDate;
         const createdSession = await createReplaySession({
           instrumentId,
           name: `${activeInstrument.code} ${activeInstrument.name} 复盘`,
@@ -153,11 +181,11 @@ export function ReplayPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeAdjustType, activeInstrument.id, bars]);
+  }, [activeAdjustType, activeInstrument?.id, bars]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!replaySession || !activeInstrument.id) {
+    if (!replaySession || !activeInstrument?.id) {
       return;
     }
 
@@ -181,7 +209,7 @@ export function ReplayPage() {
     return () => {
       cancelled = true;
     };
-  }, [replaySession?.id, activeInstrument.id, activeCode, bars]);
+  }, [replaySession?.id, activeInstrument?.id, activeCode, bars]);
 
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
@@ -192,19 +220,9 @@ export function ReplayPage() {
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
   const visibleTrades = hideFuture ? replayTrades : activeTrades;
-  const activeDataSource = activeInstrument.source ?? (activeInstrument.id ? "database" : "mock");
+  const activeDataSource = activeInstrument?.source ?? (activeInstrument?.id ? "database" : "-");
   const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
-  const searchResults = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    const localResults = fallbackInstruments.filter((instrument) => `${instrument.code}${instrument.name}${instrument.type}`.toLowerCase().includes(text));
-    const merged = [...remoteResults, ...localResults];
-    const seen = new Set<string>();
-    return merged.filter((instrument) => {
-      if (seen.has(instrument.code)) return false;
-      seen.add(instrument.code);
-      return true;
-    });
-  }, [query, remoteResults]);
+  const searchResults = remoteResults;
 
   const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
 
@@ -219,7 +237,6 @@ export function ReplayPage() {
 
   function switchInstrument(instrument: Instrument) {
     setKnownInstruments((items) => ({ ...items, [instrument.code]: instrument }));
-    setActiveCode(instrument.code);
     setActiveInstrument(instrument);
     setSelectedIndex(0);
     setJumpDate("");
@@ -228,16 +245,22 @@ export function ReplayPage() {
 
   async function addToWatchlist(instrument: Instrument) {
     try {
-      const savedInstrument = instrument.id || !instrument.symbol ? instrument : await createInstrument(instrument);
+      if (!instrument.symbol || !instrument.exchange || !instrument.assetType) {
+        showError("搜索结果缺少标的信息，无法入库。");
+        return;
+      }
+      const savedInstrument = instrument.id ? instrument : await createInstrument(instrument);
+      if (!savedInstrument.id) {
+        showError("标的入库失败。");
+        return;
+      }
+      await addWatchlistItem(savedInstrument.id);
       setKnownInstruments((items) => ({ ...items, [savedInstrument.code]: savedInstrument }));
       setWatchlist((items) => (items.includes(savedInstrument.code) ? items : [...items, savedInstrument.code]));
       switchInstrument(savedInstrument);
-    } catch (error) {
-      if (!instrument.symbol) {
-        setWatchlist((items) => (items.includes(instrument.code) ? items : [...items, instrument.code]));
-        switchInstrument(instrument);
-        return;
-      }
+      showSuccess("已加入自选");
+    } catch {
+      // apiFetch 已弹出错误提示
     }
   }
 
@@ -293,8 +316,8 @@ export function ReplayPage() {
   }
 
   async function syncCurrentInstrument() {
-    if (!activeInstrument.id) {
-      showInfo("当前标的还没有入库，先从搜索结果里加入自选或保存为标的后再同步。");
+    if (!activeInstrument?.id) {
+      showInfo("请先从搜索结果加入自选，再同步 K 线。");
       return;
     }
 
@@ -310,47 +333,30 @@ export function ReplayPage() {
 
   async function submitTrade(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedBar) return;
-
-    if (replaySession && activeInstrument.id) {
-      try {
-        const createdTrade = await createSessionTrade(replaySession.id, activeCode, {
-          side: tradeSide,
-          quantity,
-          fee,
-          note,
-        });
-        setTrades((items) => [
-          ...items,
-          {
-            ...createdTrade,
-            index: findBarIndexByDate(bars, createdTrade.date),
-          },
-        ]);
-        setNote("");
-        showSuccess(tradeSide === "buy" ? "买入记录已保存" : "卖出记录已保存");
-      } catch {
-        // apiFetch 已弹出错误提示
-      }
+    if (!selectedBar || !replaySession || !activeInstrument?.id) {
+      showInfo("请先选择标的、同步 K 线并创建复盘 session 后再交易。");
       return;
     }
 
-    const price = tradeSide === "buy" ? selectedBar.high : selectedBar.low;
-    setTrades((items) => [
-      ...items,
-      {
-        id: crypto.randomUUID(),
-        code: activeCode,
+    try {
+      const createdTrade = await createSessionTrade(replaySession.id, activeCode, {
         side: tradeSide,
-        date: selectedBar.date,
-        index: normalizedIndex,
-        price,
         quantity,
         fee,
         note,
-      },
-    ]);
-    setNote("");
+      });
+      setTrades((items) => [
+        ...items,
+        {
+          ...createdTrade,
+          index: findBarIndexByDate(bars, createdTrade.date),
+        },
+      ]);
+      setNote("");
+      showSuccess(tradeSide === "buy" ? "买入记录已保存" : "卖出记录已保存");
+    } catch {
+      // apiFetch 已弹出错误提示
+    }
   }
 
   return (
@@ -364,15 +370,23 @@ export function ReplayPage() {
           onAdd={(instrument) => void addToWatchlist(instrument)}
           onQueryChange={setQuery}
         />
-        <WatchlistPanel activeCode={activeCode} codes={watchlist} instruments={knownInstruments} onSelect={(code) => {
-          const matched = knownInstruments[code] ?? searchResults.find((item) => item.code === code) ?? fallbackLookup.get(code);
-          if (matched) switchInstrument(matched);
-        }} />
+        <WatchlistPanel
+          activeCode={activeCode}
+          codes={watchlist}
+          instruments={knownInstruments}
+          loading={loadingWatchlist}
+          onSelect={(code) => {
+            const matched = knownInstruments[code] ?? searchResults.find((item) => item.code === code);
+            if (matched) switchInstrument(matched);
+          }}
+        />
         <IndicatorPanel indicators={indicators} onReset={resetIndicators} onUpdate={updateIndicator} />
       </aside>
 
       <section className="replay-center">
         <div className="panel chart-panel">
+          {activeInstrument ? (
+            <>
           <div className="chart-toolbar">
             <div>
               <p className="eyebrow">
@@ -427,6 +441,14 @@ export function ReplayPage() {
             selectedDate={selectedBar?.date}
             trades={visibleTrades}
           />
+            </>
+          ) : (
+            <div className="panel empty-state chart-empty-state">
+              <p className="eyebrow">Replay</p>
+              <h2>请选择或加入自选标的</h2>
+              <p className="empty-copy">搜索股票/ETF 代码并加入自选，同步 K 线后即可开始复盘。</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -485,8 +507,9 @@ function SearchPanel({
       </div>
       <div className="stock-list compact-list">
         {loading ? <p className="empty-copy">正在搜索行情...</p> : null}
+        {!loading && query.trim() && !results.length ? <p className="empty-copy">未找到匹配标的。</p> : null}
         {results.map((instrument) => (
-          <button className="stock-row" key={`${instrument.source ?? "mock"}-${instrument.code}`} onClick={() => onAdd(instrument)} type="button">
+          <button className="stock-row" key={`${instrument.source ?? "remote"}-${instrument.code}`} onClick={() => onAdd(instrument)} type="button">
             <span>
               <strong>
                 {instrument.code} {instrument.name}
@@ -495,7 +518,7 @@ function SearchPanel({
                 {instrument.market} / {instrument.type}
               </small>
             </span>
-            <em>{watchlist.includes(instrument.code) ? "已加入" : instrument.source ?? "mock"}</em>
+            <em>{watchlist.includes(instrument.code) ? "已加入" : instrument.source ?? "远程"}</em>
           </button>
         ))}
       </div>
@@ -503,7 +526,19 @@ function SearchPanel({
   );
 }
 
-function WatchlistPanel({ activeCode, codes, instruments, onSelect }: { activeCode: string; codes: string[]; instruments: Record<string, Instrument>; onSelect: (code: string) => void }) {
+function WatchlistPanel({
+  activeCode,
+  codes,
+  instruments,
+  loading,
+  onSelect,
+}: {
+  activeCode: string;
+  codes: string[];
+  instruments: Record<string, Instrument>;
+  loading: boolean;
+  onSelect: (code: string) => void;
+}) {
   return (
     <section className="panel">
       <div className="section-header">
@@ -511,8 +546,10 @@ function WatchlistPanel({ activeCode, codes, instruments, onSelect }: { activeCo
         <span>{codes.length}</span>
       </div>
       <div className="stock-list">
+        {loading ? <p className="empty-copy">正在加载自选...</p> : null}
+        {!loading && !codes.length ? <p className="empty-copy">还没有自选。搜索代码并点击结果加入。</p> : null}
         {codes.map((code) => {
-          const instrument = instruments[code] ?? fallbackLookup.get(code);
+          const instrument = instruments[code];
           if (!instrument) return null;
           return (
             <button className={`stock-row ${code === activeCode ? "active" : ""}`} key={code} onClick={() => onSelect(code)} type="button">
@@ -524,7 +561,7 @@ function WatchlistPanel({ activeCode, codes, instruments, onSelect }: { activeCo
                   {instrument.market} / {instrument.type}
                 </small>
               </span>
-              <em>{instrument.id ? "可同步" : `${fallbackMarketData[code]?.length ?? 0} 根`}</em>
+              <em>{instrument.id ? "已入库" : "待入库"}</em>
             </button>
           );
         })}
@@ -772,7 +809,7 @@ function TradeReviewPanel({
   async function submitReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sessionId) {
-      showInfo("当前是本地 demo 模式，暂不能保存区间复盘。");
+      showInfo("请先选择标的并加载复盘 session 后再保存区间复盘。");
       return;
     }
     if (!title.trim()) {
