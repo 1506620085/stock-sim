@@ -65,6 +65,21 @@ def search_instruments(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
     known_symbols = {item.symbol for item in results}
+    remote_by_symbol = {quote.symbol: quote for quote in remote_results}
+    for index, item in enumerate(results):
+        remote = remote_by_symbol.get(item.symbol)
+        if not remote or _is_placeholder_name(remote.name, remote.code):
+            continue
+        if not _is_placeholder_name(item.name, item.code):
+            continue
+        results[index] = item.model_copy(update={"name": remote.name})
+        if item.id is not None:
+            instrument = session.get(Instrument, item.id)
+            if instrument and _is_placeholder_name(instrument.name, instrument.code):
+                instrument.name = remote.name
+                instrument.updated_at = datetime.now(timezone.utc)
+                session.add(instrument)
+
     for quote in remote_results:
         if quote.symbol in known_symbols:
             continue
@@ -82,13 +97,25 @@ def search_instruments(
             )
         )
 
+    session.commit()
     return results[:30]
+
+
+def _is_placeholder_name(name: str | None, code: str) -> bool:
+    normalized = (name or "").strip()
+    return not normalized or normalized == code
 
 
 @router.post("", response_model=InstrumentRead, status_code=status.HTTP_201_CREATED)
 def create_instrument(payload: InstrumentCreate, session: Session = Depends(get_session)) -> Instrument:
     existing = session.exec(select(Instrument).where(Instrument.symbol == payload.symbol)).first()
     if existing:
+        if _is_placeholder_name(existing.name, existing.code) and not _is_placeholder_name(payload.name, payload.code):
+            existing.name = payload.name
+            existing.updated_at = datetime.now(timezone.utc)
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
         return existing
 
     instrument = Instrument.model_validate(payload)

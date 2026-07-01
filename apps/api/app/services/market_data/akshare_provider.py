@@ -3,6 +3,8 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+import requests
+
 from app.services.market_data.types import DailyBar, InstrumentQuote
 
 
@@ -123,12 +125,14 @@ def _fetch_stock_by_code(akshare: Any, code: str) -> InstrumentQuote | None:
 
 
 def _fetch_etf_by_code(akshare: Any, code: str) -> InstrumentQuote | None:
+    etf_name = _fetch_etf_name_from_em_search(code)
+
     if _has_etf_history_sina(akshare, code):
         return InstrumentQuote(
             code=code,
             exchange=_exchange_from_code(code),
             symbol=_symbol_from_code(code),
-            name=_fetch_em_symbol_name(akshare, code) or code,
+            name=etf_name or code,
             asset_type="etf",
         )
 
@@ -137,10 +141,36 @@ def _fetch_etf_by_code(akshare: Any, code: str) -> InstrumentQuote | None:
             code=code,
             exchange=_exchange_from_code(code),
             symbol=_symbol_from_code(code),
-            name=_fetch_em_symbol_name(akshare, code) or code,
+            name=etf_name or code,
             asset_type="etf",
         )
 
+    return None
+
+
+def _fetch_etf_name_from_em_search(code: str) -> str | None:
+    try:
+        response = requests.get(
+            "https://searchapi.eastmoney.com/api/suggest/get",
+            params={
+                "input": code,
+                "type": "14",
+                "token": "D43BF722C8E2775DC906FE854BF132C8",
+                "count": "5",
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return None
+
+    rows = payload.get("QuotationCodeTable", {}).get("Data") or []
+    for row in rows:
+        if str(row.get("Code") or "").strip() != code:
+            continue
+        name = str(row.get("Name") or "").strip()
+        return name or None
     return None
 
 
