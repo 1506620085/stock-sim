@@ -1,10 +1,14 @@
 from datetime import date, datetime, timezone
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import Session
 
 from app.models import Instrument, KlineDaily
 from app.services.market_data import akshare_provider
+
+# psycopg 单条 SQL 参数上限 65535；每行 13 个字段，分批避免超长 INSERT。
+UPSERT_BATCH_SIZE = 4000
 
 
 def sync_daily_bars(
@@ -51,6 +55,15 @@ def sync_daily_bars(
         for bar in bars
     ]
 
+    for batch in _chunked(rows, UPSERT_BATCH_SIZE):
+        _upsert_kline_rows(session, batch)
+    session.commit()
+
+    latest_date = max(bar.trade_date for bar in bars)
+    return len(bars), len(bars), latest_date
+
+
+def _upsert_kline_rows(session: Session, rows: list[dict[str, Any]]) -> None:
     statement = insert(KlineDaily).values(rows)
     update_columns = {
         "open": statement.excluded.open,
@@ -67,8 +80,9 @@ def sync_daily_bars(
         set_=update_columns,
     )
     session.exec(statement)
-    session.commit()
 
-    latest_date = max(bar.trade_date for bar in bars)
-    # PostgreSQL 批量 upsert 的 rowcount 常为 -1（未知），用实际处理条数代替。
-    return len(bars), len(bars), latest_date
+
+def _chunked(items: list[Any], size: int) -> list[list[Any]]:
+    if size <= 0:
+        raise ValueError("chunk size must be positive")
+    return [items[index : index + size] for index in range(0, len(items), size)]
