@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, RefreshCcw, Search, CloudCog } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { ChevronLeft, ChevronRight, RefreshCcw, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
-import type { ApiError } from "../../api/client";
-import { createInstrument, createReplaySession, createSessionTrade, createTradeReview, addWatchlistItem, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, searchInstruments, syncInstrumentKlines, updateReplaySession } from "./api";
+import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences } from "../settings/api";
@@ -28,10 +27,6 @@ const formatNumber = (value: number) =>
 const adjustLabel = (value: string) => ({ none: "不复权", qfq: "前复权", hfq: "后复权" })[value] ?? value;
 
 export function ReplayPage() {
-  const [query, setQuery] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [watchlist, setWatchlist] = useState<string[]>([]);
-  const [knownInstruments, setKnownInstruments] = useState<Record<string, Instrument>>({});
   const [activeInstrument, setActiveInstrument] = useState<Instrument | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hideFuture, setHideFuture] = useState(true);
@@ -42,16 +37,13 @@ export function ReplayPage() {
   const [note, setNote] = useState("");
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [tradeReviews, setTradeReviews] = useState<TradeReview[]>([]);
-  const [remoteResults, setRemoteResults] = useState<Instrument[]>([]);
   const [bars, setBars] = useState<KLineBar[]>([]);
   const [replaySession, setReplaySession] = useState<ReplaySession | null>(null);
   const [jumpDate, setJumpDate] = useState("");
-  const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingBars, setLoadingBars] = useState(false);
   const [syncingBars, setSyncingBars] = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
-  const searchRequestId = useRef(0);
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
@@ -71,8 +63,6 @@ export function ReplayPage() {
           codes.push(instrument.code);
           known[instrument.code] = instrument;
         }
-        setWatchlist(codes);
-        setKnownInstruments(known);
         const pendingCode = sessionStorage.getItem(REPLAY_PENDING_CODE_KEY);
         if (pendingCode) {
           sessionStorage.removeItem(REPLAY_PENDING_CODE_KEY);
@@ -92,34 +82,6 @@ export function ReplayPage() {
       cancelled = true;
     };
   }, []);
-
-  async function submitSearch() {
-    const keyword = query.trim();
-    setSearchKeyword(keyword);
-    if (!keyword) {
-      setRemoteResults([]);
-      return;
-    }
-
-    const requestId = ++searchRequestId.current;
-    setLoadingSearch(true);
-    try {
-      const results = await searchInstruments(keyword);
-      if (requestId === searchRequestId.current) {
-        setRemoteResults(results);
-      }
-    } catch (error: unknown) {
-      if (requestId === searchRequestId.current) {
-        setRemoteResults([]);
-        const apiError = error as ApiError;
-        if (!apiError?.notified) showError(error instanceof Error ? error.message : "搜索失败");
-      }
-    } finally {
-      if (requestId === searchRequestId.current) {
-        setLoadingSearch(false);
-      }
-    }
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -250,7 +212,6 @@ export function ReplayPage() {
   const visibleTrades = hideFuture ? replayTrades : activeTrades;
   const activeDataSource = activeInstrument?.source ?? (activeInstrument?.id ? "database" : "-");
   const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
-  const searchResults = remoteResults;
 
   const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
 
@@ -261,35 +222,6 @@ export function ReplayPage() {
     setIndicators({ ...defaultIndicators, ...session.indicatorConfig });
     setSelectedIndex(index);
     setJumpDate(sourceBars[index]?.date ?? session.currentDate);
-  }
-
-  function switchInstrument(instrument: Instrument) {
-    setKnownInstruments((items) => ({ ...items, [instrument.code]: instrument }));
-    setActiveInstrument(instrument);
-    setSelectedIndex(0);
-    setJumpDate("");
-    setReplaySession(null);
-  }
-
-  async function addToWatchlist(instrument: Instrument) {
-    try {
-      if (!instrument.symbol || !instrument.exchange || !instrument.assetType) {
-        showError("搜索结果缺少标的信息，无法入库。");
-        return;
-      }
-      const savedInstrument = instrument.id ? instrument : await createInstrument(instrument);
-      if (!savedInstrument.id) {
-        showError("标的入库失败。");
-        return;
-      }
-      await addWatchlistItem(savedInstrument.id);
-      setKnownInstruments((items) => ({ ...items, [savedInstrument.code]: savedInstrument }));
-      setWatchlist((items) => (items.includes(savedInstrument.code) ? items : [...items, savedInstrument.code]));
-      switchInstrument(savedInstrument);
-      showSuccess("已加入自选");
-    } catch {
-      // apiFetch 已弹出错误提示
-    }
   }
 
   function syncReplaySession(sessionId: number, payload: Parameters<typeof updateReplaySession>[1]) {
@@ -345,7 +277,7 @@ export function ReplayPage() {
 
   async function syncCurrentInstrument() {
     if (!activeInstrument?.id) {
-      showInfo("请先从搜索结果加入自选，再同步 K 线。");
+      showInfo("请先从自选页选择标的，再同步 K 线。");
       return;
     }
 
@@ -360,8 +292,7 @@ export function ReplayPage() {
         showInfo("同步完成，但未获取到 K 线数据，请检查 AKShare 或稍后重试");
       }
     } catch (error) {
-      const apiError = error as ApiError;
-      if (!apiError?.notified) {
+      if (!(error as { notified?: boolean })?.notified) {
         showError(error instanceof Error ? error.message : "K 线同步失败");
       }
     } finally {
@@ -400,26 +331,6 @@ export function ReplayPage() {
   return (
     <section className="replay-page">
       <aside className="replay-sidebar">
-        <SearchPanel
-          loading={loadingSearch}
-          query={query}
-          results={searchResults}
-          searchKeyword={searchKeyword}
-          watchlist={watchlist}
-          onAdd={(instrument) => void addToWatchlist(instrument)}
-          onQueryChange={setQuery}
-          onSearch={() => void submitSearch()}
-        />
-        <WatchlistPanel
-          activeCode={activeCode}
-          codes={watchlist}
-          instruments={knownInstruments}
-          loading={loadingWatchlist}
-          onSelect={(code) => {
-            const matched = knownInstruments[code] ?? searchResults.find((item) => item.code === code);
-            if (matched) switchInstrument(matched);
-          }}
-        />
         <IndicatorPanel indicators={indicators} onReset={resetIndicators} onUpdate={updateIndicator} />
       </aside>
 
@@ -493,7 +404,7 @@ export function ReplayPage() {
             <div className="panel empty-state chart-empty-state">
               <p className="eyebrow">K 线</p>
               <h2>暂无行情数据</h2>
-              <p className="empty-copy">搜索只返回标的信息，K 线需从 AKShare 同步到数据库后才会显示。请点击上方云同步按钮，或重新选择该标的触发自动同步。</p>
+              <p className="empty-copy">K 线需从 AKShare 同步到数据库后才会显示。请点击上方云同步按钮，或重新选择该标的触发自动同步。</p>
               <button className="primary-button" disabled={syncingBars} onClick={() => void syncCurrentInstrument()} type="button">
                 <CloudCog size={16} className={syncingBars ? "spinning" : undefined} />
                 同步 K 线
@@ -501,10 +412,15 @@ export function ReplayPage() {
             </div>
           )}
             </>
+          ) : loadingWatchlist ? (
+            <div className="panel empty-state chart-empty-state">
+              <h2>正在加载自选</h2>
+              <p className="empty-copy">请稍候...</p>
+            </div>
           ) : (
             <div className="panel empty-state chart-empty-state">
-              <h2>请选择或加入自选标的</h2>
-              <p className="empty-copy">搜索股票/ETF 代码并加入自选，同步 K 线后即可开始复盘。</p>
+              <h2>请选择自选标的</h2>
+              <p className="empty-copy">请前往左侧「自选」页搜索并加入标的，点击「去复盘」即可在此开始 K 线复盘。</p>
             </div>
           )}
         </div>
@@ -533,106 +449,6 @@ export function ReplayPage() {
         />
         <TradeHistory trades={visibleTrades} />
       </aside>
-    </section>
-  );
-}
-
-function SearchPanel({
-  query,
-  results,
-  searchKeyword,
-  watchlist,
-  loading,
-  onAdd,
-  onQueryChange,
-  onSearch,
-}: {
-  query: string;
-  results: Instrument[];
-  searchKeyword: string;
-  watchlist: string[];
-  loading: boolean;
-  onAdd: (instrument: Instrument) => void;
-  onQueryChange: (value: string) => void;
-  onSearch: () => void;
-}) {
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    onSearch();
-  }
-
-  return (
-    <section className="panel">
-      <label className="field-label" htmlFor="stockSearch">
-        搜索股票 / ETF
-      </label>
-      <form className="search-row" onSubmit={handleSubmit}>
-        <input id="stockSearch" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="输入代码或名称" />
-        <button type="submit" aria-label="搜索" disabled={loading}>
-          <Search size={16} />
-        </button>
-      </form>
-      <div className="stock-list compact-list">
-        {loading ? <p className="empty-copy">正在搜索行情...</p> : null}
-        {!loading && searchKeyword && !results.length ? <p className="empty-copy">未找到匹配标的。</p> : null}
-        {results.map((instrument) => (
-          <button className="stock-row" key={`${instrument.source ?? "remote"}-${instrument.code}`} onClick={() => onAdd(instrument)} type="button">
-            <span>
-              <strong>
-                {instrument.code} {instrument.name}
-              </strong>
-              <small>
-                {instrument.market} / {instrument.type}
-              </small>
-            </span>
-            <em>{watchlist.includes(instrument.code) ? "已加入" : instrument.source ?? "远程"}</em>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function WatchlistPanel({
-  activeCode,
-  codes,
-  instruments,
-  loading,
-  onSelect,
-}: {
-  activeCode: string;
-  codes: string[];
-  instruments: Record<string, Instrument>;
-  loading: boolean;
-  onSelect: (code: string) => void;
-}) {
-  return (
-    <section className="panel">
-      <div className="section-header">
-        <h2>自选</h2>
-        <span>{codes.length}</span>
-      </div>
-      <div className="stock-list">
-        {loading ? <p className="empty-copy">正在加载自选...</p> : null}
-        {!loading && !codes.length ? <p className="empty-copy">还没有自选。搜索代码并点击结果加入。</p> : null}
-        {codes.map((code) => {
-          const instrument = instruments[code];
-          if (!instrument) return null;
-          return (
-            <button className={`stock-row ${code === activeCode ? "active" : ""}`} key={code} onClick={() => onSelect(code)} type="button">
-              <span>
-                <strong>
-                  {instrument.code} {instrument.name}
-                </strong>
-                <small>
-                  {instrument.market} / {instrument.type}
-                </small>
-              </span>
-              <em>{instrument.id ? "已入库" : "待入库"}</em>
-            </button>
-          );
-        })}
-      </div>
     </section>
   );
 }
