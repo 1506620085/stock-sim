@@ -45,6 +45,8 @@ export function ReplayPage() {
   const [loadingSession, setLoadingSession] = useState(false);
   const [loadingWatchlist, setLoadingWatchlist] = useState(true);
   const [recenterToken, setRecenterToken] = useState(0);
+  const [viewScrollToken, setViewScrollToken] = useState(0);
+  const [viewScrollDate, setViewScrollDate] = useState("");
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
@@ -253,9 +255,13 @@ export function ReplayPage() {
     }
   }
 
+  function scrollChartView(date: string) {
+    setViewScrollDate(date);
+    setViewScrollToken((token) => token + 1);
+  }
+
   function focusReplayDate() {
     if (!selectedBar?.date) return;
-    setJumpDate(selectedBar.date);
     setRecenterToken((token) => token + 1);
   }
 
@@ -264,12 +270,15 @@ export function ReplayPage() {
   }
 
   function jumpToFirstDay() {
-    commitReplayDate(0);
+    if (!visibleBars.length) return;
+    scrollChartView(visibleBars[0].date);
   }
 
   function jumpToLastDay() {
     if (!bars.length) return;
-    commitReplayDate(bars.length - 1);
+    const targetDate = hideFuture ? visibleBars[visibleBars.length - 1]?.date : bars[bars.length - 1].date;
+    if (!targetDate) return;
+    scrollChartView(targetDate);
   }
 
   function commitReplayDate(rawIndex: number) {
@@ -376,8 +385,8 @@ export function ReplayPage() {
                   <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip="跳到该股票最早交易日">
-                <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={jumpToFirstDay} aria-label="最早一天">
+              <TooltipWrap tip="将图表视口移到最早 K 线（不改变复盘日）">
+                <button type="button" disabled={!visibleBars.length} onClick={jumpToFirstDay} aria-label="最早一天">
                   <ChevronsLeft size={18} />
                 </button>
               </TooltipWrap>
@@ -396,8 +405,8 @@ export function ReplayPage() {
                   <ChevronRight size={18} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip="跳到该股票最新交易日">
-                <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={jumpToLastDay} aria-label="最新一天">
+              <TooltipWrap tip={hideFuture ? "将图表视口移到当前可见范围内最新 K 线（不改变复盘日）" : "将图表视口移到最新 K 线（不改变复盘日）"}>
+                <button type="button" disabled={!bars.length} onClick={jumpToLastDay} aria-label="最新一天">
                   <ChevronsRight size={18} />
                 </button>
               </TooltipWrap>
@@ -435,6 +444,8 @@ export function ReplayPage() {
               indicators={indicators}
               painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
               recenterToken={recenterToken}
+              viewScrollDate={viewScrollDate}
+              viewScrollToken={viewScrollToken}
               selectedDate={selectedBar?.date}
               trades={visibleTrades}
             />
