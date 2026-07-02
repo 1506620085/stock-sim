@@ -449,10 +449,6 @@ export function ReplayPage() {
               <input value={jumpDate} onChange={(event) => setJumpDate(event.target.value)} type="date" />
               <button type="submit">跳转</button>
             </form>
-            <span>
-              开 {formatNumber(selectedBar?.open ?? 0)} 高 {formatNumber(selectedBar?.high ?? 0)} 低 {formatNumber(selectedBar?.low ?? 0)} 收{" "}
-              {formatNumber(selectedBar?.close ?? 0)}
-            </span>
           </div>
 
           {loadingBars || syncingBars ? (
