@@ -71,6 +71,11 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
             downWickColor: "#15845f",
             noChangeWickColor: "#68736e",
           },
+          tooltip: {
+            title: {
+              show: false,
+            },
+          },
         },
         grid: {
           horizontal: { color: "#edf1ee" },
