@@ -17,10 +17,11 @@ type Props = {
 };
 
 const candlePaneId = "candle_pane";
-const indicatorPaneIds = ["volume-pane", "kdj-pane", "macd-pane"];
+const indicatorPaneIds = ["volume-pane", "boll-pane", "kdj-pane", "macd-pane"];
 const replayDayLineOverlayId = "replay-day-line";
 const mainPaneHeight = 360;
 const volumePaneHeight = 118;
+const bollPaneHeight = 126;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
 
@@ -342,20 +343,20 @@ function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
     chart.createIndicator({ name: "MA", calcParams: [indicators.maFast, indicators.maMid, indicators.maSlow] }, { isStack: true, pane: { id: candlePaneId } });
   }
 
-  if (indicators.showBoll) {
-    chart.createIndicator({ name: "BOLL", calcParams: [indicators.maSlow] }, { isStack: true, pane: { id: candlePaneId } });
-  }
-
   if (indicators.showVolume) {
     chart.createIndicator("VOL", { pane: { id: indicatorPaneIds[0], height: volumePaneHeight, minHeight: 96 } });
   }
 
+  if (indicators.showBoll) {
+    chart.createIndicator({ name: "BOLL", calcParams: [indicators.maSlow] }, { pane: { id: indicatorPaneIds[1], height: bollPaneHeight, minHeight: 108 } });
+  }
+
   if (indicators.showKdj) {
-    chart.createIndicator("KDJ", { pane: { id: indicatorPaneIds[1], height: oscillatorPaneHeight, minHeight: 108 } });
+    chart.createIndicator("KDJ", { pane: { id: indicatorPaneIds[2], height: oscillatorPaneHeight, minHeight: 108 } });
   }
 
   if (indicators.showMacd) {
-    chart.createIndicator("MACD", { pane: { id: indicatorPaneIds[2], height: oscillatorPaneHeight, minHeight: 108 } });
+    chart.createIndicator("MACD", { pane: { id: indicatorPaneIds[3], height: oscillatorPaneHeight, minHeight: 108 } });
   }
 }
 
@@ -364,6 +365,7 @@ function getChartHeight(indicators: IndicatorSettings) {
     mainPaneHeight +
     xAxisHeight +
     (indicators.showVolume ? volumePaneHeight : 0) +
+    (indicators.showBoll ? bollPaneHeight : 0) +
     (indicators.showKdj ? oscillatorPaneHeight : 0) +
     (indicators.showMacd ? oscillatorPaneHeight : 0)
   );
