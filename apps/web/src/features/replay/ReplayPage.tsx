@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, LocateFixed, RefreshCcw, CloudCog } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, RefreshCcw, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
@@ -263,6 +263,15 @@ export function ReplayPage() {
     commitReplayDate(normalizedIndex + delta);
   }
 
+  function jumpToFirstDay() {
+    commitReplayDate(0);
+  }
+
+  function jumpToLastDay() {
+    if (!bars.length) return;
+    commitReplayDate(bars.length - 1);
+  }
+
   function commitReplayDate(rawIndex: number) {
     if (!bars.length) return;
     const nextIndex = Math.min(Math.max(rawIndex, 0), bars.length - 1);
@@ -362,17 +371,23 @@ export function ReplayPage() {
               </p>
             </div>
             <div className="day-controls">
-              <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步K线">
+              <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步K线" title="同步K线">
                 <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
               </button>
-              <button type="button" onClick={() => moveReplayDate(-1)} aria-label="上一天" title="上一天">
+              <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={jumpToFirstDay} aria-label="最早一天" title="最早一天">
+                <ChevronsLeft size={18} />
+              </button>
+              <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={() => moveReplayDate(-1)} aria-label="上一天" title="上一天">
                 <ChevronLeft size={18} />
               </button>
               <button type="button" onClick={focusReplayDate} aria-label="回到复盘日" title="回到复盘日">
                 <LocateFixed size={18} />
               </button>
-              <button type="button" onClick={() => moveReplayDate(1)} aria-label="下一天" title="下一天">
+              <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={() => moveReplayDate(1)} aria-label="下一天" title="下一天">
                 <ChevronRight size={18} />
+              </button>
+              <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={jumpToLastDay} aria-label="最新一天" title="最新一天">
+                <ChevronsRight size={18} />
               </button>
               <label className="switch">
                 <input checked={hideFuture} onChange={(event) => updateHideFuture(event.target.checked)} type="checkbox" />
