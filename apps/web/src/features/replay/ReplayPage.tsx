@@ -267,6 +267,7 @@ export function ReplayPage() {
 
   function moveReplayDate(delta: number) {
     commitReplayDate(normalizedIndex + delta);
+    setRecenterToken((token) => token + 1);
   }
 
   function jumpToFirstDay() {

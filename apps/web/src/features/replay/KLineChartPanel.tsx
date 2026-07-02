@@ -147,8 +147,8 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
     const chart = chartRef.current;
     if (!chart || !viewScrollToken || !viewScrollDate) return;
     scrollChartToSelectedDate(chart, viewScrollDate);
-    updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDate);
-  }, [viewScrollToken, viewScrollDate, selectedDate]);
+    updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDateRef.current);
+  }, [viewScrollToken, viewScrollDate]);
 
   return (
     <div className="kline-chart-wrap">
