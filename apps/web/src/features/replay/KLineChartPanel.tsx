@@ -25,7 +25,11 @@ const xAxisHeight = 36;
 export function KLineChartPanel({ bars, code, indicators, selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
+  const replayDayLabelRef = useRef<HTMLSpanElement | null>(null);
+  const selectedDateRef = useRef(selectedDate);
   const [activeTrade, setActiveTrade] = useState<TradeRecord | null>(null);
+
+  selectedDateRef.current = selectedDate;
 
   const chartData = useMemo<KLineData[]>(
     () =>
@@ -78,11 +82,27 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
       resizeFrame = window.requestAnimationFrame(() => {
         resizeFrame = 0;
         chart.resize();
+        updateReplayDayLabel(chart, replayDayLabelRef.current, selectedDateRef.current);
       });
     });
     resizeObserver.observe(containerRef.current);
 
+    const handleViewChange = () => {
+      window.requestAnimationFrame(() => {
+        const currentChart = chartRef.current;
+        if (!currentChart) return;
+        updateReplayDayLabel(currentChart, replayDayLabelRef.current, selectedDateRef.current);
+      });
+    };
+
+    chart.subscribeAction("onScroll", handleViewChange);
+    chart.subscribeAction("onZoom", handleViewChange);
+    chart.subscribeAction("onVisibleRangeChange", handleViewChange);
+
     return () => {
+      chart.unsubscribeAction("onScroll", handleViewChange);
+      chart.unsubscribeAction("onZoom", handleViewChange);
+      chart.unsubscribeAction("onVisibleRangeChange", handleViewChange);
       resizeObserver.disconnect();
       dispose(chart);
       chartRef.current = null;
@@ -104,26 +124,30 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
     syncIndicators(chart, indicators);
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
-    syncReplayDayLine(chart, selectedDate);
+    syncReplayDayOverlay(chart, selectedDate);
+    updateReplayDayLabel(chart, replayDayLabelRef.current, selectedDate);
   }, [chartData, code, indicators, selectedDate]);
 
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    syncReplayDayLine(chart, selectedDate);
+    syncReplayDayOverlay(chart, selectedDate);
+    updateReplayDayLabel(chart, replayDayLabelRef.current, selectedDate);
   }, [selectedDate]);
 
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || !recenterToken) return;
     scrollChartToSelectedDate(chart, selectedDate);
+    updateReplayDayLabel(chart, replayDayLabelRef.current, selectedDate);
   }, [recenterToken, selectedDate]);
 
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || !viewScrollToken || !viewScrollDate) return;
     scrollChartToSelectedDate(chart, viewScrollDate);
-  }, [viewScrollToken, viewScrollDate]);
+    updateReplayDayLabel(chart, replayDayLabelRef.current, selectedDate);
+  }, [viewScrollToken, viewScrollDate, selectedDate]);
 
   return (
     <div className="kline-chart-wrap">
@@ -176,6 +200,11 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
           </div>
         ) : null}
       </div>
+      {selectedDate ? (
+        <span className="replay-date-label" ref={replayDayLabelRef}>
+          复盘日
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -195,7 +224,7 @@ function scrollChartToSelectedDate(chart: Chart, selectedDate?: string) {
   chart.scrollToRealTime(0);
 }
 
-function syncReplayDayLine(chart: Chart, selectedDate?: string) {
+function syncReplayDayOverlay(chart: Chart, selectedDate?: string) {
   if (!selectedDate) {
     chart.removeOverlay({ id: replayDayLineOverlayId });
     return;
@@ -227,6 +256,26 @@ function syncReplayDayLine(chart: Chart, selectedDate?: string) {
       },
     },
   });
+}
+
+function updateReplayDayLabel(chart: Chart, label: HTMLSpanElement | null, selectedDate?: string) {
+  if (!label) return;
+
+  if (!selectedDate) {
+    label.style.display = "none";
+    return;
+  }
+
+  const timestamp = new Date(`${selectedDate}T00:00:00`).getTime();
+  const result = chart.convertToPixel({ timestamp });
+  const coord = (Array.isArray(result) ? result[0] : result) as { x?: number };
+  if (coord.x === undefined || !Number.isFinite(coord.x)) {
+    label.style.display = "none";
+    return;
+  }
+
+  label.style.display = "block";
+  label.style.left = `${coord.x + 7}px`;
 }
 
 function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
