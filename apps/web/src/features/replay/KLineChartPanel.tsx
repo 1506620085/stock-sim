@@ -16,6 +16,7 @@ type Props = {
 
 const candlePaneId = "candle_pane";
 const indicatorPaneIds = ["volume-pane", "kdj-pane", "macd-pane"];
+const replayDayLineOverlayId = "replay-day-line";
 const mainPaneHeight = 360;
 const volumePaneHeight = 118;
 const oscillatorPaneHeight = 126;
@@ -38,8 +39,6 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
       })),
     [bars],
   );
-  const selectedIndex = selectedDate ? bars.findIndex((bar) => bar.date === selectedDate) : -1;
-  const selectedLineLeft = selectedIndex >= 0 && bars.length > 0 ? `${((selectedIndex + 0.5) / bars.length) * 100}%` : undefined;
   const chartHeight = useMemo(() => getChartHeight(indicators), [indicators]);
   const visibleTradeOverlays = useMemo(() => getTradeOverlays(bars, trades), [bars, trades]);
   const painMarker = useMemo(() => getPainMarker(bars, painPoint), [bars, painPoint]);
@@ -105,7 +104,14 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
     syncIndicators(chart, indicators);
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
+    syncReplayDayLine(chart, selectedDate);
   }, [chartData, code, indicators, selectedDate]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    syncReplayDayLine(chart, selectedDate);
+  }, [selectedDate]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -170,11 +176,6 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
           </div>
         ) : null}
       </div>
-      {selectedLineLeft && (
-        <div className="replay-date-line" style={{ left: selectedLineLeft }} aria-hidden="true">
-          <span>复盘日</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -192,6 +193,40 @@ function scrollChartToSelectedDate(chart: Chart, selectedDate?: string) {
     return;
   }
   chart.scrollToRealTime(0);
+}
+
+function syncReplayDayLine(chart: Chart, selectedDate?: string) {
+  if (!selectedDate) {
+    chart.removeOverlay({ id: replayDayLineOverlayId });
+    return;
+  }
+
+  const timestamp = new Date(`${selectedDate}T00:00:00`).getTime();
+  const existing = chart.getOverlays({ id: replayDayLineOverlayId });
+  if (existing.length) {
+    chart.overrideOverlay({
+      id: replayDayLineOverlayId,
+      points: [{ timestamp }],
+      visible: true,
+    });
+    return;
+  }
+
+  chart.createOverlay({
+    id: replayDayLineOverlayId,
+    name: "verticalStraightLine",
+    lock: true,
+    visible: true,
+    points: [{ timestamp }],
+    styles: {
+      line: {
+        color: "rgba(23, 32, 28, 0.62)",
+        size: 1,
+        style: "solid",
+        dashedValue: [2, 2],
+      },
+    },
+  });
 }
 
 function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
