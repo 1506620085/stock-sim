@@ -22,6 +22,9 @@ type Props = {
 const candlePaneId = "candle_pane";
 const indicatorPaneIds = ["volume-pane", "boll-pane", "kdj-pane", "macd-pane"];
 const replayDayLineOverlayId = "replay-day-line";
+const candleUpColor = "#d83a31";
+const candleDownColor = "#15845f";
+const candleNoChangeColor = "#68736e";
 const mainPaneHeight = 360;
 const volumePaneHeight = 118;
 const bollPaneHeight = 126;
@@ -61,15 +64,15 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
       styles: {
         candle: {
           bar: {
-            upColor: "#d83a31",
-            downColor: "#15845f",
-            noChangeColor: "#68736e",
-            upBorderColor: "#d83a31",
-            downBorderColor: "#15845f",
-            noChangeBorderColor: "#68736e",
-            upWickColor: "#d83a31",
-            downWickColor: "#15845f",
-            noChangeWickColor: "#68736e",
+            upColor: candleUpColor,
+            downColor: candleDownColor,
+            noChangeColor: candleNoChangeColor,
+            upBorderColor: candleUpColor,
+            downBorderColor: candleDownColor,
+            noChangeBorderColor: candleNoChangeColor,
+            upWickColor: candleUpColor,
+            downWickColor: candleDownColor,
+            noChangeWickColor: candleNoChangeColor,
           },
           tooltip: {
             title: {
@@ -352,7 +355,21 @@ function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
   }
 
   if (indicators.showVolume) {
-    chart.createIndicator("VOL", { pane: { id: indicatorPaneIds[0], height: volumePaneHeight, minHeight: 96 } });
+    chart.createIndicator(
+      {
+        name: "VOL",
+        styles: {
+          bars: [
+            {
+              upColor: candleUpColor,
+              downColor: candleDownColor,
+              noChangeColor: candleNoChangeColor,
+            },
+          ],
+        },
+      },
+      { pane: { id: indicatorPaneIds[0], height: volumePaneHeight, minHeight: 96 } },
+    );
   }
 
   if (indicators.showBoll) {
