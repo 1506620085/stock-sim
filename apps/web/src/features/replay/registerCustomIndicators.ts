@@ -24,7 +24,7 @@ export function registerCustomIndicators() {
   registerIndicator({
     name: "BOLL",
     shortName: "BOLL",
-    series: "price",
+    series: "normal",
     calcParams: [20, 2],
     precision: 3,
     shouldOhlc: true,

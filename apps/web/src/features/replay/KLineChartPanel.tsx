@@ -351,7 +351,10 @@ function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
   }
 
   if (indicators.showBoll) {
-    chart.createIndicator({ name: "BOLL", calcParams: [indicators.maSlow, 2] }, { pane: { id: indicatorPaneIds[1], height: bollPaneHeight, minHeight: 108 } });
+    chart.createIndicator(
+      { name: "BOLL", calcParams: [indicators.maSlow, 2], precision: 3 },
+      { pane: { id: indicatorPaneIds[1], height: bollPaneHeight, minHeight: 108 } },
+    );
   }
 
   if (indicators.showKdj) {
