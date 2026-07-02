@@ -1026,11 +1026,18 @@ textarea {
   border-radius: 6px;
 }
 
+.replay-label-layer {
+  position: absolute;
+  z-index: 4;
+  display: none;
+  pointer-events: none;
+  overflow: visible;
+}
+
 .replay-date-label {
   position: absolute;
   top: 8px;
-  z-index: 4;
-  display: none;
+  transform: translateX(-50%);
   border-radius: 6px;
   background: rgba(23, 32, 28, 0.9);
   color: #ffffff;
