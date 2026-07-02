@@ -26,11 +26,11 @@ export function registerCustomIndicators() {
     shortName: "BOLL",
     series: "price",
     calcParams: [20, 2],
-    precision: 2,
+    precision: 3,
     shouldOhlc: true,
     figures: [
-      { key: "up", title: "UB: ", type: "line" },
       { key: "mid", title: "BOLL: ", type: "line" },
+      { key: "up", title: "UB: ", type: "line" },
       { key: "dn", title: "LB: ", type: "line" },
     ],
     calc: (dataList, indicator) => {
