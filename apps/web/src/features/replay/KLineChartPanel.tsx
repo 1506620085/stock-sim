@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dispose, init, type Chart, type KLineData } from "klinecharts";
 import type { IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 import { periodToChartSetting } from "./aggregateKlines";
+import { registerCustomIndicators } from "./registerCustomIndicators";
+
+registerCustomIndicators();
 
 type Props = {
   bars: KLineBar[];
@@ -348,7 +351,7 @@ function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
   }
 
   if (indicators.showBoll) {
-    chart.createIndicator({ name: "BOLL", calcParams: [indicators.maSlow] }, { pane: { id: indicatorPaneIds[1], height: bollPaneHeight, minHeight: 108 } });
+    chart.createIndicator({ name: "BOLL", calcParams: [indicators.maSlow, 2] }, { pane: { id: indicatorPaneIds[1], height: bollPaneHeight, minHeight: 108 } });
   }
 
   if (indicators.showKdj) {
