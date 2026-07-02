@@ -292,6 +292,19 @@ function updateReplayDayLabel(
   labelLayer.style.height = `${mainSize.height}px`;
   label.style.left = `${left}px`;
   label.style.transform = "translateX(-50%)";
+
+  const labelHalfWidth = label.offsetWidth / 2;
+  if (!isReplayDayLabelInPane(left, mainSize.width, labelHalfWidth)) {
+    labelLayer.style.display = "none";
+  }
+}
+
+function isReplayDayLabelInPane(left: number, paneWidth: number, labelHalfWidth: number): boolean {
+  if (paneWidth <= 0) return false;
+  if (labelHalfWidth <= 0) {
+    return left >= 0 && left <= paneWidth;
+  }
+  return left - labelHalfWidth >= 0 && left + labelHalfWidth <= paneWidth;
 }
 
 function getReplayDayLabelLeft(chart: Chart, selectedDate: string): number | null {
