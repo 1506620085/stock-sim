@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, RefreshCcw, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
@@ -371,28 +371,42 @@ export function ReplayPage() {
               </p>
             </div>
             <div className="day-controls">
-              <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步K线" title="同步K线">
-                <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
-              </button>
-              <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={jumpToFirstDay} aria-label="最早一天" title="最早一天">
-                <ChevronsLeft size={18} />
-              </button>
-              <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={() => moveReplayDate(-1)} aria-label="上一天" title="上一天">
-                <ChevronLeft size={18} />
-              </button>
-              <button type="button" onClick={focusReplayDate} aria-label="回到复盘日" title="回到复盘日">
-                <LocateFixed size={18} />
-              </button>
-              <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={() => moveReplayDate(1)} aria-label="下一天" title="下一天">
-                <ChevronRight size={18} />
-              </button>
-              <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={jumpToLastDay} aria-label="最新一天" title="最新一天">
-                <ChevronsRight size={18} />
-              </button>
-              <label className="switch">
-                <input checked={hideFuture} onChange={(event) => updateHideFuture(event.target.checked)} type="checkbox" />
-                <span>隐藏未来</span>
-              </label>
+              <TooltipWrap tip="从 AKShare 同步 K 线到数据库">
+                <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步 K 线">
+                  <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
+                </button>
+              </TooltipWrap>
+              <TooltipWrap tip="跳到该股票最早交易日">
+                <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={jumpToFirstDay} aria-label="最早一天">
+                  <ChevronsLeft size={18} />
+                </button>
+              </TooltipWrap>
+              <TooltipWrap tip="复盘日向前一天">
+                <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={() => moveReplayDate(-1)} aria-label="上一天">
+                  <ChevronLeft size={18} />
+                </button>
+              </TooltipWrap>
+              <TooltipWrap tip="将图表视口定位到当前复盘日">
+                <button type="button" onClick={focusReplayDate} aria-label="回到复盘日">
+                  <LocateFixed size={18} />
+                </button>
+              </TooltipWrap>
+              <TooltipWrap tip="复盘日向后一天">
+                <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={() => moveReplayDate(1)} aria-label="下一天">
+                  <ChevronRight size={18} />
+                </button>
+              </TooltipWrap>
+              <TooltipWrap tip="跳到该股票最新交易日">
+                <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={jumpToLastDay} aria-label="最新一天">
+                  <ChevronsRight size={18} />
+                </button>
+              </TooltipWrap>
+              <TooltipWrap tip="仅显示复盘日及之前的 K 线，隐藏未来数据">
+                <label className="switch">
+                  <input checked={hideFuture} onChange={(event) => updateHideFuture(event.target.checked)} type="checkbox" />
+                  <span>隐藏未来</span>
+                </label>
+              </TooltipWrap>
             </div>
           </div>
 
@@ -474,6 +488,14 @@ export function ReplayPage() {
         <TradeHistory trades={visibleTrades} />
       </aside>
     </section>
+  );
+}
+
+function TooltipWrap({ tip, children }: { tip: string; children: ReactNode }) {
+  return (
+    <span className="tooltip-wrap" data-tooltip={tip}>
+      {children}
+    </span>
   );
 }
 
