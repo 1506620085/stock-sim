@@ -1,8 +1,11 @@
 import re
+import time
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from http.client import RemoteDisconnected
+from typing import Any, Callable
 
+import pandas as pd
 import requests
 
 from app.services.market_data.types import DailyBar, InstrumentQuote
@@ -13,6 +16,8 @@ class MarketDataError(RuntimeError):
 
 
 _CODE_PATTERN = re.compile(r"^(\d{6})(?:\.(SH|SZ|BJ))?$", re.IGNORECASE)
+_AKSHARE_RETRY_ATTEMPTS = 3
+_AKSHARE_RETRY_BASE_DELAY_SECONDS = 0.8
 
 
 def search_instruments(keyword: str) -> list[InstrumentQuote]:
@@ -47,20 +52,132 @@ def fetch_daily_bars(symbol: str, asset_type: str, start_date: date | None, end_
     start = _format_ak_date(start_date)
     end = _format_ak_date(end_date or date.today())
     adjust = "" if adjust_type == "none" else adjust_type
+    range_start = start_date or date(1990, 1, 1)
+    range_end = end_date or date.today()
 
     try:
         if asset_type == "etf":
-            frame = akshare.fund_etf_hist_em(symbol=code, period="daily", start_date=start, end_date=end, adjust=adjust)
+            frame = _fetch_etf_daily_frame(akshare, code, start, end, adjust)
         else:
-            frame = akshare.stock_zh_a_hist(symbol=code, period="daily", start_date=start, end_date=end, adjust=adjust)
+            frame = _fetch_stock_daily_frame(akshare, code, start, end, adjust)
+    except MarketDataError:
+        raise
     except Exception as exc:  # pragma: no cover - depends on external data source.
         raise MarketDataError(f"AKShare 获取历史 K 线失败：{exc}") from exc
 
+    return _bars_from_frame(frame, range_start, range_end)
+
+
+def _fetch_stock_daily_frame(akshare: Any, code: str, start: str, end: str, adjust: str) -> pd.DataFrame:
+    errors: list[str] = []
+
+    def fetch_em() -> pd.DataFrame:
+        return akshare.stock_zh_a_hist(
+            symbol=code,
+            period="daily",
+            start_date=start,
+            end_date=end,
+            adjust=adjust,
+            timeout=20,
+        )
+
+    try:
+        frame = _call_with_retry(fetch_em)
+        if frame is not None and not frame.empty:
+            return frame
+        errors.append("东财 stock_zh_a_hist 返回空数据")
+    except Exception as exc:
+        errors.append(f"东财 stock_zh_a_hist：{exc}")
+
+    for symbol in _tx_symbols_for_code(code):
+        try:
+            frame = akshare.stock_zh_a_hist_tx(symbol=symbol, start_date=start, end_date=end, adjust=adjust, timeout=20)
+        except Exception as exc:
+            errors.append(f"腾讯 stock_zh_a_hist_tx({symbol})：{exc}")
+            continue
+        if frame is not None and not frame.empty:
+            return frame
+
+    raise MarketDataError(_format_fetch_errors("股票", code, errors))
+
+
+def _fetch_etf_daily_frame(akshare: Any, code: str, start: str, end: str, adjust: str) -> pd.DataFrame:
+    errors: list[str] = []
+
+    def fetch_em() -> pd.DataFrame:
+        return akshare.fund_etf_hist_em(symbol=code, period="daily", start_date=start, end_date=end, adjust=adjust)
+
+    try:
+        frame = _call_with_retry(fetch_em)
+        if frame is not None and not frame.empty:
+            return frame
+        errors.append("东财 fund_etf_hist_em 返回空数据")
+    except Exception as exc:
+        errors.append(f"东财 fund_etf_hist_em：{exc}")
+
+    for symbol in _sina_symbols_for_code(code):
+        try:
+            frame = akshare.fund_etf_hist_sina(symbol=symbol)
+        except Exception as exc:
+            errors.append(f"新浪 fund_etf_hist_sina({symbol})：{exc}")
+            continue
+        if frame is not None and not frame.empty:
+            return frame
+
+    raise MarketDataError(_format_fetch_errors("ETF", code, errors))
+
+
+def _call_with_retry(fetch: Callable[[], pd.DataFrame]) -> pd.DataFrame:
+    last_error: Exception | None = None
+    for attempt in range(_AKSHARE_RETRY_ATTEMPTS):
+        try:
+            return fetch()
+        except Exception as exc:
+            last_error = exc
+            if not _is_retryable_error(exc) or attempt >= _AKSHARE_RETRY_ATTEMPTS - 1:
+                raise
+            time.sleep(_AKSHARE_RETRY_BASE_DELAY_SECONDS * (attempt + 1))
+    if last_error is not None:
+        raise last_error
+    raise MarketDataError("AKShare 请求失败。")
+
+
+def _is_retryable_error(exc: Exception) -> bool:
+    if isinstance(exc, (ConnectionError, TimeoutError, RemoteDisconnected, requests.exceptions.RequestException)):
+        return True
+    message = str(exc).lower()
+    return any(
+        token in message
+        for token in (
+            "connection aborted",
+            "remote end closed connection",
+            "connection reset",
+            "timed out",
+            "temporarily unavailable",
+        )
+    )
+
+
+def _format_fetch_errors(asset_label: str, code: str, errors: list[str]) -> str:
+    detail = "；".join(errors) if errors else "未知错误"
+    return f"AKShare 获取{asset_label} {code} 历史 K 线失败：{detail}"
+
+
+def _bars_from_frame(frame: pd.DataFrame, start_date: date, end_date: date) -> list[DailyBar]:
     bars: list[DailyBar] = []
     for row in frame.to_dict("records"):
         trade_date = _parse_date(_pick(row, "日期", "date"))
-        if not trade_date:
+        if not trade_date or trade_date < start_date or trade_date > end_date:
             continue
+
+        volume_value = _pick(row, "成交量", "volume")
+        amount_value = _optional_decimal(_pick(row, "成交额", "turnover"))
+        if volume_value is None:
+            volume_value = _pick(row, "amount")
+            amount_value = None
+        elif amount_value is None:
+            amount_value = _optional_decimal(_pick(row, "amount"))
+
         bars.append(
             DailyBar(
                 trade_date=trade_date,
@@ -68,8 +185,8 @@ def fetch_daily_bars(symbol: str, asset_type: str, start_date: date | None, end_
                 high=_decimal(_pick(row, "最高", "high")),
                 low=_decimal(_pick(row, "最低", "low")),
                 close=_decimal(_pick(row, "收盘", "close")),
-                volume=_decimal(_pick(row, "成交量", "volume")),
-                amount=_optional_decimal(_pick(row, "成交额", "amount")),
+                volume=_decimal(volume_value),
+                amount=amount_value,
             )
         )
 
