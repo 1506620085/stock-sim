@@ -22,6 +22,8 @@ export type KLineBar = {
   amount?: number | null;
 };
 
+export type KlinePeriod = "day" | "week" | "month" | "quarter" | "year";
+
 export type IndicatorSettings = {
   maFast: number;
   maMid: number;

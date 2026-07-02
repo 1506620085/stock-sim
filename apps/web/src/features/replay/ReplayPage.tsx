@@ -3,9 +3,10 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, Re
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
+import { aggregateKlines, findBarIndexByDate, KLINE_PERIOD_OPTIONS, resolveChartReplayDate } from "./aggregateKlines";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences } from "../settings/api";
-import type { Instrument, IndicatorSettings, KLineBar, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
+import type { Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
   maFast: 5,
@@ -47,6 +48,7 @@ export function ReplayPage() {
   const [recenterToken, setRecenterToken] = useState(0);
   const [viewScrollToken, setViewScrollToken] = useState(0);
   const [viewScrollDate, setViewScrollDate] = useState("");
+  const [klinePeriod, setKlinePeriod] = useState<KlinePeriod>("day");
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
@@ -206,7 +208,9 @@ export function ReplayPage() {
 
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
-  const visibleBars = hideFuture ? bars.slice(0, normalizedIndex + 1) : bars;
+  const visibleDailyBars = hideFuture ? bars.slice(0, normalizedIndex + 1) : bars;
+  const chartBars = useMemo(() => aggregateKlines(visibleDailyBars, klinePeriod), [visibleDailyBars, klinePeriod]);
+  const chartReplayDate = useMemo(() => resolveChartReplayDate(chartBars, selectedBar?.date), [chartBars, selectedBar?.date]);
   const replayBars = bars.slice(0, normalizedIndex + 1);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
@@ -270,16 +274,19 @@ export function ReplayPage() {
     setRecenterToken((token) => token + 1);
   }
 
+  function updateKlinePeriod(period: KlinePeriod) {
+    setKlinePeriod(period);
+    setRecenterToken((token) => token + 1);
+  }
+
   function jumpToFirstDay() {
-    if (!visibleBars.length) return;
-    scrollChartView(visibleBars[0].date);
+    if (!chartBars.length) return;
+    scrollChartView(chartBars[0].date);
   }
 
   function jumpToLastDay() {
-    if (!bars.length) return;
-    const targetDate = hideFuture ? visibleBars[visibleBars.length - 1]?.date : bars[bars.length - 1].date;
-    if (!targetDate) return;
-    scrollChartView(targetDate);
+    if (!chartBars.length) return;
+    scrollChartView(chartBars[chartBars.length - 1].date);
   }
 
   function commitReplayDate(rawIndex: number) {
@@ -380,14 +387,29 @@ export function ReplayPage() {
                 {replaySession ? ` · Session #${replaySession.id}` : ""}
               </p>
             </div>
-            <div className="day-controls">
+            <div className="chart-toolbar-right">
+              <div className="kline-period-switch" role="group" aria-label="K 线周期">
+                {KLINE_PERIOD_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    aria-pressed={klinePeriod === option.value}
+                    className={klinePeriod === option.value ? "active" : undefined}
+                    disabled={!bars.length}
+                    onClick={() => updateKlinePeriod(option.value)}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <div className="day-controls">
               <TooltipWrap tip="从 AKShare 同步 K 线到数据库">
                 <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步 K 线">
                   <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
                 </button>
               </TooltipWrap>
               <TooltipWrap tip="将图表视口移到最早 K 线（不改变复盘日）">
-                <button type="button" disabled={!visibleBars.length} onClick={jumpToFirstDay} aria-label="最早一天">
+                <button type="button" disabled={!chartBars.length} onClick={jumpToFirstDay} aria-label="最早一天">
                   <ChevronsLeft size={18} />
                 </button>
               </TooltipWrap>
@@ -407,7 +429,7 @@ export function ReplayPage() {
                 </button>
               </TooltipWrap>
               <TooltipWrap tip={hideFuture ? "将图表视口移到当前可见范围内最新 K 线（不改变复盘日）" : "将图表视口移到最新 K 线（不改变复盘日）"}>
-                <button type="button" disabled={!bars.length} onClick={jumpToLastDay} aria-label="最新一天">
+                <button type="button" disabled={!chartBars.length} onClick={jumpToLastDay} aria-label="最新一天">
                   <ChevronsRight size={18} />
                 </button>
               </TooltipWrap>
@@ -417,6 +439,7 @@ export function ReplayPage() {
                   <span>隐藏未来</span>
                 </label>
               </TooltipWrap>
+              </div>
             </div>
           </div>
 
@@ -440,14 +463,15 @@ export function ReplayPage() {
             </div>
           ) : bars.length ? (
             <KLineChartPanel
-              bars={visibleBars}
+              bars={chartBars}
               code={activeCode}
               indicators={indicators}
+              period={klinePeriod}
               painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
               recenterToken={recenterToken}
               viewScrollDate={viewScrollDate}
               viewScrollToken={viewScrollToken}
-              selectedDate={selectedBar?.date}
+              selectedDate={chartReplayDate}
               trades={visibleTrades}
             />
           ) : (
@@ -972,14 +996,4 @@ function buildLowPnlCurve(bars: KLineBar[], avgCost: number, quantity: number) {
     ...point,
     ratio: point.pnl / maxAbs,
   }));
-}
-
-function findBarIndexByDate(bars: KLineBar[], date: string) {
-  if (!bars.length) return 0;
-  const exactIndex = bars.findIndex((bar) => bar.date === date);
-  if (exactIndex >= 0) return exactIndex;
-
-  const nextIndex = bars.findIndex((bar) => bar.date > date);
-  if (nextIndex < 0) return bars.length - 1;
-  return Math.max(0, nextIndex - 1);
 }

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dispose, init, type Chart, type KLineData } from "klinecharts";
-import type { IndicatorSettings, KLineBar, TradeRecord } from "./types";
+import type { IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
+import { periodToChartSetting } from "./aggregateKlines";
 
 type Props = {
   bars: KLineBar[];
   code: string;
   indicators: IndicatorSettings;
+  period?: KlinePeriod;
   selectedDate?: string;
   recenterToken?: number;
   viewScrollDate?: string;
@@ -22,7 +24,7 @@ const volumePaneHeight = 118;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
 
-export function KLineChartPanel({ bars, code, indicators, selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
+export function KLineChartPanel({ bars, code, indicators, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const replayLabelLayerRef = useRef<HTMLDivElement | null>(null);
@@ -115,7 +117,7 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
     if (!chart) return;
 
     chart.setSymbol({ ticker: code, pricePrecision: 2, volumePrecision: 0 });
-    chart.setPeriod({ type: "day", span: 1 });
+    chart.setPeriod(periodToChartSetting(period));
     chart.setDataLoader({
       getBars: ({ callback }) => {
         callback(chartData, { backward: false, forward: false });
@@ -127,7 +129,7 @@ export function KLineChartPanel({ bars, code, indicators, selectedDate, recenter
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
     updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDate);
-  }, [chartData, code, indicators, selectedDate]);
+  }, [chartData, code, indicators, period, selectedDate]);
 
   useEffect(() => {
     const chart = chartRef.current;

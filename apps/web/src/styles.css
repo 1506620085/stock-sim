@@ -769,6 +769,47 @@ textarea {
   gap: 8px;
 }
 
+.chart-toolbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.kline-period-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #eef2ef;
+}
+
+.kline-period-switch button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 7px 10px;
+  width: auto;
+  height: auto;
+}
+
+.kline-period-switch button.active {
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(16, 24, 20, 0.08);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.kline-period-switch button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .day-controls button,
 .primary-button,
 .search-row button {
