@@ -1393,6 +1393,96 @@ textarea {
   font-size: 12px;
 }
 
+.trade-qty-field {
+  min-width: 0;
+}
+
+.trade-qty-stepper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trade-qty-stepper:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(23, 108, 143, 0.12);
+}
+
+.trade-qty-step {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  align-self: stretch;
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  background: #fafafa;
+  color: #333333;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.trade-qty-step:hover:not(:disabled) {
+  background: #f0f2f1;
+  color: #111111;
+}
+
+.trade-qty-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.trade-qty-input-wrap {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 38px;
+}
+
+.trade-qty-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 38px;
+  text-align: center;
+  padding: 0 4px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.trade-qty-input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.trade-qty-input::-webkit-outer-spin-button,
+.trade-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .search-row {
   display: grid;
   grid-template-columns: 1fr 72px;
@@ -1471,7 +1561,7 @@ textarea {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.input-grid input {
+.input-grid input:not(.trade-qty-input) {
   margin-top: 6px;
 }
 

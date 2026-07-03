@@ -31,12 +31,15 @@ const formatNumber = (value: number) =>
 
 function normalizeTradeQuantity(raw: number) {
   if (!Number.isFinite(raw) || raw <= 0) {
-    return SHARES_PER_LOT;
+    return 0;
   }
-  return Math.max(SHARES_PER_LOT, Math.floor(raw / SHARES_PER_LOT) * SHARES_PER_LOT);
+  return Math.floor(raw / SHARES_PER_LOT) * SHARES_PER_LOT;
 }
 
 function formatLots(quantity: number) {
+  if (quantity <= 0) {
+    return "0 手（1手=100股）";
+  }
   const lots = quantity / SHARES_PER_LOT;
   return Number.isInteger(lots) ? `${lots} 手（1手=100股）` : `约 ${lots.toFixed(2)} 手（1手=100股）`;
 }
@@ -366,14 +369,17 @@ export function ReplayPage() {
     }
   }
 
-  async function submitTrade(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitTrade(normalizedQuantity: number) {
     if (!selectedBar || !replaySession || !activeInstrument?.id) {
       showInfo("请先选择标的、同步 K 线并创建复盘 session 后再交易。");
       return;
     }
 
-    const normalizedQuantity = normalizeTradeQuantity(quantity);
+    if (normalizedQuantity <= 0) {
+      showInfo("请输入大于 0 的股数。");
+      return;
+    }
+
     if (normalizedQuantity !== quantity) {
       setQuantity(normalizedQuantity);
     }
@@ -583,26 +589,43 @@ function TradePanel({
   onNoteChange: (value: string) => void;
   onQuantityChange: (value: number) => void;
   onSideChange: (value: TradeSide) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (quantity: number) => void;
 }) {
   const [quantityDraft, setQuantityDraft] = useState(String(quantity));
   const price = selectedBar ? (side === "buy" ? selectedBar.high : selectedBar.low) : 0;
   const draftNumber = Number(quantityDraft);
   const previewQuantity = Number.isFinite(draftNumber) ? normalizeTradeQuantity(draftNumber) : quantity;
   const showAdjustHint = Number.isFinite(draftNumber) && draftNumber > 0 && draftNumber !== previewQuantity;
+  const stepperQuantity = normalizeTradeQuantity(Number.isFinite(draftNumber) ? draftNumber : quantity);
 
   useEffect(() => {
     setQuantityDraft(String(quantity));
   }, [quantity]);
 
-  function commitQuantityDraft() {
-    const normalized = normalizeTradeQuantity(Number(quantityDraft));
+  function applyQuantity(next: number) {
+    const normalized = Math.max(0, normalizeTradeQuantity(next));
     onQuantityChange(normalized);
     setQuantityDraft(String(normalized));
   }
 
+  function commitQuantityDraft() {
+    applyQuantity(Number(quantityDraft));
+  }
+
+  function adjustQuantity(delta: number) {
+    applyQuantity(stepperQuantity + delta);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalized = normalizeTradeQuantity(Number(quantityDraft));
+    onQuantityChange(normalized);
+    setQuantityDraft(String(normalized));
+    onSubmit(normalized);
+  }
+
   return (
-    <form className="panel trade-panel" onSubmit={onSubmit}>
+    <form className="panel trade-panel" onSubmit={handleSubmit}>
       <div className="section-header">
         <h2>模拟交易</h2>
         <span>{selectedBar?.date ?? "-"}</span>
@@ -618,15 +641,37 @@ function TradePanel({
         </label>
       </div>
       <div className="input-grid two-cols">
-        <label>
+        <label className="trade-qty-field">
           数量（股）
-          <input
-            inputMode="numeric"
-            type="number"
-            value={quantityDraft}
-            onBlur={commitQuantityDraft}
-            onChange={(event) => setQuantityDraft(event.target.value)}
-          />
+          <div className="trade-qty-stepper">
+            <button
+              aria-label="减少 100 股"
+              className="trade-qty-step"
+              disabled={stepperQuantity <= 0}
+              onClick={() => adjustQuantity(-SHARES_PER_LOT)}
+              type="button"
+            >
+              −
+            </button>
+            <div className="trade-qty-input-wrap">
+              <input
+                className="trade-qty-input"
+                inputMode="numeric"
+                type="number"
+                value={quantityDraft}
+                onBlur={commitQuantityDraft}
+                onChange={(event) => setQuantityDraft(event.target.value)}
+              />
+            </div>
+            <button
+              aria-label="增加 100 股"
+              className="trade-qty-step"
+              onClick={() => adjustQuantity(SHARES_PER_LOT)}
+              type="button"
+            >
+              +
+            </button>
+          </div>
           <span className="trade-lot-hint">
             {showAdjustHint
               ? `失焦后将调整为 ${previewQuantity.toLocaleString("zh-CN")} 股（${formatLots(previewQuantity)}）`
