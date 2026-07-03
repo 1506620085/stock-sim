@@ -1,31 +1,37 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Settings } from "lucide-react";
+import { RefreshCcw, Settings } from "lucide-react";
 import { KLINE_PERIOD_OPTIONS } from "./aggregateKlines";
 import { ReplayDatePicker } from "./ReplayDatePicker";
-import type { ChartDisplaySettings, KlinePeriod } from "./types";
+import type { ChartDisplaySettings, IndicatorSettings, KlinePeriod } from "./types";
 
 type Props = {
   klinePeriod: KlinePeriod;
   disabled?: boolean;
   displaySettings: ChartDisplaySettings;
+  indicators: IndicatorSettings;
   replayDate: string;
   availableDates: string[];
   onPeriodChange: (period: KlinePeriod) => void;
   onReplayDateChange: (date: string) => void;
   onReplayDateSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDisplaySettingsChange: <K extends keyof ChartDisplaySettings>(key: K, value: ChartDisplaySettings[K]) => void;
+  onIndicatorChange: <K extends keyof IndicatorSettings>(key: K, value: IndicatorSettings[K]) => void;
+  onResetIndicators: () => void;
 };
 
 export function ChartToolbar({
   klinePeriod,
   disabled = false,
   displaySettings,
+  indicators,
   replayDate,
   availableDates,
   onPeriodChange,
   onReplayDateChange,
   onReplayDateSubmit,
   onDisplaySettingsChange,
+  onIndicatorChange,
+  onResetIndicators,
 }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
@@ -88,7 +94,13 @@ export function ChartToolbar({
 
           {settingsOpen ? (
             <div className="chart-settings-popover" role="dialog" aria-label="图表设置">
-              <p className="chart-settings-title">图表设置</p>
+              <div className="chart-settings-popover-header">
+                <p className="chart-settings-title">图表设置</p>
+                <button className="chart-settings-reset" onClick={onResetIndicators} type="button">
+                  <RefreshCcw aria-hidden="true" size={13} strokeWidth={2} />
+                  重置
+                </button>
+              </div>
 
               <label className="chart-settings-field">
                 <span>副图数量</span>
@@ -119,6 +131,48 @@ export function ChartToolbar({
                 label="十字光标"
                 onChange={(checked) => onDisplaySettingsChange("showCrosshair", checked)}
               />
+
+              <div className="chart-settings-divider" />
+
+              <p className="chart-settings-subtitle">指标设置</p>
+
+              <div className="chart-settings-ma-grid">
+                <label className="chart-settings-ma-field">
+                  <span>MA1</span>
+                  <input
+                    max={250}
+                    min={2}
+                    onChange={(event) => onIndicatorChange("maFast", Number(event.target.value))}
+                    type="number"
+                    value={indicators.maFast}
+                  />
+                </label>
+                <label className="chart-settings-ma-field">
+                  <span>MA2</span>
+                  <input
+                    max={250}
+                    min={2}
+                    onChange={(event) => onIndicatorChange("maMid", Number(event.target.value))}
+                    type="number"
+                    value={indicators.maMid}
+                  />
+                </label>
+                <label className="chart-settings-ma-field">
+                  <span>MA3</span>
+                  <input
+                    max={250}
+                    min={2}
+                    onChange={(event) => onIndicatorChange("maSlow", Number(event.target.value))}
+                    type="number"
+                    value={indicators.maSlow}
+                  />
+                </label>
+              </div>
+
+              <SettingToggle checked={indicators.showMa} label="MA" onChange={(checked) => onIndicatorChange("showMa", checked)} />
+              <SettingToggle checked={indicators.showBoll} label="BOLL" onChange={(checked) => onIndicatorChange("showBoll", checked)} />
+              <SettingToggle checked={indicators.showKdj} label="KDJ" onChange={(checked) => onIndicatorChange("showKdj", checked)} />
+              <SettingToggle checked={indicators.showMacd} label="MACD" onChange={(checked) => onIndicatorChange("showMacd", checked)} />
             </div>
           ) : null}
         </div>

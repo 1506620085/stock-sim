@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, RefreshCcw, CloudCog } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
@@ -382,10 +382,6 @@ export function ReplayPage() {
 
   return (
     <section className="replay-page">
-      <aside className="replay-sidebar">
-        <IndicatorPanel indicators={indicators} onReset={resetIndicators} onUpdate={updateIndicator} />
-      </aside>
-
       <section className="replay-center">
         <div className="panel chart-panel">
           {activeInstrument ? (
@@ -451,11 +447,14 @@ export function ReplayPage() {
               availableDates={availableReplayDates}
               disabled={!bars.length}
               displaySettings={chartDisplay}
+              indicators={indicators}
               klinePeriod={klinePeriod}
               onDisplaySettingsChange={updateChartDisplay}
+              onIndicatorChange={updateIndicator}
               onPeriodChange={updateKlinePeriod}
               onReplayDateChange={setJumpDate}
               onReplayDateSubmit={jumpToDate}
+              onResetIndicators={resetIndicators}
               replayDate={jumpDate}
             />
           </div>
@@ -538,58 +537,6 @@ function TooltipWrap({ tip, children }: { tip: string; children: ReactNode }) {
     <span className="tooltip-wrap" data-tooltip={tip}>
       {children}
     </span>
-  );
-}
-
-function IndicatorPanel({
-  indicators,
-  onReset,
-  onUpdate,
-}: {
-  indicators: IndicatorSettings;
-  onReset: () => void;
-  onUpdate: <K extends keyof IndicatorSettings>(key: K, value: IndicatorSettings[K]) => void;
-}) {
-  return (
-    <section className="panel">
-      <div className="section-header">
-        <h2>指标设置</h2>
-        <button className="text-button" onClick={onReset} type="button">
-          <RefreshCcw size={14} />
-          重置
-        </button>
-      </div>
-      <div className="input-grid">
-        <label>
-          MA1
-          <input value={indicators.maFast} min={2} max={250} type="number" onChange={(event) => onUpdate("maFast", Number(event.target.value))} />
-        </label>
-        <label>
-          MA2
-          <input value={indicators.maMid} min={2} max={250} type="number" onChange={(event) => onUpdate("maMid", Number(event.target.value))} />
-        </label>
-        <label>
-          MA3
-          <input value={indicators.maSlow} min={2} max={250} type="number" onChange={(event) => onUpdate("maSlow", Number(event.target.value))} />
-        </label>
-      </div>
-      <div className="toggle-grid">
-        <Toggle label="MA" checked={indicators.showMa} onChange={(checked) => onUpdate("showMa", checked)} />
-        <Toggle label="BOLL" checked={indicators.showBoll} onChange={(checked) => onUpdate("showBoll", checked)} />
-        <Toggle label="成交量" checked={indicators.showVolume} onChange={(checked) => onUpdate("showVolume", checked)} />
-        <Toggle label="KDJ" checked={indicators.showKdj} onChange={(checked) => onUpdate("showKdj", checked)} />
-        <Toggle label="MACD" checked={indicators.showMacd} onChange={(checked) => onUpdate("showMacd", checked)} />
-      </div>
-    </section>
-  );
-}
-
-function Toggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
-  return (
-    <label className="check-row">
-      <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
-      <span>{label}</span>
-    </label>
   );
 }
 
