@@ -1210,11 +1210,9 @@ textarea {
 
 .trade-overlay-layer {
   position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
   z-index: 3;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .holding-region {
@@ -1256,7 +1254,8 @@ textarea {
   position: absolute;
   display: grid;
   min-width: 42px;
-  transform: translateX(-50%);
+  transform: translate(-50%, -100%);
+  margin-top: -6px;
   place-items: center;
   border: 1px solid transparent;
   border-radius: 6px;

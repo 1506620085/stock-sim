@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dispose, init, type Chart, type KLineData } from "klinecharts";
 import { showInfo } from "../../components/ToastProvider";
 import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
-import { periodToChartSetting } from "./aggregateKlines";
+import { periodToChartSetting, findBarIndexByDate } from "./aggregateKlines";
 import { resolveEffectiveSubCharts, type EffectiveSubCharts } from "./chartDisplay";
 import { registerCustomIndicators } from "./registerCustomIndicators";
 
@@ -38,6 +38,26 @@ const latestBarHintMessage = "已显示最新的K线";
 const chartEdgeHintCooldownMs = 1500;
 const chartEdgeDragThresholdPx = 6;
 
+type TradeOverlaySpec = {
+  markers: Array<{ trade: TradeRecord; dataIndex: number; price: number }>;
+  regions: Array<{ id: string; startIndex: number; endIndex: number; pnlPercent: number }>;
+  painPoint?: { dataIndex: number; price: number };
+};
+
+type TradeOverlayLayout = {
+  pane: { left: number; top: number; width: number; height: number } | null;
+  markers: Array<{ trade: TradeRecord; x: number; y: number }>;
+  regions: Array<{ id: string; left: number; width: number; pnlPercent: number }>;
+  painPoint: { x: number; y: number } | null;
+};
+
+const emptyTradeOverlayLayout: TradeOverlayLayout = {
+  pane: null,
+  markers: [],
+  regions: [],
+  painPoint: null,
+};
+
 export function KLineChartPanel({ bars, code, indicators, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -62,8 +82,17 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
   );
   const effectiveSubCharts = useMemo(() => resolveEffectiveSubCharts(chartDisplay, indicators), [chartDisplay, indicators]);
   const chartHeight = useMemo(() => getChartHeight(effectiveSubCharts), [effectiveSubCharts]);
-  const visibleTradeOverlays = useMemo(() => getTradeOverlays(bars, trades), [bars, trades]);
-  const painMarker = useMemo(() => getPainMarker(bars, painPoint), [bars, painPoint]);
+  const tradeOverlaySpec = useMemo(() => buildTradeOverlaySpec(bars, trades, painPoint), [bars, trades, painPoint]);
+  const tradeOverlaySpecRef = useRef(tradeOverlaySpec);
+  const [tradeOverlayLayout, setTradeOverlayLayout] = useState<TradeOverlayLayout>(emptyTradeOverlayLayout);
+
+  tradeOverlaySpecRef.current = tradeOverlaySpec;
+
+  const syncTradeOverlayLayout = () => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    setTradeOverlayLayout(computeTradeOverlayLayout(chart, tradeOverlaySpecRef.current));
+  };
 
   useEffect(() => {
     if (!containerRef.current || chartRef.current) return;
@@ -142,6 +171,7 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
         resizeFrame = 0;
         chart.resize();
         updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDateRef.current);
+        syncTradeOverlayLayout();
       });
     });
     resizeObserver.observe(containerRef.current);
@@ -151,6 +181,7 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
         const currentChart = chartRef.current;
         if (!currentChart) return;
         updateReplayDayLabel(currentChart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDateRef.current);
+        setTradeOverlayLayout(computeTradeOverlayLayout(currentChart, tradeOverlaySpecRef.current));
       });
     };
 
@@ -192,7 +223,12 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
     updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDate);
+    syncTradeOverlayLayout();
   }, [chartData, code, indicators, effectiveSubCharts, period, selectedDate]);
+
+  useEffect(() => {
+    syncTradeOverlayLayout();
+  }, [tradeOverlaySpec]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -224,23 +260,35 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
   return (
     <div className="kline-chart-wrap">
       <div className="kline-chart" ref={containerRef} style={{ height: chartHeight }} />
-      <div className="trade-overlay-layer" style={{ height: mainPaneHeight }}>
-        {visibleTradeOverlays.regions.map((region) => (
+      <div
+        className="trade-overlay-layer"
+        style={
+          tradeOverlayLayout.pane
+            ? {
+                left: `${tradeOverlayLayout.pane.left}px`,
+                top: `${tradeOverlayLayout.pane.top}px`,
+                width: `${tradeOverlayLayout.pane.width}px`,
+                height: `${tradeOverlayLayout.pane.height}px`,
+              }
+            : { display: "none" }
+        }
+      >
+        {tradeOverlayLayout.regions.map((region) => (
           <div
             className={`holding-region ${region.pnlPercent >= 0 ? "profit" : "loss"}`}
             key={region.id}
-            style={{ left: `${region.left}%`, width: `${region.width}%` }}
+            style={{ left: `${region.left}px`, width: `${region.width}px` }}
           >
             <span>{formatPercent(region.pnlPercent)}</span>
           </div>
         ))}
 
-        {visibleTradeOverlays.markers.map((marker) => (
+        {tradeOverlayLayout.markers.map((marker) => (
           <button
             className={`trade-marker ${marker.trade.side}`}
             key={marker.trade.id}
             onClick={() => setActiveTrade(marker.trade)}
-            style={{ left: `${marker.left}%`, top: marker.top }}
+            style={{ left: `${marker.x}px`, top: `${marker.y}px` }}
             title={marker.trade.side === "buy" ? "买入" : "卖出"}
             type="button"
           >
@@ -249,8 +297,8 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
           </button>
         ))}
 
-        {painMarker ? (
-          <div className="pain-point-marker" style={{ left: `${painMarker.left}%`, top: painMarker.top }}>
+        {tradeOverlayLayout.painPoint ? (
+          <div className="pain-point-marker" style={{ left: `${tradeOverlayLayout.painPoint.x}px`, top: `${tradeOverlayLayout.painPoint.y}px` }}>
             最差低点
           </div>
         ) : null}
@@ -515,46 +563,127 @@ function round(value: number) {
   return Number(value.toFixed(2));
 }
 
-function getTradeOverlays(bars: KLineBar[], trades: TradeRecord[]) {
+function buildTradeOverlaySpec(
+  bars: KLineBar[],
+  trades: TradeRecord[],
+  painPoint?: { date?: string; price?: number },
+): TradeOverlaySpec {
   if (!bars.length) {
     return { markers: [], regions: [] };
   }
 
-  const dateToIndex = new Map(bars.map((bar, index) => [bar.date, index]));
-  const priceRange = getMainPanePriceRange(bars);
-  const visibleTrades = trades
-    .map((trade) => ({ trade, index: dateToIndex.get(trade.date) }))
+  const indexedTrades = trades
+    .map((trade) => ({ trade, index: resolveTradeBarIndex(bars, trade.date) }))
     .filter((item): item is { trade: TradeRecord; index: number } => item.index !== undefined)
     .sort((a, b) => a.index - b.index);
 
-  const markers = visibleTrades.map(({ trade, index }) => ({
+  const markers = indexedTrades.map(({ trade, index }) => ({
     trade,
-    left: ((index + 0.5) / bars.length) * 100,
-    top: `${priceToTop(trade.price, priceRange)}px`,
+    dataIndex: index,
+    price: trade.price,
   }));
 
-  const regions = buildHoldingRegions(visibleTrades, bars, priceRange);
-  return { markers, regions };
-}
+  const regions = buildHoldingRegions(indexedTrades, bars);
+  const painIndex = painPoint?.date ? resolveTradeBarIndex(bars, painPoint.date) : undefined;
 
-function getPainMarker(bars: KLineBar[], painPoint?: { date?: string; price?: number }) {
-  if (!painPoint?.date || painPoint.price === undefined || !bars.length) return null;
-  const index = bars.findIndex((bar) => bar.date === painPoint.date);
-  if (index < 0) return null;
-  const priceRange = getMainPanePriceRange(bars);
   return {
-    left: ((index + 0.5) / bars.length) * 100,
-    top: `${priceToTop(painPoint.price, priceRange) + 28}px`,
+    markers,
+    regions,
+    painPoint:
+      painIndex !== undefined && painPoint?.price !== undefined
+        ? { dataIndex: painIndex, price: painPoint.price }
+        : undefined,
   };
 }
 
-function buildHoldingRegions(
-  indexedTrades: Array<{ trade: TradeRecord; index: number }>,
-  bars: KLineBar[],
-  priceRange: { min: number; max: number },
-) {
+function resolveTradeBarIndex(bars: KLineBar[], date: string) {
+  const exactIndex = bars.findIndex((bar) => bar.date === date);
+  if (exactIndex >= 0) return exactIndex;
+  const fallbackIndex = findBarIndexByDate(bars, date);
+  return fallbackIndex >= 0 && fallbackIndex < bars.length ? fallbackIndex : undefined;
+}
+
+function computeTradeOverlayLayout(chart: Chart, spec: TradeOverlaySpec): TradeOverlayLayout {
+  const paneId = resolveCandlePaneId(chart);
+  const mainSize = chart.getSize(paneId, "main");
+  if (!mainSize) {
+    return emptyTradeOverlayLayout;
+  }
+
+  const pane = {
+    left: mainSize.left,
+    top: mainSize.top,
+    width: mainSize.width,
+    height: mainSize.height,
+  };
+
+  const markers = spec.markers
+    .map((marker) => {
+      const point = convertChartPoint(chart, paneId, marker.dataIndex, marker.price);
+      if (!point || !Number.isFinite(point.y)) return null;
+      return {
+        trade: marker.trade,
+        x: point.x,
+        y: point.y,
+      };
+    })
+    .filter((item): item is { trade: TradeRecord; x: number; y: number } => item !== null);
+
+  const regions = spec.regions
+    .map((region) => {
+      const start = convertChartPoint(chart, paneId, region.startIndex);
+      const end = convertChartPoint(chart, paneId, region.endIndex);
+      if (!start || !end) return null;
+      const left = Math.min(start.x, end.x);
+      const right = Math.max(start.x, end.x);
+      const width = Math.max(right - left, 2);
+      return {
+        id: region.id,
+        left,
+        width,
+        pnlPercent: region.pnlPercent,
+      };
+    })
+    .filter((item): item is { id: string; left: number; width: number; pnlPercent: number } => item !== null);
+
+  let painLayout: { x: number; y: number } | null = null;
+  if (spec.painPoint) {
+    const point = convertChartPoint(chart, paneId, spec.painPoint.dataIndex, spec.painPoint.price);
+    if (point) {
+      painLayout = { x: point.x, y: point.y + 28 };
+    }
+  }
+
+  return { pane, markers, regions, painPoint: painLayout };
+}
+
+function convertChartPoint(chart: Chart, paneId: string, dataIndex: number, value?: number) {
+  const dataList = chart.getDataList();
+  if (dataIndex < 0 || dataIndex >= dataList.length) return null;
+
+  const point: { dataIndex: number; timestamp: number; value?: number } = {
+    dataIndex,
+    timestamp: dataList[dataIndex].timestamp,
+  };
+  if (value !== undefined) {
+    point.value = value;
+  }
+
+  const result = chart.convertToPixel(point, { paneId });
+  const coord = (Array.isArray(result) ? result[0] : result) as { x?: number; y?: number };
+  if (coord.x === undefined || !Number.isFinite(coord.x)) {
+    return null;
+  }
+
+  return {
+    x: coord.x,
+    y: coord.y !== undefined && Number.isFinite(coord.y) ? coord.y : 0,
+  };
+}
+
+function buildHoldingRegions(indexedTrades: Array<{ trade: TradeRecord; index: number }>, bars: KLineBar[]) {
   const lots: Array<{ trade: TradeRecord; index: number; remaining: number; unitCost: number }> = [];
-  const regions: Array<{ id: string; left: number; width: number; pnlPercent: number }> = [];
+  const regions: Array<{ id: string; startIndex: number; endIndex: number; pnlPercent: number }> = [];
 
   for (const item of indexedTrades) {
     const { trade, index } = item;
@@ -574,18 +703,18 @@ function buildHoldingRegions(
       if (lot.remaining <= 0) continue;
 
       const matched = Math.min(lot.remaining, remainingSell);
-      regions.push(makeRegion(lot.trade, lot.index, trade, index, lot.unitCost, bars.length));
+      regions.push(makeRegion(lot.trade, lot.index, trade, index, lot.unitCost));
       lot.remaining -= matched;
       remainingSell -= matched;
     }
   }
 
-  const lastVisibleIndex = bars.length - 1;
-  const lastLow = bars[lastVisibleIndex]?.low ?? priceRange.min;
+  const lastIndex = bars.length - 1;
+  const lastLow = bars[lastIndex]?.low ?? 0;
   for (const lot of lots) {
     if (lot.remaining <= 0) continue;
     const openPnlPercent = ((lastLow - lot.unitCost) / lot.unitCost) * 100;
-    regions.push(makeOpenRegion(lot.trade, lot.index, lastVisibleIndex, openPnlPercent, bars.length));
+    regions.push(makeOpenRegion(lot.trade, lot.index, lastIndex, openPnlPercent));
   }
 
   return regions;
@@ -597,40 +726,23 @@ function makeRegion(
   sellTrade: TradeRecord,
   sellIndex: number,
   unitCost: number,
-  totalBars: number,
 ) {
-  const left = ((buyIndex + 0.5) / totalBars) * 100;
-  const right = ((sellIndex + 0.5) / totalBars) * 100;
   const pnlPercent = ((sellTrade.price - unitCost) / unitCost) * 100;
   return {
     id: `${buyTrade.id}-${sellTrade.id}`,
-    left,
-    width: Math.max(1, right - left),
+    startIndex: buyIndex,
+    endIndex: sellIndex,
     pnlPercent,
   };
 }
 
-function makeOpenRegion(buyTrade: TradeRecord, buyIndex: number, endIndex: number, pnlPercent: number, totalBars: number) {
-  const left = ((buyIndex + 0.5) / totalBars) * 100;
-  const right = ((endIndex + 0.5) / totalBars) * 100;
+function makeOpenRegion(buyTrade: TradeRecord, buyIndex: number, endIndex: number, pnlPercent: number) {
   return {
     id: `${buyTrade.id}-open`,
-    left,
-    width: Math.max(1, right - left),
+    startIndex: buyIndex,
+    endIndex,
     pnlPercent,
   };
-}
-
-function getMainPanePriceRange(bars: KLineBar[]) {
-  const high = Math.max(...bars.map((bar) => bar.high));
-  const low = Math.min(...bars.map((bar) => bar.low));
-  const padding = Math.max((high - low) * 0.08, high * 0.002);
-  return { min: low - padding, max: high + padding };
-}
-
-function priceToTop(price: number, range: { min: number; max: number }) {
-  const ratio = (range.max - price) / Math.max(range.max - range.min, 0.0001);
-  return Math.min(Math.max(ratio * mainPaneHeight - 17, 6), mainPaneHeight - 40);
 }
 
 function formatPercent(value: number) {
