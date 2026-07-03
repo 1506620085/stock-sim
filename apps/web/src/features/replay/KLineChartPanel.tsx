@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dispose, init, type Chart, type KLineData } from "klinecharts";
 import { showInfo } from "../../components/ToastProvider";
-import type { IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
+import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 import { periodToChartSetting } from "./aggregateKlines";
+import { resolveEffectiveSubCharts, type EffectiveSubCharts } from "./chartDisplay";
 import { registerCustomIndicators } from "./registerCustomIndicators";
 
 registerCustomIndicators();
@@ -11,6 +12,7 @@ type Props = {
   bars: KLineBar[];
   code: string;
   indicators: IndicatorSettings;
+  chartDisplay: ChartDisplaySettings;
   period?: KlinePeriod;
   selectedDate?: string;
   recenterToken?: number;
@@ -36,7 +38,7 @@ const latestBarHintMessage = "已显示最新的K线";
 const chartEdgeHintCooldownMs = 1500;
 const chartEdgeDragThresholdPx = 6;
 
-export function KLineChartPanel({ bars, code, indicators, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
+export function KLineChartPanel({ bars, code, indicators, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const replayLabelLayerRef = useRef<HTMLDivElement | null>(null);
@@ -58,7 +60,8 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
       })),
     [bars],
   );
-  const chartHeight = useMemo(() => getChartHeight(indicators), [indicators]);
+  const effectiveSubCharts = useMemo(() => resolveEffectiveSubCharts(chartDisplay, indicators), [chartDisplay, indicators]);
+  const chartHeight = useMemo(() => getChartHeight(effectiveSubCharts), [effectiveSubCharts]);
   const visibleTradeOverlays = useMemo(() => getTradeOverlays(bars, trades), [bars, trades]);
   const painMarker = useMemo(() => getPainMarker(bars, painPoint), [bars, painPoint]);
 
@@ -66,30 +69,7 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
     if (!containerRef.current || chartRef.current) return;
 
     const chart = init(containerRef.current, {
-      styles: {
-        candle: {
-          bar: {
-            upColor: candleUpColor,
-            downColor: candleDownColor,
-            noChangeColor: candleNoChangeColor,
-            upBorderColor: candleUpColor,
-            downBorderColor: candleDownColor,
-            noChangeBorderColor: candleNoChangeColor,
-            upWickColor: candleUpColor,
-            downWickColor: candleDownColor,
-            noChangeWickColor: candleNoChangeColor,
-          },
-          tooltip: {
-            title: {
-              show: false,
-            },
-          },
-        },
-        grid: {
-          horizontal: { color: "#edf1ee" },
-          vertical: { color: "#f5f7f6" },
-        },
-      },
+      styles: buildChartStyles(chartDisplay),
     });
 
     if (!chart) return;
@@ -207,12 +187,18 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
     });
     chart.resetData();
     applyChartScrollLimits(chart);
-    syncIndicators(chart, indicators);
+    syncIndicators(chart, indicators, effectiveSubCharts);
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
     updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDate);
-  }, [chartData, code, indicators, period, selectedDate]);
+  }, [chartData, code, indicators, effectiveSubCharts, period, selectedDate]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.setStyles(buildChartStyles(chartDisplay));
+  }, [chartDisplay]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -434,7 +420,45 @@ function resolveCandlePaneId(chart: Chart): string {
   return candle?.id ?? candlePaneId;
 }
 
-function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
+function buildChartStyles(display: ChartDisplaySettings) {
+  return {
+    candle: {
+      bar: {
+        upColor: candleUpColor,
+        downColor: candleDownColor,
+        noChangeColor: candleNoChangeColor,
+        upBorderColor: candleUpColor,
+        downBorderColor: candleDownColor,
+        noChangeBorderColor: candleNoChangeColor,
+        upWickColor: candleUpColor,
+        downWickColor: candleDownColor,
+        noChangeWickColor: candleNoChangeColor,
+      },
+      tooltip: {
+        title: {
+          show: false,
+        },
+      },
+    },
+    grid: {
+      horizontal: {
+        show: display.showGrid,
+        color: "#edf1ee",
+      },
+      vertical: {
+        show: display.showGrid,
+        color: "#f5f7f6",
+      },
+    },
+    crosshair: {
+      show: display.showCrosshair,
+      horizontal: { show: display.showCrosshair },
+      vertical: { show: display.showCrosshair },
+    },
+  };
+}
+
+function syncIndicators(chart: Chart, indicators: IndicatorSettings, subCharts: EffectiveSubCharts) {
   chart.removeIndicator();
   chart.setPaneOptions({ id: candlePaneId, height: mainPaneHeight, minHeight: 300 });
 
@@ -442,7 +466,7 @@ function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
     chart.createIndicator({ name: "MA", calcParams: [indicators.maFast, indicators.maMid, indicators.maSlow] }, { isStack: true, pane: { id: candlePaneId } });
   }
 
-  if (indicators.showVolume) {
+  if (subCharts.showVolume) {
     chart.createIndicator(
       {
         name: "VOL",
@@ -460,30 +484,30 @@ function syncIndicators(chart: Chart, indicators: IndicatorSettings) {
     );
   }
 
-  if (indicators.showBoll) {
+  if (subCharts.showBoll) {
     chart.createIndicator(
       { name: "BOLL", calcParams: [indicators.maSlow, 2], precision: 3 },
       { pane: { id: indicatorPaneIds[1], height: bollPaneHeight, minHeight: 108 } },
     );
   }
 
-  if (indicators.showKdj) {
+  if (subCharts.showKdj) {
     chart.createIndicator("KDJ", { pane: { id: indicatorPaneIds[2], height: oscillatorPaneHeight, minHeight: 108 } });
   }
 
-  if (indicators.showMacd) {
+  if (subCharts.showMacd) {
     chart.createIndicator("MACD", { pane: { id: indicatorPaneIds[3], height: oscillatorPaneHeight, minHeight: 108 } });
   }
 }
 
-function getChartHeight(indicators: IndicatorSettings) {
+function getChartHeight(subCharts: EffectiveSubCharts) {
   return (
     mainPaneHeight +
     xAxisHeight +
-    (indicators.showVolume ? volumePaneHeight : 0) +
-    (indicators.showBoll ? bollPaneHeight : 0) +
-    (indicators.showKdj ? oscillatorPaneHeight : 0) +
-    (indicators.showMacd ? oscillatorPaneHeight : 0)
+    (subCharts.showVolume ? volumePaneHeight : 0) +
+    (subCharts.showBoll ? bollPaneHeight : 0) +
+    (subCharts.showKdj ? oscillatorPaneHeight : 0) +
+    (subCharts.showMacd ? oscillatorPaneHeight : 0)
   );
 }
 

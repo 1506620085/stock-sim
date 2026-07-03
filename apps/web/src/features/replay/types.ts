@@ -24,6 +24,13 @@ export type KLineBar = {
 
 export type KlinePeriod = "day" | "week" | "month" | "quarter" | "year";
 
+export type ChartDisplaySettings = {
+  subChartCount: number;
+  showVolume: boolean;
+  showGrid: boolean;
+  showCrosshair: boolean;
+};
+
 export type IndicatorSettings = {
   maFast: number;
   maMid: number;

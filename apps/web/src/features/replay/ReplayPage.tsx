@@ -3,10 +3,12 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, Re
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
-import { aggregateKlines, findBarIndexByDate, KLINE_PERIOD_OPTIONS, resolveChartReplayDate } from "./aggregateKlines";
+import { aggregateKlines, findBarIndexByDate, resolveChartReplayDate } from "./aggregateKlines";
+import { ChartToolbar } from "./ChartToolbar";
+import { defaultChartDisplaySettings } from "./chartDisplay";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences } from "../settings/api";
-import type { Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
+import type { ChartDisplaySettings, Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
   maFast: 5,
@@ -49,6 +51,7 @@ export function ReplayPage() {
   const [viewScrollToken, setViewScrollToken] = useState(0);
   const [viewScrollDate, setViewScrollDate] = useState("");
   const [klinePeriod, setKlinePeriod] = useState<KlinePeriod>("day");
+  const [chartDisplay, setChartDisplay] = useState<ChartDisplaySettings>(defaultChartDisplaySettings);
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
@@ -279,6 +282,22 @@ export function ReplayPage() {
     setRecenterToken((token) => token + 1);
   }
 
+  function updateChartDisplay<K extends keyof ChartDisplaySettings>(key: K, value: ChartDisplaySettings[K]) {
+    setChartDisplay((current) => {
+      const next = { ...current, [key]: value };
+      if (key === "showVolume") {
+        setIndicators((indicators) => {
+          const updated = { ...indicators, showVolume: value as boolean };
+          if (replaySession) {
+            syncReplaySession(replaySession.id, { indicatorConfig: updated });
+          }
+          return updated;
+        });
+      }
+      return next;
+    });
+  }
+
   function jumpToFirstDay() {
     if (!chartBars.length) return;
     scrollChartView(chartBars[0].date);
@@ -426,25 +445,16 @@ export function ReplayPage() {
           </div>
 
           <div className="chart-meta">
-            <div className="kline-period-switch" role="group" aria-label="K 线周期">
-              {KLINE_PERIOD_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  aria-pressed={klinePeriod === option.value}
-                  className={klinePeriod === option.value ? "active" : undefined}
-                  disabled={!bars.length}
-                  onClick={() => updateKlinePeriod(option.value)}
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <form className="jump-date-form" onSubmit={jumpToDate}>
-              <span>当前复盘日</span>
-              <input value={jumpDate} onChange={(event) => setJumpDate(event.target.value)} type="date" />
-              <button type="submit">跳转</button>
-            </form>
+            <ChartToolbar
+              disabled={!bars.length}
+              displaySettings={chartDisplay}
+              jumpDate={jumpDate}
+              klinePeriod={klinePeriod}
+              onDisplaySettingsChange={updateChartDisplay}
+              onJumpDateChange={setJumpDate}
+              onJumpDateSubmit={jumpToDate}
+              onPeriodChange={updateKlinePeriod}
+            />
           </div>
 
           {loadingBars || syncingBars ? (
@@ -456,6 +466,7 @@ export function ReplayPage() {
           ) : bars.length ? (
             <KLineChartPanel
               bars={chartBars}
+              chartDisplay={chartDisplay}
               code={activeCode}
               indicators={indicators}
               period={klinePeriod}
