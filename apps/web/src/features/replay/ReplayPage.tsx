@@ -213,6 +213,7 @@ export function ReplayPage() {
   const selectedBar = bars[normalizedIndex] ?? bars[0];
   const visibleDailyBars = hideFuture ? bars.slice(0, normalizedIndex + 1) : bars;
   const chartBars = useMemo(() => aggregateKlines(visibleDailyBars, klinePeriod), [visibleDailyBars, klinePeriod]);
+  const availableReplayDates = useMemo(() => bars.map((bar) => bar.date), [bars]);
   const chartReplayDate = useMemo(() => resolveChartReplayDate(chartBars, selectedBar?.date), [chartBars, selectedBar?.date]);
   const replayBars = bars.slice(0, normalizedIndex + 1);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
@@ -323,6 +324,7 @@ export function ReplayPage() {
     event.preventDefault();
     if (!jumpDate) return;
     commitReplayDate(findBarIndexByDate(bars, jumpDate));
+    setRecenterToken((token) => token + 1);
   }
 
   async function syncCurrentInstrument() {
@@ -446,14 +448,15 @@ export function ReplayPage() {
 
           <div className="chart-meta">
             <ChartToolbar
+              availableDates={availableReplayDates}
               disabled={!bars.length}
               displaySettings={chartDisplay}
-              jumpDate={jumpDate}
               klinePeriod={klinePeriod}
               onDisplaySettingsChange={updateChartDisplay}
-              onJumpDateChange={setJumpDate}
-              onJumpDateSubmit={jumpToDate}
               onPeriodChange={updateKlinePeriod}
+              onReplayDateChange={setJumpDate}
+              onReplayDateSubmit={jumpToDate}
+              replayDate={jumpDate}
             />
           </div>
 

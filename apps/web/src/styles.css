@@ -1035,6 +1035,61 @@ textarea {
   margin-left: auto;
 }
 
+.replay-day-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.replay-day-picker-label {
+  color: #68736e;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.replay-day-picker-input {
+  width: 156px;
+}
+
+.replay-day-picker-input .ant-picker-input > input {
+  font-weight: 600;
+  color: #333333;
+}
+
+.replay-day-picker-popup .ant-picker-panel {
+  border: none;
+}
+
+.replay-day-picker-footer {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0 2px;
+}
+
+.replay-day-picker-quick {
+  flex: 1;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #333333;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.replay-day-picker-quick:hover:not(:disabled) {
+  background: #fafafa;
+  border-color: #c9d4cf;
+}
+
+.replay-day-picker-quick:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .jump-date-form input {
   width: 142px;
   padding: 7px 8px;

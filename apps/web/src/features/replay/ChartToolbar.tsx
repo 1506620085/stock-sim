@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Settings } from "lucide-react";
 import { KLINE_PERIOD_OPTIONS } from "./aggregateKlines";
+import { ReplayDatePicker } from "./ReplayDatePicker";
 import type { ChartDisplaySettings, KlinePeriod } from "./types";
 
 type Props = {
   klinePeriod: KlinePeriod;
   disabled?: boolean;
   displaySettings: ChartDisplaySettings;
-  jumpDate: string;
-  onJumpDateChange: (value: string) => void;
-  onJumpDateSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  replayDate: string;
+  availableDates: string[];
   onPeriodChange: (period: KlinePeriod) => void;
+  onReplayDateChange: (date: string) => void;
+  onReplayDateSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDisplaySettingsChange: <K extends keyof ChartDisplaySettings>(key: K, value: ChartDisplaySettings[K]) => void;
 };
 
@@ -18,10 +20,11 @@ export function ChartToolbar({
   klinePeriod,
   disabled = false,
   displaySettings,
-  jumpDate,
-  onJumpDateChange,
-  onJumpDateSubmit,
+  replayDate,
+  availableDates,
   onPeriodChange,
+  onReplayDateChange,
+  onReplayDateSubmit,
   onDisplaySettingsChange,
 }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -122,10 +125,16 @@ export function ChartToolbar({
       </div>
 
       <div className="chart-toolbar-actions">
-        <form className="jump-date-form chart-toolbar-jump" onSubmit={onJumpDateSubmit}>
-          <span>当前复盘日</span>
-          <input value={jumpDate} onChange={(event) => onJumpDateChange(event.target.value)} type="date" />
-          <button type="submit">跳转</button>
+        <form className="jump-date-form chart-toolbar-jump" onSubmit={onReplayDateSubmit}>
+          <ReplayDatePicker
+            availableDates={availableDates}
+            disabled={disabled}
+            onChange={onReplayDateChange}
+            value={replayDate}
+          />
+          <button disabled={disabled || !replayDate} type="submit">
+            跳转
+          </button>
         </form>
       </div>
     </div>

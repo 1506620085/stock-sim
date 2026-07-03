@@ -9,6 +9,8 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "antd": "^6.5.0",
+    "dayjs": "^1.11.21",
     "klinecharts": "^10.0.0-beta3",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
