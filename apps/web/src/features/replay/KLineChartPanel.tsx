@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dispose, init, type Chart, type KLineData } from "klinecharts";
+import { showInfo } from "../../components/ToastProvider";
 import type { IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 import { periodToChartSetting } from "./aggregateKlines";
 import { registerCustomIndicators } from "./registerCustomIndicators";
@@ -30,6 +31,9 @@ const volumePaneHeight = 118;
 const bollPaneHeight = 126;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
+const latestBarHintMessage = "已显示最新的K线";
+const latestBarHintCooldownMs = 1500;
+const latestBarDragThresholdPx = 6;
 
 export function KLineChartPanel({ bars, code, indicators, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -90,8 +94,55 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
     if (!chart) return;
 
     chartRef.current = chart;
+    applyChartScrollLimits(chart);
 
     let resizeFrame = 0;
+    let pointerStartX = 0;
+    let pointerActive = false;
+    let lastLatestBarHintAt = 0;
+
+    const notifyLatestBarReached = () => {
+      const now = Date.now();
+      if (now - lastLatestBarHintAt < latestBarHintCooldownMs) return;
+      lastLatestBarHintAt = now;
+      showInfo(latestBarHintMessage);
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      const currentChart = chartRef.current;
+      if (!currentChart || !isChartAtLatestBar(currentChart)) return;
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) && event.deltaX > 0) {
+        notifyLatestBarReached();
+      }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      pointerActive = true;
+      pointerStartX = event.clientX;
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!pointerActive) return;
+      const currentChart = chartRef.current;
+      if (!currentChart || !isChartAtLatestBar(currentChart)) return;
+      if (event.clientX < pointerStartX - latestBarDragThresholdPx) {
+        notifyLatestBarReached();
+      }
+    };
+
+    const handlePointerEnd = () => {
+      pointerActive = false;
+    };
+
+    const chartContainer = containerRef.current;
+    chartContainer.addEventListener("wheel", handleWheel, { passive: true, capture: true });
+    chartContainer.addEventListener("pointerdown", handlePointerDown);
+    chartContainer.addEventListener("pointermove", handlePointerMove);
+    chartContainer.addEventListener("pointerup", handlePointerEnd);
+    chartContainer.addEventListener("pointercancel", handlePointerEnd);
+    chartContainer.addEventListener("pointerleave", handlePointerEnd);
+
     const resizeObserver = new ResizeObserver(() => {
       if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
       resizeFrame = window.requestAnimationFrame(() => {
@@ -118,6 +169,12 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
       chart.unsubscribeAction("onScroll", handleViewChange);
       chart.unsubscribeAction("onZoom", handleViewChange);
       chart.unsubscribeAction("onVisibleRangeChange", handleViewChange);
+      chartContainer.removeEventListener("wheel", handleWheel, true);
+      chartContainer.removeEventListener("pointerdown", handlePointerDown);
+      chartContainer.removeEventListener("pointermove", handlePointerMove);
+      chartContainer.removeEventListener("pointerup", handlePointerEnd);
+      chartContainer.removeEventListener("pointercancel", handlePointerEnd);
+      chartContainer.removeEventListener("pointerleave", handlePointerEnd);
       resizeObserver.disconnect();
       dispose(chart);
       chartRef.current = null;
@@ -136,6 +193,7 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
       },
     });
     chart.resetData();
+    applyChartScrollLimits(chart);
     syncIndicators(chart, indicators);
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
@@ -230,6 +288,16 @@ function scheduleChartResize(chart: Chart) {
   window.requestAnimationFrame(() => {
     chart.resize();
   });
+}
+
+function applyChartScrollLimits(chart: Chart) {
+  chart.setMaxOffsetRightDistance(0);
+}
+
+function isChartAtLatestBar(chart: Chart) {
+  const dataList = chart.getDataList();
+  if (!dataList.length) return true;
+  return chart.getVisibleRange().realTo >= dataList.length;
 }
 
 function scrollChartToSelectedDate(chart: Chart, selectedDate?: string) {
