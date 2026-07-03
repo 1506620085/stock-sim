@@ -43,10 +43,9 @@ export function ReplayDatePicker({ value, availableDates, disabled = false, onCh
         },
         components: {
           DatePicker: {
-            cellHeight: 32,
-            cellWidth: 32,
-            paddingBlock: 4,
-            paddingInline: 12,
+            cellWidth: 36,
+            cellHeight: 36,
+            textHeight: 36,
           },
         },
       }}

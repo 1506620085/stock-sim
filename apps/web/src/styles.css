@@ -1061,6 +1061,24 @@ textarea {
   border: none;
 }
 
+.replay-day-picker-popup .ant-picker-date-panel .ant-picker-content th,
+.replay-day-picker-popup .ant-picker-date-panel .ant-picker-content td {
+  padding: 2px;
+}
+
+.replay-day-picker-popup .ant-picker-date-panel .ant-picker-cell {
+  padding: 2px;
+}
+
+.replay-day-picker-popup .ant-picker-date-panel .ant-picker-content th {
+  height: 36px;
+  vertical-align: middle;
+}
+
+.replay-day-picker-popup .ant-picker-date-panel .ant-picker-cell-inner {
+  margin: 0 auto;
+}
+
 .replay-day-picker-footer {
   display: flex;
   gap: 8px;
