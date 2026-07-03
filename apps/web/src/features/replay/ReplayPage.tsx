@@ -384,6 +384,13 @@ export function ReplayPage() {
     <section className="replay-page">
       <aside className="replay-sidebar">
         <TradeHistory trades={visibleTrades} />
+        <TradeReviewPanel
+          bars={bars}
+          reviews={tradeReviews}
+          sessionId={replaySession?.id ?? null}
+          trades={activeTrades}
+          onCreate={(review) => setTradeReviews((items) => [review, ...items])}
+        />
       </aside>
 
       <section className="replay-center">
@@ -523,13 +530,6 @@ export function ReplayPage() {
           onSubmit={submitTrade}
         />
         <PnlPanel position={position} />
-        <TradeReviewPanel
-          bars={bars}
-          reviews={tradeReviews}
-          sessionId={replaySession?.id ?? null}
-          trades={activeTrades}
-          onCreate={(review) => setTradeReviews((items) => [review, ...items])}
-        />
       </aside>
     </section>
   );
