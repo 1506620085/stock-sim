@@ -780,6 +780,12 @@ textarea {
   background: #ffffff;
 }
 
+.chart-toolbar-leading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .chart-period-tabs {
   display: flex;
   align-items: center;
@@ -845,6 +851,7 @@ textarea {
 
 .chart-settings-anchor {
   position: relative;
+  margin-left: 4px;
 }
 
 .chart-settings-trigger {

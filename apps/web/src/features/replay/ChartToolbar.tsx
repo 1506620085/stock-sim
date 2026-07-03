@@ -52,31 +52,25 @@ export function ChartToolbar({
 
   return (
     <div className="chart-toolbar-pro">
-      <div className="chart-period-tabs" role="tablist" aria-label="K 线周期">
-        {KLINE_PERIOD_OPTIONS.map((option) => {
-          const active = klinePeriod === option.value;
-          return (
-            <button
-              key={option.value}
-              aria-selected={active}
-              className={`chart-period-tab${active ? " active" : ""}`}
-              disabled={disabled}
-              onClick={() => onPeriodChange(option.value)}
-              role="tab"
-              type="button"
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="chart-toolbar-actions">
-        <form className="jump-date-form chart-toolbar-jump" onSubmit={onJumpDateSubmit}>
-          <span>当前复盘日</span>
-          <input value={jumpDate} onChange={(event) => onJumpDateChange(event.target.value)} type="date" />
-          <button type="submit">跳转</button>
-        </form>
+      <div className="chart-toolbar-leading">
+        <div className="chart-period-tabs" role="tablist" aria-label="K 线周期">
+          {KLINE_PERIOD_OPTIONS.map((option) => {
+            const active = klinePeriod === option.value;
+            return (
+              <button
+                key={option.value}
+                aria-selected={active}
+                className={`chart-period-tab${active ? " active" : ""}`}
+                disabled={disabled}
+                onClick={() => onPeriodChange(option.value)}
+                role="tab"
+                type="button"
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
 
         <div className="chart-settings-anchor" ref={settingsRef}>
           <button
@@ -125,6 +119,14 @@ export function ChartToolbar({
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="chart-toolbar-actions">
+        <form className="jump-date-form chart-toolbar-jump" onSubmit={onJumpDateSubmit}>
+          <span>当前复盘日</span>
+          <input value={jumpDate} onChange={(event) => onJumpDateChange(event.target.value)} type="date" />
+          <button type="submit">跳转</button>
+        </form>
       </div>
     </div>
   );
