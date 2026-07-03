@@ -1079,10 +1079,15 @@ textarea {
   margin: 0 auto;
 }
 
+.replay-day-picker-popup .ant-picker-footer {
+  padding: 10px 12px 12px;
+  border-top: 1px solid #edf1ee;
+}
+
 .replay-day-picker-footer {
   display: flex;
-  gap: 8px;
-  padding: 4px 0 2px;
+  gap: 10px;
+  padding: 2px 0 0;
 }
 
 .replay-day-picker-quick {
@@ -1090,8 +1095,8 @@ textarea {
   align-items: center;
   justify-content: center;
   flex: 1;
-  height: 30px;
-  padding: 0 8px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
