@@ -373,36 +373,19 @@ export function ReplayPage() {
             <div>
               <p className="eyebrow">
                 {activeInstrument.market} / {activeInstrument.type}
-              </p>
-              <h2>
-                {activeInstrument.code} {activeInstrument.name}
-              </h2>
-              <p className="source-line">
-                数据源：{activeDataSource}
+                （数据源：{activeDataSource}
                 {` · 配置源：${configuredDataSource}`}
                 {` · 复权：${adjustLabel(activeAdjustType)}`}
                 {loadingBars ? " · 加载中" : ""}
                 {syncingBars ? " · 同步中" : ""}
                 {loadingSession ? " · 复盘状态同步中" : ""}
-                {replaySession ? ` · Session #${replaySession.id}` : ""}
+                {replaySession ? ` · Session #${replaySession.id}` : ""}）
               </p>
+              <h2>
+                {activeInstrument.code} {activeInstrument.name}
+              </h2>
             </div>
-            <div className="chart-toolbar-right">
-              <div className="kline-period-switch" role="group" aria-label="K 线周期">
-                {KLINE_PERIOD_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    aria-pressed={klinePeriod === option.value}
-                    className={klinePeriod === option.value ? "active" : undefined}
-                    disabled={!bars.length}
-                    onClick={() => updateKlinePeriod(option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              <div className="day-controls">
+            <div className="day-controls">
               <TooltipWrap tip="从 AKShare 同步 K 线到数据库">
                 <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步 K 线">
                   <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
@@ -439,13 +422,26 @@ export function ReplayPage() {
                   <span>隐藏未来</span>
                 </label>
               </TooltipWrap>
-              </div>
             </div>
           </div>
 
           <div className="chart-meta">
-            <span>当前复盘日：{selectedBar?.date ?? "-"}</span>
+            <div className="kline-period-switch" role="group" aria-label="K 线周期">
+              {KLINE_PERIOD_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  aria-pressed={klinePeriod === option.value}
+                  className={klinePeriod === option.value ? "active" : undefined}
+                  disabled={!bars.length}
+                  onClick={() => updateKlinePeriod(option.value)}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <form className="jump-date-form" onSubmit={jumpToDate}>
+              <span>当前复盘日</span>
               <input value={jumpDate} onChange={(event) => setJumpDate(event.target.value)} type="date" />
               <button type="submit">跳转</button>
             </form>
