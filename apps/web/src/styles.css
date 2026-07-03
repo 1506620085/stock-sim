@@ -1386,6 +1386,13 @@ textarea {
   font-size: 13px;
 }
 
+.trade-lot-hint {
+  display: block;
+  margin-top: 4px;
+  color: #8a9490;
+  font-size: 12px;
+}
+
 .search-row {
   display: grid;
   grid-template-columns: 1fr 72px;

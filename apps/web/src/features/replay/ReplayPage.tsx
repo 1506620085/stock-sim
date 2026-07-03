@@ -10,6 +10,8 @@ import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences } from "../settings/api";
 import type { ChartDisplaySettings, Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
+const SHARES_PER_LOT = 100;
+
 const defaultIndicators: IndicatorSettings = {
   maFast: 5,
   maMid: 10,
@@ -27,6 +29,18 @@ const formatNumber = (value: number) =>
     minimumFractionDigits: 2,
   });
 
+function normalizeTradeQuantity(raw: number) {
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return SHARES_PER_LOT;
+  }
+  return Math.max(SHARES_PER_LOT, Math.floor(raw / SHARES_PER_LOT) * SHARES_PER_LOT);
+}
+
+function formatLots(quantity: number) {
+  const lots = quantity / SHARES_PER_LOT;
+  return Number.isInteger(lots) ? `${lots} 手（1手=100股）` : `约 ${lots.toFixed(2)} 手（1手=100股）`;
+}
+
 const adjustLabel = (value: string) => ({ none: "不复权", qfq: "前复权", hfq: "后复权" })[value] ?? value;
 
 export function ReplayPage() {
@@ -35,7 +49,7 @@ export function ReplayPage() {
   const [hideFuture, setHideFuture] = useState(true);
   const [indicators, setIndicators] = useState(defaultIndicators);
   const [tradeSide, setTradeSide] = useState<TradeSide>("buy");
-  const [quantity, setQuantity] = useState(1000);
+  const [quantity, setQuantity] = useState(SHARES_PER_LOT * 10);
   const [fee, setFee] = useState(5);
   const [note, setNote] = useState("");
   const [trades, setTrades] = useState<TradeRecord[]>([]);
@@ -359,10 +373,15 @@ export function ReplayPage() {
       return;
     }
 
+    const normalizedQuantity = normalizeTradeQuantity(quantity);
+    if (normalizedQuantity !== quantity) {
+      setQuantity(normalizedQuantity);
+    }
+
     try {
       const createdTrade = await createSessionTrade(replaySession.id, activeCode, {
         side: tradeSide,
-        quantity,
+        quantity: normalizedQuantity,
         fee,
         note,
       });
@@ -566,7 +585,21 @@ function TradePanel({
   onSideChange: (value: TradeSide) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const [quantityDraft, setQuantityDraft] = useState(String(quantity));
   const price = selectedBar ? (side === "buy" ? selectedBar.high : selectedBar.low) : 0;
+  const draftNumber = Number(quantityDraft);
+  const previewQuantity = Number.isFinite(draftNumber) ? normalizeTradeQuantity(draftNumber) : quantity;
+  const showAdjustHint = Number.isFinite(draftNumber) && draftNumber > 0 && draftNumber !== previewQuantity;
+
+  useEffect(() => {
+    setQuantityDraft(String(quantity));
+  }, [quantity]);
+
+  function commitQuantityDraft() {
+    const normalized = normalizeTradeQuantity(Number(quantityDraft));
+    onQuantityChange(normalized);
+    setQuantityDraft(String(normalized));
+  }
 
   return (
     <form className="panel trade-panel" onSubmit={onSubmit}>
@@ -586,8 +619,19 @@ function TradePanel({
       </div>
       <div className="input-grid two-cols">
         <label>
-          份额
-          <input min={1} step={100} type="number" value={quantity} onChange={(event) => onQuantityChange(Number(event.target.value))} />
+          数量（股）
+          <input
+            inputMode="numeric"
+            type="number"
+            value={quantityDraft}
+            onBlur={commitQuantityDraft}
+            onChange={(event) => setQuantityDraft(event.target.value)}
+          />
+          <span className="trade-lot-hint">
+            {showAdjustHint
+              ? `失焦后将调整为 ${previewQuantity.toLocaleString("zh-CN")} 股（${formatLots(previewQuantity)}）`
+              : formatLots(previewQuantity)}
+          </span>
         </label>
         <label>
           手续费
