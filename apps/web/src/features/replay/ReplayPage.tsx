@@ -628,7 +628,6 @@ function TradePanel({
     <form className="panel trade-panel" onSubmit={handleSubmit}>
       <div className="section-header">
         <h2>模拟交易</h2>
-        <span>{selectedBar?.date ?? "-"}</span>
       </div>
       <div className="trade-type">
         <label>
