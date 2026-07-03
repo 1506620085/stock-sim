@@ -6,6 +6,10 @@ import "dayjs/locale/zh-cn";
 
 dayjs.locale("zh-cn");
 
+type DisabledDateInfo = {
+  type: "date" | "week" | "month" | "quarter" | "year" | "decade" | "time";
+};
+
 type Props = {
   value: string;
   availableDates: string[];
@@ -15,6 +19,8 @@ type Props = {
 
 export function ReplayDatePicker({ value, availableDates, disabled = false, onChange }: Props) {
   const availableSet = useMemo(() => new Set(availableDates), [availableDates]);
+  const availableMonths = useMemo(() => new Set(availableDates.map((date) => date.slice(0, 7))), [availableDates]);
+  const availableYears = useMemo(() => new Set(availableDates.map((date) => Number(date.slice(0, 4)))), [availableDates]);
   const bounds = useMemo(() => getDateBounds(availableDates), [availableDates]);
   const pickerValue = value ? dayjs(value) : null;
 
@@ -26,8 +32,25 @@ export function ReplayDatePicker({ value, availableDates, disabled = false, onCh
     }
   }
 
-  function disabledDate(current: Dayjs) {
+  function disabledDate(current: Dayjs, info: DisabledDateInfo) {
     if (!current) return true;
+
+    if (info.type === "year") {
+      return !availableYears.has(current.year());
+    }
+
+    if (info.type === "month" || info.type === "quarter") {
+      return !availableMonths.has(current.format("YYYY-MM"));
+    }
+
+    if (info.type === "decade") {
+      const decadeStart = Math.floor(current.year() / 10) * 10;
+      for (let year = decadeStart; year < decadeStart + 10; year += 1) {
+        if (availableYears.has(year)) return false;
+      }
+      return true;
+    }
+
     return !availableSet.has(current.format("YYYY-MM-DD"));
   }
 
