@@ -31,9 +31,10 @@ const volumePaneHeight = 118;
 const bollPaneHeight = 126;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
+const earliestBarHintMessage = "已显示最早的K线";
 const latestBarHintMessage = "已显示最新的K线";
-const latestBarHintCooldownMs = 1500;
-const latestBarDragThresholdPx = 6;
+const chartEdgeHintCooldownMs = 1500;
+const chartEdgeDragThresholdPx = 6;
 
 export function KLineChartPanel({ bars, code, indicators, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -99,20 +100,26 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
     let resizeFrame = 0;
     let pointerStartX = 0;
     let pointerActive = false;
-    let lastLatestBarHintAt = 0;
+    let lastEdgeHintAt = 0;
 
-    const notifyLatestBarReached = () => {
+    const notifyEdgeScrollBlocked = (message: string) => {
       const now = Date.now();
-      if (now - lastLatestBarHintAt < latestBarHintCooldownMs) return;
-      lastLatestBarHintAt = now;
-      showInfo(latestBarHintMessage);
+      if (now - lastEdgeHintAt < chartEdgeHintCooldownMs) return;
+      lastEdgeHintAt = now;
+      showInfo(message);
     };
 
     const handleWheel = (event: WheelEvent) => {
       const currentChart = chartRef.current;
-      if (!currentChart || !isChartAtLatestBar(currentChart)) return;
-      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) && event.deltaX > 0) {
-        notifyLatestBarReached();
+      if (!currentChart || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+
+      if (event.deltaX > 0 && isChartAtLatestBar(currentChart)) {
+        notifyEdgeScrollBlocked(latestBarHintMessage);
+        return;
+      }
+
+      if (event.deltaX < 0 && isChartAtEarliestBar(currentChart)) {
+        notifyEdgeScrollBlocked(earliestBarHintMessage);
       }
     };
 
@@ -125,9 +132,15 @@ export function KLineChartPanel({ bars, code, indicators, period = "day", select
     const handlePointerMove = (event: PointerEvent) => {
       if (!pointerActive) return;
       const currentChart = chartRef.current;
-      if (!currentChart || !isChartAtLatestBar(currentChart)) return;
-      if (event.clientX < pointerStartX - latestBarDragThresholdPx) {
-        notifyLatestBarReached();
+      if (!currentChart) return;
+
+      if (isChartAtLatestBar(currentChart) && event.clientX < pointerStartX - chartEdgeDragThresholdPx) {
+        notifyEdgeScrollBlocked(latestBarHintMessage);
+        return;
+      }
+
+      if (isChartAtEarliestBar(currentChart) && event.clientX > pointerStartX + chartEdgeDragThresholdPx) {
+        notifyEdgeScrollBlocked(earliestBarHintMessage);
       }
     };
 
@@ -291,7 +304,14 @@ function scheduleChartResize(chart: Chart) {
 }
 
 function applyChartScrollLimits(chart: Chart) {
+  chart.setMaxOffsetLeftDistance(0);
   chart.setMaxOffsetRightDistance(0);
+}
+
+function isChartAtEarliestBar(chart: Chart) {
+  const dataList = chart.getDataList();
+  if (!dataList.length) return true;
+  return chart.getVisibleRange().realFrom <= 0;
 }
 
 function isChartAtLatestBar(chart: Chart) {
