@@ -686,7 +686,7 @@ textarea {
 
 .replay-page {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: 320px minmax(0, 1fr) 360px;
   align-items: start;
   gap: 16px;
 }
@@ -1818,7 +1818,7 @@ textarea {
 
 @media (max-width: 1180px) {
   .replay-page {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 300px minmax(0, 1fr);
   }
 
   .trade-column {

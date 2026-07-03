@@ -382,6 +382,10 @@ export function ReplayPage() {
 
   return (
     <section className="replay-page">
+      <aside className="replay-sidebar">
+        <TradeHistory trades={visibleTrades} />
+      </aside>
+
       <section className="replay-center">
         <div className="panel chart-panel">
           {activeInstrument ? (
@@ -526,7 +530,6 @@ export function ReplayPage() {
           trades={activeTrades}
           onCreate={(review) => setTradeReviews((items) => [review, ...items])}
         />
-        <TradeHistory trades={visibleTrades} />
       </aside>
     </section>
   );
