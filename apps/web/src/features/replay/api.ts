@@ -21,6 +21,7 @@ type KlineDailyItem = {
   close: number;
   volume: number;
   amount: number | null;
+  turnover_rate: number | null;
 };
 
 type ReplaySessionItem = {
@@ -110,6 +111,7 @@ export async function loadInstrumentKlines(instrumentId: number, options: { star
     close: Number(item.close),
     volume: Number(item.volume),
     amount: item.amount === null ? null : Number(item.amount),
+    turnoverRate: item.turnover_rate === null ? null : Number(item.turnover_rate),
   }));
 }
 

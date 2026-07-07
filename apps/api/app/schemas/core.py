@@ -46,6 +46,7 @@ class KlineDailyRead(SQLModel):
     close: float
     volume: float
     amount: float | None = None
+    turnover_rate: float | None = None
     adjust_type: str
     source: str
     source_updated_at: datetime | None = None

@@ -33,8 +33,17 @@ export function buildMarketQuote(bars: KLineBar[], index: number): MarketQuote |
     low: bar.low,
     turnoverRate: bar.turnoverRate ?? null,
     volume: bar.volume,
-    amount: bar.amount ?? null,
+    amount: resolveBarAmount(bar),
   };
+}
+
+export function resolveBarAmount(bar: KLineBar) {
+  if (bar.amount != null && Number.isFinite(bar.amount) && bar.amount > 0) {
+    return bar.amount;
+  }
+  if (bar.volume <= 0) return null;
+  const typicalPrice = (bar.open + bar.high + bar.low + bar.close) / 4;
+  return bar.volume * 100 * typicalPrice;
 }
 
 export function resolveDirection(change: number): QuoteDirection {

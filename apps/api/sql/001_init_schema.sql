@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS kline_daily (
     close NUMERIC(18, 4) NOT NULL,
     volume NUMERIC(24, 4) NOT NULL,
     amount NUMERIC(24, 4),
+    turnover_rate NUMERIC(12, 8),
     adjust_type VARCHAR(16) NOT NULL DEFAULT 'qfq',
     source VARCHAR(24) NOT NULL DEFAULT 'akshare',
     source_updated_at TIMESTAMPTZ,
@@ -165,7 +166,7 @@ ALTER TABLE replay_sessions
     ADD COLUMN IF NOT EXISTS fee_template_id BIGINT REFERENCES fee_templates (id) ON DELETE SET NULL;
 
 INSERT INTO alembic_version (version_num)
-VALUES ('0002_fee_template_defaults')
+VALUES ('0003_kline_turnover_rate')
 ON CONFLICT (version_num) DO NOTHING;
 
 COMMIT;

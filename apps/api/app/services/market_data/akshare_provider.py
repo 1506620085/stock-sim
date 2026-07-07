@@ -170,27 +170,49 @@ def _bars_from_frame(frame: pd.DataFrame, start_date: date, end_date: date) -> l
         if not trade_date or trade_date < start_date or trade_date > end_date:
             continue
 
+        open_price = _decimal(_pick(row, "开盘", "open"))
+        high_price = _decimal(_pick(row, "最高", "high"))
+        low_price = _decimal(_pick(row, "最低", "low"))
+        close_price = _decimal(_pick(row, "收盘", "close"))
+
         volume_value = _pick(row, "成交量", "volume")
         amount_value = _optional_decimal(_pick(row, "成交额", "turnover"))
+        turnover_rate_value = _optional_decimal(_pick(row, "换手率", "turnover_rate"))
         if volume_value is None:
             volume_value = _pick(row, "amount")
             amount_value = None
         elif amount_value is None:
             amount_value = _optional_decimal(_pick(row, "amount"))
 
+        volume = _decimal(volume_value)
+        if amount_value is None and volume > 0:
+            amount_value = _estimate_amount(open_price, high_price, low_price, close_price, volume)
+
         bars.append(
             DailyBar(
                 trade_date=trade_date,
-                open=_decimal(_pick(row, "开盘", "open")),
-                high=_decimal(_pick(row, "最高", "high")),
-                low=_decimal(_pick(row, "最低", "low")),
-                close=_decimal(_pick(row, "收盘", "close")),
-                volume=_decimal(volume_value),
+                open=open_price,
+                high=high_price,
+                low=low_price,
+                close=close_price,
+                volume=volume,
                 amount=amount_value,
+                turnover_rate=turnover_rate_value,
             )
         )
 
     return bars
+
+
+def _estimate_amount(
+    open_price: Decimal,
+    high_price: Decimal,
+    low_price: Decimal,
+    close_price: Decimal,
+    volume_lots: Decimal,
+) -> Decimal:
+    typical_price = (open_price + high_price + low_price + close_price) / Decimal(4)
+    return volume_lots * Decimal(100) * typical_price
 
 
 def _load_akshare() -> Any:

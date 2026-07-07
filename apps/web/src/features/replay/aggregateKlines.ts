@@ -36,9 +36,18 @@ export function aggregateKlines(bars: KLineBar[], period: KlinePeriod): KLineBar
       low: Math.min(...chunk.map((item) => item.low)),
       close: last.close,
       volume: chunk.reduce((sum, item) => sum + item.volume, 0),
-      amount: chunk.reduce((sum, item) => sum + (item.amount ?? 0), 0) || null,
+      amount: sumNullable(chunk.map((item) => item.amount)),
+      turnoverRate: sumNullable(chunk.map((item) => item.turnoverRate)),
     };
   });
+}
+
+function sumNullable(values: Array<number | null | undefined>) {
+  let total = 0;
+  for (const value of values) {
+    total += value ?? 0;
+  }
+  return total > 0 ? total : null;
 }
 
 export function resolveChartReplayDate(chartBars: KLineBar[], dailyDate?: string): string | undefined {

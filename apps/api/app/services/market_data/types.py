@@ -22,3 +22,4 @@ class DailyBar:
     close: Decimal
     volume: Decimal
     amount: Decimal | None = None
+    turnover_rate: Decimal | None = None

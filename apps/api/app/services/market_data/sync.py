@@ -46,6 +46,7 @@ def sync_daily_bars(
             "close": bar.close,
             "volume": bar.volume,
             "amount": bar.amount,
+            "turnover_rate": bar.turnover_rate,
             "adjust_type": adjust_type,
             "source": source,
             "source_updated_at": now,
@@ -72,6 +73,7 @@ def _upsert_kline_rows(session: Session, rows: list[dict[str, Any]]) -> None:
         "close": statement.excluded.close,
         "volume": statement.excluded.volume,
         "amount": statement.excluded.amount,
+        "turnover_rate": statement.excluded.turnover_rate,
         "source_updated_at": statement.excluded.source_updated_at,
         "updated_at": statement.excluded.updated_at,
     }

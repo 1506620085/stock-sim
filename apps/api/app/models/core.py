@@ -51,6 +51,7 @@ class KlineDaily(SQLModel, table=True):
     close: Decimal = Field(sa_column=Column(Numeric(18, 4), nullable=False))
     volume: Decimal = Field(sa_column=Column(Numeric(24, 4), nullable=False))
     amount: Decimal | None = Field(default=None, sa_column=Column(Numeric(24, 4)))
+    turnover_rate: Decimal | None = Field(default=None, sa_column=Column(Numeric(12, 8)))
     adjust_type: str = Field(default="qfq", sa_column=Column(String(16), nullable=False))
     source: str = Field(default="akshare", sa_column=Column(String(24), nullable=False))
     source_updated_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True)))
