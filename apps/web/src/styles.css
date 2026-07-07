@@ -1356,14 +1356,17 @@ textarea {
   left: 12px;
   z-index: 4;
   display: flex;
-  align-items: flex-start;
-  gap: 22px;
+  align-items: stretch;
+  gap: 18px;
   width: min(calc(100% - 24px), 920px);
   padding: 2px 4px;
   pointer-events: none;
 }
 
 .quote-summary-price-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   flex: 0 0 auto;
   min-width: 108px;
 }
@@ -1380,40 +1383,43 @@ textarea {
 .quote-summary-change {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin-top: 6px;
+  gap: 8px;
+  margin-top: 4px;
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .quote-summary-grid {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(3, minmax(72px, 1fr));
-  gap: 12px 20px;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 2px 16px;
   min-width: 0;
 }
 
 .quote-summary-metric {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  justify-content: center;
+  gap: 1px;
   min-width: 0;
 }
 
 .quote-summary-label {
   color: #999999;
-  font-size: 12px;
-  line-height: 1.2;
+  font-size: 11px;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
 .quote-summary-value {
   color: #222222;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
@@ -1445,9 +1451,22 @@ textarea {
     font-size: 28px;
   }
 
+  .quote-summary-change {
+    font-size: 13px;
+  }
+
   .quote-summary-grid {
     grid-template-columns: repeat(2, minmax(72px, 1fr));
-    gap: 10px 14px;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 4px 12px;
+  }
+
+  .quote-summary-label {
+    font-size: 10px;
+  }
+
+  .quote-summary-value {
+    font-size: 11px;
   }
 }
 

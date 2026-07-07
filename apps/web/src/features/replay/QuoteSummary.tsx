@@ -25,10 +25,10 @@ export function QuoteSummary({ bars, barIndex }: Props) {
   if (!quote) return null;
 
   const metrics = [
-    { label: "今开", value: formatQuotePrice(quote.open) },
     { label: "最高", value: formatQuotePrice(quote.high) },
-    { label: "最低", value: formatQuotePrice(quote.low) },
+    { label: "今开", value: formatQuotePrice(quote.open) },
     { label: "换手率", value: formatTurnoverRate(quote.turnoverRate) },
+    { label: "最低", value: formatQuotePrice(quote.low) },
     { label: "总手", value: formatCompactNumber(quote.volume, "手") },
     { label: "成交额", value: formatCompactNumber(quote.amount) },
   ];
