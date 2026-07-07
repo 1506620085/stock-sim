@@ -397,6 +397,35 @@ textarea {
   padding: 0 14px;
 }
 
+.settings-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 24, 20, 0.42);
+}
+
+.settings-modal {
+  width: min(100%, 560px);
+  max-height: min(88vh, 720px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  padding: 18px 20px 20px;
+}
+
+.settings-modal .section-header h2 {
+  margin: 0;
+}
+
+.settings-modal .settings-actions {
+  justify-content: flex-end;
+}
+
 .icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;

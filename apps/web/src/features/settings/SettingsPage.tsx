@@ -35,7 +35,9 @@ export function SettingsPage() {
   const [preferences, setPreferences] = useState<AppPreferences>(() => loadPreferences());
   const [feeTemplates, setFeeTemplates] = useState<FeeTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-  const [feeForm, setFeeForm] = useState<FeeTemplateInput>(emptyFeeForm);
+  const [editFeeForm, setEditFeeForm] = useState<FeeTemplateInput>(emptyFeeForm);
+  const [newTemplateModalOpen, setNewTemplateModalOpen] = useState(false);
+  const [newFeeForm, setNewFeeForm] = useState<FeeTemplateInput>(emptyFeeForm);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
@@ -51,7 +53,7 @@ export function SettingsPage() {
         setInstruments(instrumentItems);
         if (templates[0]) {
           setSelectedTemplateId(templates[0].id);
-          setFeeForm(toForm(templates[0]));
+          setEditFeeForm(toForm(templates[0]));
         }
         if (instrumentItems[0]?.id) {
           setSelectedInstrumentId(instrumentItems[0].id);
@@ -66,8 +68,23 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (!selectedTemplate) return;
-    setFeeForm(toForm(selectedTemplate));
+    setEditFeeForm(toForm(selectedTemplate));
   }, [selectedTemplate]);
+
+  useEffect(() => {
+    if (!newTemplateModalOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNewTemplateModalOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [newTemplateModalOpen]);
 
   useEffect(() => {
     if (!selectedInstrumentId) return;
@@ -102,9 +119,28 @@ export function SettingsPage() {
     }
   }
 
-  async function handleSaveTemplate() {
+  function openNewTemplateModal() {
+    setNewFeeForm({ ...emptyFeeForm });
+    setNewTemplateModalOpen(true);
+  }
+
+  async function handleSaveNewTemplate() {
     try {
-      const saved = selectedTemplateId ? await updateFeeTemplate(selectedTemplateId, feeForm) : await createFeeTemplate(feeForm);
+      const saved = await createFeeTemplate(newFeeForm);
+      setFeeTemplates((items) => [saved, ...items].sort((a, b) => a.assetType.localeCompare(b.assetType) || a.name.localeCompare(b.name)));
+      setSelectedTemplateId(saved.id);
+      setEditFeeForm(toForm(saved));
+      setNewTemplateModalOpen(false);
+      showSuccess("费率模板已保存");
+    } catch {
+      // apiFetch 已弹出错误提示
+    }
+  }
+
+  async function handleSaveEditTemplate() {
+    if (!selectedTemplateId) return;
+    try {
+      const saved = await updateFeeTemplate(selectedTemplateId, editFeeForm);
       setFeeTemplates((items) => [saved, ...items.filter((item) => item.id !== saved.id)].sort((a, b) => a.assetType.localeCompare(b.assetType) || a.name.localeCompare(b.name)));
       setSelectedTemplateId(saved.id);
       showSuccess("费率模板已保存");
@@ -120,7 +156,7 @@ export function SettingsPage() {
       const next = feeTemplates.filter((item) => item.id !== selectedTemplateId);
       setFeeTemplates(next);
       setSelectedTemplateId(next[0]?.id ?? null);
-      setFeeForm(next[0] ? toForm(next[0]) : emptyFeeForm);
+      setEditFeeForm(next[0] ? toForm(next[0]) : emptyFeeForm);
       showSuccess("费率模板已删除");
     } catch {
       // apiFetch 已弹出错误提示
@@ -187,14 +223,7 @@ export function SettingsPage() {
         <section className="panel settings-panel settings-template-list">
           <div className="section-header">
             <h2>费率模板</h2>
-            <button
-              className="text-button"
-              onClick={() => {
-                setSelectedTemplateId(null);
-                setFeeForm(emptyFeeForm);
-              }}
-              type="button"
-            >
+            <button className="text-button" onClick={openNewTemplateModal} type="button">
               新建
             </button>
           </div>
@@ -214,53 +243,100 @@ export function SettingsPage() {
           </div>
         </section>
 
-        <section className="panel settings-panel">
-          <div className="section-header">
-            <h2>{selectedTemplateId ? "编辑模板" : "新建模板"}</h2>
-            <CreditCard size={18} />
-          </div>
-          <div className="settings-grid">
-            <label className="settings-wide">
-              模板名称
-              <input value={feeForm.name} onChange={(event) => setFeeForm((current) => ({ ...current, name: event.target.value }))} />
-            </label>
-            <label>
-              成本类型
-              <select value={feeForm.assetType} onChange={(event) => setFeeForm((current) => ({ ...current, assetType: event.target.value as FeeTemplateInput["assetType"] }))}>
-                <option value="stock">股票</option>
-                <option value="etf">ETF</option>
-              </select>
-            </label>
-            <label>
-              佣金模式
-              <select value={feeForm.commissionMode} onChange={(event) => setFeeForm((current) => ({ ...current, commissionMode: event.target.value as FeeTemplateInput["commissionMode"] }))}>
-                <option value="rate">按比例</option>
-                <option value="fixed">固定手续费</option>
-              </select>
-            </label>
-            {feeForm.commissionMode === "fixed" ? (
-              <NumberField label="固定手续费" value={feeForm.fixedCommission} onChange={(value) => setFeeForm((current) => ({ ...current, fixedCommission: value }))} step={0.01} />
-            ) : (
-              <>
-                <NumberField label="佣金费率(%)" value={feeForm.commissionRate} onChange={(value) => setFeeForm((current) => ({ ...current, commissionRate: value }))} step={0.001} />
-                <NumberField label="最低佣金" value={feeForm.minCommission} onChange={(value) => setFeeForm((current) => ({ ...current, minCommission: value }))} step={0.01} />
-              </>
-            )}
-            <NumberField label="卖出印花税率(%)" value={feeForm.stampTaxRate} onChange={(value) => setFeeForm((current) => ({ ...current, stampTaxRate: value }))} step={0.001} />
-            <NumberField label="过户费率(%)" value={feeForm.transferRate} onChange={(value) => setFeeForm((current) => ({ ...current, transferRate: value }))} step={0.001} />
-          </div>
-          <div className="settings-actions">
-            <button className="primary-button" onClick={handleSaveTemplate} type="button">
-              <Save size={15} />
-              保存模板
-            </button>
-            <button className="icon-button danger-button" disabled={!selectedTemplateId} onClick={handleDeleteTemplate} type="button" aria-label="删除模板">
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </section>
+        {selectedTemplateId ? (
+          <section className="panel settings-panel">
+            <div className="section-header">
+              <h2>编辑模板</h2>
+              <CreditCard size={18} />
+            </div>
+            <FeeTemplateFormFields form={editFeeForm} onChange={setEditFeeForm} />
+            <div className="settings-actions">
+              <button className="primary-button" onClick={handleSaveEditTemplate} type="button">
+                <Save size={15} />
+                保存模板
+              </button>
+              <button className="icon-button danger-button" onClick={handleDeleteTemplate} type="button" aria-label="删除模板">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </section>
+        ) : null}
       </div>
+
+      {newTemplateModalOpen ? (
+        <div
+          className="settings-modal-backdrop"
+          onClick={() => setNewTemplateModalOpen(false)}
+          role="presentation"
+        >
+          <div
+            aria-labelledby="new-template-modal-title"
+            aria-modal="true"
+            className="settings-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="section-header">
+              <h2 id="new-template-modal-title">新建模板</h2>
+              <button aria-label="关闭" className="text-button" onClick={() => setNewTemplateModalOpen(false)} type="button">
+                ×
+              </button>
+            </div>
+            <FeeTemplateFormFields form={newFeeForm} onChange={setNewFeeForm} />
+            <div className="settings-actions">
+              <button className="text-button" onClick={() => setNewTemplateModalOpen(false)} type="button">
+                取消
+              </button>
+              <button className="primary-button" onClick={handleSaveNewTemplate} type="button">
+                <Save size={15} />
+                保存模板
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
+  );
+}
+
+function FeeTemplateFormFields({
+  form,
+  onChange,
+}: {
+  form: FeeTemplateInput;
+  onChange: (next: FeeTemplateInput | ((current: FeeTemplateInput) => FeeTemplateInput)) => void;
+}) {
+  return (
+    <div className="settings-grid">
+      <label className="settings-wide">
+        模板名称
+        <input value={form.name} onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))} />
+      </label>
+      <label>
+        成本类型
+        <select value={form.assetType} onChange={(event) => onChange((current) => ({ ...current, assetType: event.target.value as FeeTemplateInput["assetType"] }))}>
+          <option value="stock">股票</option>
+          <option value="etf">ETF</option>
+        </select>
+      </label>
+      <label>
+        佣金模式
+        <select value={form.commissionMode} onChange={(event) => onChange((current) => ({ ...current, commissionMode: event.target.value as FeeTemplateInput["commissionMode"] }))}>
+          <option value="rate">按比例</option>
+          <option value="fixed">固定手续费</option>
+        </select>
+      </label>
+      {form.commissionMode === "fixed" ? (
+        <NumberField label="固定手续费" value={form.fixedCommission} onChange={(value) => onChange((current) => ({ ...current, fixedCommission: value }))} step={0.01} />
+      ) : (
+        <>
+          <NumberField label="佣金费率(%)" value={form.commissionRate} onChange={(value) => onChange((current) => ({ ...current, commissionRate: value }))} step={0.001} />
+          <NumberField label="最低佣金" value={form.minCommission} onChange={(value) => onChange((current) => ({ ...current, minCommission: value }))} step={0.01} />
+        </>
+      )}
+      <NumberField label="卖出印花税率(%)" value={form.stampTaxRate} onChange={(value) => onChange((current) => ({ ...current, stampTaxRate: value }))} step={0.001} />
+      <NumberField label="过户费率(%)" value={form.transferRate} onChange={(value) => onChange((current) => ({ ...current, transferRate: value }))} step={0.001} />
+    </div>
   );
 }
 
