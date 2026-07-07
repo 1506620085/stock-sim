@@ -69,6 +69,7 @@ export type ReplaySession = {
   hideFuture: boolean;
   adjustType: string;
   indicatorConfig: IndicatorSettings;
+  feeTemplateId: number | null;
 };
 
 export type TradeReview = {

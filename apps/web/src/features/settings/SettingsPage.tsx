@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { Database, RefreshCw, Save, Trash2 } from "lucide-react";
-import { showSuccess } from "../../components/ToastProvider";
+import { showInfo, showSuccess } from "../../components/ToastProvider";
 import type { Instrument } from "../replay/types";
 import {
   createFeeTemplate,
   deleteFeeTemplate,
+  formatFeeTemplateSummary,
+  groupFeeTemplatesByAssetType,
   loadDataQuality,
   loadFeeTemplates,
   loadInstruments,
   loadPreferences,
   savePreferences,
+  setDefaultFeeTemplate,
+  sortFeeTemplates,
   syncInstrument,
   updateFeeTemplate,
   type AdjustType,
@@ -42,6 +46,7 @@ export function SettingsPage() {
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
 
   const editingTemplateId = templateModal?.mode === "edit" ? templateModal.templateId : null;
+  const templateGroups = groupFeeTemplatesByAssetType(feeTemplates);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,12 +137,36 @@ export function SettingsPage() {
         templateModal?.mode === "edit"
           ? await updateFeeTemplate(templateModal.templateId, modalFeeForm)
           : await createFeeTemplate(modalFeeForm);
-      setFeeTemplates((items) => [saved, ...items.filter((item) => item.id !== saved.id)].sort((a, b) => a.assetType.localeCompare(b.assetType) || a.name.localeCompare(b.name)));
+      setFeeTemplates((items) => sortFeeTemplates([saved, ...items.filter((item) => item.id !== saved.id)]));
       setTemplateModal(null);
       showSuccess("费率模板已保存");
     } catch {
       // apiFetch 已弹出错误提示
     }
+  }
+
+  async function handleSetDefault(templateId: number) {
+    try {
+      const saved = await setDefaultFeeTemplate(templateId);
+      setFeeTemplates((items) =>
+        sortFeeTemplates(
+          items.map((item) =>
+            item.assetType === saved.assetType ? { ...item, isDefault: item.id === saved.id } : item,
+          ),
+        ),
+      );
+      showSuccess("已设为默认模板");
+    } catch {
+      // apiFetch 已弹出错误提示
+    }
+  }
+
+  function requestDeleteTemplate(template: FeeTemplate) {
+    if (template.isDefault) {
+      showInfo("默认模板不能删除，请先将其他模板设为默认。");
+      return;
+    }
+    setDeleteConfirmTemplate(template);
   }
 
   async function handleDeleteTemplate(templateId: number) {
@@ -220,29 +249,24 @@ export function SettingsPage() {
           </div>
           <div className="template-list">
             {feeTemplates.length ? (
-              feeTemplates.map((template) => (
-                <div className={`template-list-item${editingTemplateId === template.id ? " active" : ""}`} key={template.id}>
-                  <div className="template-list-main">
-                    <strong>{template.name}</strong>
-                    <span>
-                      {template.assetType === "stock" ? "股票" : "ETF"} / {template.commissionMode === "fixed" ? `固定 ${template.fixedCommission}` : `佣金 ${template.commissionRate}%`}
-                    </span>
-                  </div>
-                  <div className="template-list-actions">
-                    <button className="text-button template-edit-button" onClick={() => openEditTemplateModal(template)} type="button">
-                      编辑
-                    </button>
-                    <button
-                      aria-label={`删除模板 ${template.name}`}
-                      className="icon-button danger-button template-delete-button"
-                      onClick={() => setDeleteConfirmTemplate(template)}
-                      type="button"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
+              <>
+                <TemplateGroup
+                  editingTemplateId={editingTemplateId}
+                  items={templateGroups.stock}
+                  label="股票费率"
+                  onDelete={requestDeleteTemplate}
+                  onEdit={openEditTemplateModal}
+                  onSetDefault={handleSetDefault}
+                />
+                <TemplateGroup
+                  editingTemplateId={editingTemplateId}
+                  items={templateGroups.etf}
+                  label="ETF 费率"
+                  onDelete={requestDeleteTemplate}
+                  onEdit={openEditTemplateModal}
+                  onSetDefault={handleSetDefault}
+                />
+              </>
             ) : (
               <p className="empty-copy">暂无费率模板。</p>
             )}
@@ -303,6 +327,67 @@ export function SettingsPage() {
           </div>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function TemplateGroup({
+  editingTemplateId,
+  items,
+  label,
+  onDelete,
+  onEdit,
+  onSetDefault,
+}: {
+  editingTemplateId: number | null;
+  items: FeeTemplate[];
+  label: string;
+  onDelete: (template: FeeTemplate) => void;
+  onEdit: (template: FeeTemplate) => void;
+  onSetDefault: (templateId: number) => void;
+}) {
+  if (!items.length) {
+    return (
+      <section className="template-group">
+        <h3 className="template-group-title">{label}</h3>
+        <p className="empty-copy">暂无模板。</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="template-group">
+      <h3 className="template-group-title">{label}</h3>
+      {items.map((template) => (
+        <div className={`template-list-item${editingTemplateId === template.id ? " active" : ""}`} key={template.id}>
+          <div className="template-list-main">
+            <div className="template-list-title">
+              <strong>{template.name}</strong>
+              {template.isDefault ? <span className="template-default-badge">默认</span> : null}
+            </div>
+            <span>{formatFeeTemplateSummary(template)}</span>
+          </div>
+          <div className="template-list-actions">
+            {!template.isDefault ? (
+              <button className="text-button template-default-button" onClick={() => onSetDefault(template.id)} type="button">
+                设为默认
+              </button>
+            ) : null}
+            <button className="text-button template-edit-button" onClick={() => onEdit(template)} type="button">
+              编辑
+            </button>
+            <button
+              aria-label={`删除模板 ${template.name}`}
+              className="icon-button danger-button template-delete-button"
+              disabled={template.isDefault}
+              onClick={() => onDelete(template)}
+              type="button"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </div>
+      ))}
     </section>
   );
 }

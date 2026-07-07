@@ -13,13 +13,20 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 @router.get("/fee-templates", response_model=list[FeeTemplateRead])
 def list_fee_templates(session: Session = Depends(get_session)) -> list[FeeTemplate]:
-    statement = select(FeeTemplate).order_by(FeeTemplate.asset_type, FeeTemplate.name)
+    statement = select(FeeTemplate).order_by(
+        FeeTemplate.asset_type,
+        FeeTemplate.is_default.desc(),
+        FeeTemplate.name,
+    )
     return list(session.exec(statement).all())
 
 
 @router.post("/fee-templates", response_model=FeeTemplateRead, status_code=status.HTTP_201_CREATED)
 def create_fee_template(payload: FeeTemplateCreate, session: Session = Depends(get_session)) -> FeeTemplate:
     validate_fee_template(payload)
+    has_default = session.exec(
+        select(FeeTemplate).where(FeeTemplate.asset_type == payload.asset_type, FeeTemplate.is_default == True)  # noqa: E712
+    ).first()
     template = FeeTemplate(
         name=payload.name.strip(),
         asset_type=payload.asset_type,
@@ -28,6 +35,7 @@ def create_fee_template(payload: FeeTemplateCreate, session: Session = Depends(g
         stamp_tax_rate=payload.stamp_tax_rate,
         transfer_rate=payload.transfer_rate,
         config=payload.config,
+        is_default=has_default is None,
     )
     session.add(template)
     session.commit()
@@ -53,8 +61,36 @@ def update_fee_template(template_id: int, payload: FeeTemplateUpdate, session: S
     }
     validate_fee_template(FeeTemplateCreate(**next_values))
 
+    previous_asset_type = template.asset_type
+    was_default = template.is_default
+
     for key, value in values.items():
         setattr(template, key, value.strip() if key == "name" and isinstance(value, str) else value)
+
+    if was_default and template.asset_type != previous_asset_type:
+        template.is_default = False
+        ensure_default_for_asset_type(session, previous_asset_type, exclude_id=template.id)
+
+    if not session.exec(
+        select(FeeTemplate).where(FeeTemplate.asset_type == template.asset_type, FeeTemplate.is_default == True)  # noqa: E712
+    ).first():
+        template.is_default = True
+
+    template.updated_at = datetime.now(timezone.utc)
+    session.add(template)
+    session.commit()
+    session.refresh(template)
+    return template
+
+
+@router.post("/fee-templates/{template_id}/set-default", response_model=FeeTemplateRead)
+def set_default_fee_template(template_id: int, session: Session = Depends(get_session)) -> FeeTemplate:
+    template = session.get(FeeTemplate, template_id)
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fee template not found")
+
+    clear_default_for_asset_type(session, template.asset_type, except_id=template.id)
+    template.is_default = True
     template.updated_at = datetime.now(timezone.utc)
     session.add(template)
     session.commit()
@@ -67,6 +103,9 @@ def delete_fee_template(template_id: int, session: Session = Depends(get_session
     template = session.get(FeeTemplate, template_id)
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fee template not found")
+    if template.is_default:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot delete default fee template")
+
     session.delete(template)
     session.commit()
 
@@ -118,6 +157,33 @@ def get_data_quality(
         missing_weekdays=missing_weekdays,
         possible_suspended_dates=missing_weekdays[:30],
     )
+
+
+def clear_default_for_asset_type(session: Session, asset_type: str, except_id: int | None = None) -> None:
+    statement = select(FeeTemplate).where(FeeTemplate.asset_type == asset_type, FeeTemplate.is_default == True)  # noqa: E712
+    for item in session.exec(statement).all():
+        if except_id is not None and item.id == except_id:
+            continue
+        item.is_default = False
+        item.updated_at = datetime.now(timezone.utc)
+        session.add(item)
+
+
+def ensure_default_for_asset_type(session: Session, asset_type: str, exclude_id: int | None = None) -> None:
+    existing_default = session.exec(
+        select(FeeTemplate).where(FeeTemplate.asset_type == asset_type, FeeTemplate.is_default == True)  # noqa: E712
+    ).first()
+    if existing_default:
+        return
+
+    statement = select(FeeTemplate).where(FeeTemplate.asset_type == asset_type).order_by(FeeTemplate.updated_at.desc())
+    for item in session.exec(statement).all():
+        if exclude_id is not None and item.id == exclude_id:
+            continue
+        item.is_default = True
+        item.updated_at = datetime.now(timezone.utc)
+        session.add(item)
+        return
 
 
 def validate_fee_template(payload: FeeTemplateCreate) -> None:

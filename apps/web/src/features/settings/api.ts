@@ -22,11 +22,12 @@ export type FeeTemplate = {
   stampTaxRate: number;
   transferRate: number;
   config: Record<string, unknown>;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
-export type FeeTemplateInput = Omit<FeeTemplate, "id" | "createdAt" | "updatedAt">;
+export type FeeTemplateInput = Omit<FeeTemplate, "id" | "createdAt" | "updatedAt" | "isDefault">;
 
 export type DataQuality = {
   instrumentId: number;
@@ -88,6 +89,13 @@ export async function deleteFeeTemplate(id: number): Promise<void> {
   await apiFetch(`${API_BASE}/api/settings/fee-templates/${id}`, { method: "DELETE" });
 }
 
+export async function setDefaultFeeTemplate(id: number): Promise<FeeTemplate> {
+  const item = await apiJson<Record<string, unknown>>(`${API_BASE}/api/settings/fee-templates/${id}/set-default`, {
+    method: "POST",
+  });
+  return toFeeTemplate(item);
+}
+
 export async function loadInstruments(keyword = ""): Promise<Instrument[]> {
   const items = await apiJson<Record<string, unknown>[]>(
     buildApiUrl("/api/instruments", keyword.trim() ? { keyword: keyword.trim() } : undefined),
@@ -122,6 +130,10 @@ export function templateToFeeSettings(template: FeeTemplate): FeeSettings {
   };
 }
 
+export { feeTemplateLabel, formatFeeTemplateSummary, groupFeeTemplatesByAssetType, resolveFeeTemplate, sortFeeTemplates, toFeeSettingsFromTemplate } from "./feeTemplates";
+export type { FeePreferences } from "./feeTemplates";
+export { loadFeePreferences, saveFeePreferences } from "./feeTemplates";
+
 function toFeeTemplate(item: Record<string, unknown>): FeeTemplate {
   return {
     id: Number(item.id),
@@ -134,6 +146,7 @@ function toFeeTemplate(item: Record<string, unknown>): FeeTemplate {
     stampTaxRate: Number(item.stamp_tax_rate ?? 0),
     transferRate: Number(item.transfer_rate ?? 0),
     config: (item.config as Record<string, unknown>) ?? {},
+    isDefault: Boolean(item.is_default),
     createdAt: String(item.created_at ?? ""),
     updatedAt: String(item.updated_at ?? ""),
   };

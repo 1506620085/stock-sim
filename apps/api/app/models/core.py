@@ -79,6 +79,7 @@ class ReplaySession(SQLModel, table=True):
     hide_future: bool = Field(default=True, sa_column=Column(Boolean, nullable=False))
     adjust_type: str = Field(default="qfq", sa_column=Column(String(16), nullable=False))
     indicator_config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSONB, nullable=False))
+    fee_template_id: int | None = Field(default=None, sa_column=Column(BigInteger, ForeignKey("fee_templates.id", ondelete="SET NULL")))
     created_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
     updated_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
 
@@ -127,5 +128,6 @@ class FeeTemplate(SQLModel, table=True):
     stamp_tax_rate: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 8), nullable=False))
     transfer_rate: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 8), nullable=False))
     config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSONB, nullable=False))
+    is_default: bool = Field(default=False, sa_column=Column(Boolean, nullable=False))
     created_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
     updated_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())

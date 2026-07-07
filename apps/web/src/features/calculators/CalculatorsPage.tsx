@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Calculator, Copy, Plus, Trash2 } from "lucide-react";
-import { loadFeeTemplates, templateToFeeSettings } from "../settings/api";
+import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
   calculateAverage,
   calculateChange,
@@ -50,6 +50,34 @@ export function CalculatorsPage() {
   );
 }
 
+function FeeTemplateSelector({
+  assetType,
+  selectedTemplateId,
+  templates,
+  onSelect,
+}: {
+  assetType: AssetType;
+  selectedTemplateId: number | null;
+  templates: FeeTemplate[];
+  onSelect: (templateId: number) => void;
+}) {
+  const options = templates.filter((template) => template.assetType === assetType);
+  if (!options.length) return null;
+
+  return (
+    <label className="fee-template-select">
+      费率模板
+      <select value={selectedTemplateId ?? ""} onChange={(event) => onSelect(Number(event.target.value))}>
+        {options.map((template) => (
+          <option key={template.id} value={template.id}>
+            {feeTemplateLabel(template)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (settings: FeeSettings) => void }) {
   function update<K extends keyof FeeSettings>(key: K, value: FeeSettings[K]) {
     const next = { ...settings, [key]: value };
@@ -90,7 +118,7 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
 }
 
 function ProfitCostCalculator() {
-  const [settings, setSettings] = useTemplateFeeSettings();
+  const { settings, setSettings, selectedTemplateId, setSelectedTemplateId, templates } = useTemplateFeeSettings();
   const [buyPrice, setBuyPrice] = useState(10);
   const [sellPrice, setSellPrice] = useState(11.8);
   const [quantity, setQuantity] = useState(1000);
@@ -106,6 +134,12 @@ function ProfitCostCalculator() {
             <NumberField label="卖出价格" value={sellPrice} onChange={setSellPrice} step={0.01} />
             <NumberField label="买入数量" value={quantity} onChange={setQuantity} step={100} />
           </div>
+          <FeeTemplateSelector
+            assetType={settings.assetType}
+            selectedTemplateId={selectedTemplateId}
+            templates={templates}
+            onSelect={setSelectedTemplateId}
+          />
           <FeeFields settings={settings} onChange={setSettings} />
         </div>
         <ResultTable
@@ -129,7 +163,7 @@ function ProfitCostCalculator() {
 }
 
 function TCalculator() {
-  const [settings, setSettings] = useTemplateFeeSettings();
+  const { settings, setSettings, selectedTemplateId, setSelectedTemplateId, templates } = useTemplateFeeSettings();
   const [baseQuantity, setBaseQuantity] = useState(1000);
   const [baseAvgCost, setBaseAvgCost] = useState(10);
   const [sequence, setSequence] = useState<"buyFirst" | "sellFirst">("buyFirst");
@@ -162,6 +196,12 @@ function TCalculator() {
             <NumberField label="当日卖出价格" value={sellPrice} onChange={setSellPrice} step={0.01} />
             <NumberField label="当日卖出数量" value={sellQuantity} onChange={setSellQuantity} step={100} />
           </div>
+          <FeeTemplateSelector
+            assetType={settings.assetType}
+            selectedTemplateId={selectedTemplateId}
+            templates={templates}
+            onSelect={setSelectedTemplateId}
+          />
           <FeeFields settings={settings} onChange={setSettings} />
         </div>
         <ResultTable
@@ -279,16 +319,26 @@ function AveragePriceCalculator() {
   );
 }
 
-function useTemplateFeeSettings(): [FeeSettings, (settings: FeeSettings) => void] {
+function useTemplateFeeSettings() {
+  const [templates, setTemplates] = useState<FeeTemplate[]>([]);
   const [settings, setSettings] = useState(defaultFeeSettings);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     loadFeeTemplates()
-      .then((templates) => {
+      .then((items) => {
         if (cancelled) return;
-        const template = templates.find((item) => item.assetType === settings.assetType) ?? templates[0];
-        if (template) setSettings(templateToFeeSettings(template));
+        setTemplates(items);
+        const preferences = loadFeePreferences();
+        const preferred = preferences.calculatorTemplateId
+          ? resolveFeeTemplate(items, settings.assetType, { preferredTemplateId: preferences.calculatorTemplateId })
+          : null;
+        const resolved = preferred ?? resolveFeeTemplate(items, settings.assetType);
+        if (resolved) {
+          setSelectedTemplateId(resolved.id);
+          setSettings(templateToFeeSettings(resolved));
+        }
       })
       .catch(() => undefined);
 
@@ -297,7 +347,34 @@ function useTemplateFeeSettings(): [FeeSettings, (settings: FeeSettings) => void
     };
   }, []);
 
-  return [settings, setSettings];
+  function selectTemplate(templateId: number) {
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) return;
+    setSelectedTemplateId(template.id);
+    setSettings(templateToFeeSettings(template));
+    saveFeePreferences({ calculatorTemplateId: template.id });
+  }
+
+  function updateSettings(next: FeeSettings) {
+    if (next.assetType !== settings.assetType) {
+      const resolved = resolveFeeTemplate(templates, next.assetType);
+      if (resolved) {
+        setSelectedTemplateId(resolved.id);
+        setSettings(templateToFeeSettings(resolved));
+        saveFeePreferences({ calculatorTemplateId: resolved.id });
+        return;
+      }
+    }
+    setSettings(next);
+  }
+
+  return {
+    settings,
+    setSettings: updateSettings,
+    selectedTemplateId,
+    setSelectedTemplateId: selectTemplate,
+    templates,
+  };
 }
 
 function CalculatorShell({ children, description, title }: { children: ReactNode; description: string; title: string }) {

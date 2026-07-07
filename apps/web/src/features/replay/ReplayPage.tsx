@@ -7,7 +7,8 @@ import { aggregateKlines, findBarIndexByDate, resolveChartReplayDate } from "./a
 import { ChartToolbar } from "./ChartToolbar";
 import { defaultChartDisplaySettings } from "./chartDisplay";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
-import { loadInstruments, loadPreferences } from "../settings/api";
+import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, type FeeTemplate } from "../settings/api";
+import { calculateTradeFee } from "../calculators/calculations";
 import type { ChartDisplaySettings, Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const SHARES_PER_LOT = 100;
@@ -54,6 +55,9 @@ export function ReplayPage() {
   const [tradeSide, setTradeSide] = useState<TradeSide>("buy");
   const [quantity, setQuantity] = useState(SHARES_PER_LOT * 10);
   const [fee, setFee] = useState(5);
+  const [feeTouched, setFeeTouched] = useState(false);
+  const [feeTemplates, setFeeTemplates] = useState<FeeTemplate[]>([]);
+  const [selectedFeeTemplateId, setSelectedFeeTemplateId] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [tradeReviews, setTradeReviews] = useState<TradeReview[]>([]);
@@ -72,6 +76,31 @@ export function ReplayPage() {
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
+  const activeAssetType = activeInstrument?.assetType ?? (activeInstrument?.type === "ETF" ? "etf" : "stock");
+  const availableFeeTemplates = useMemo(
+    () => feeTemplates.filter((template) => template.assetType === activeAssetType),
+    [feeTemplates, activeAssetType],
+  );
+  const selectedFeeTemplate = useMemo(
+    () =>
+      resolveFeeTemplate(feeTemplates, activeAssetType, {
+        sessionTemplateId: replaySession?.feeTemplateId ?? selectedFeeTemplateId,
+        preferredTemplateId: selectedFeeTemplateId,
+      }),
+    [feeTemplates, activeAssetType, replaySession?.feeTemplateId, selectedFeeTemplateId],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    loadFeeTemplates()
+      .then((templates) => {
+        if (!cancelled) setFeeTemplates(templates);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +204,7 @@ export function ReplayPage() {
 
         const startDate = bars[0].date;
         const currentDate = bars[Math.min(Math.floor(bars.length * 0.6), bars.length - 1)]?.date ?? startDate;
+        const defaultTemplate = resolveFeeTemplate(feeTemplates, activeInstrument.assetType ?? "stock");
         const createdSession = await createReplaySession({
           instrumentId,
           name: `${activeInstrument.code} ${activeInstrument.name} 复盘`,
@@ -183,6 +213,7 @@ export function ReplayPage() {
           hideFuture,
           adjustType: activeAdjustType,
           indicatorConfig: indicators,
+          feeTemplateId: defaultTemplate?.id ?? null,
         });
         if (!cancelled) applyReplaySession(createdSession, bars);
       })
@@ -196,7 +227,20 @@ export function ReplayPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeAdjustType, activeInstrument?.id, bars]);
+  }, [activeAdjustType, activeInstrument?.id, bars, feeTemplates]);
+
+  function handleFeeTemplateChange(templateId: number) {
+    setSelectedFeeTemplateId(templateId);
+    setFeeTouched(false);
+    if (replaySession) {
+      syncReplaySession(replaySession.id, { feeTemplateId: templateId });
+    }
+  }
+
+  function handleFeeChange(value: number) {
+    setFeeTouched(true);
+    setFee(value);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -228,6 +272,7 @@ export function ReplayPage() {
 
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
+  const tradePrice = selectedBar ? (tradeSide === "buy" ? selectedBar.high : selectedBar.low) : 0;
   const visibleDailyBars = hideFuture ? bars.slice(0, normalizedIndex + 1) : bars;
   const chartBars = useMemo(() => aggregateKlines(visibleDailyBars, klinePeriod), [visibleDailyBars, klinePeriod]);
   const availableReplayDates = useMemo(() => bars.map((bar) => bar.date), [bars]);
@@ -240,6 +285,21 @@ export function ReplayPage() {
   const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
 
   const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
+
+  useEffect(() => {
+    if (!replaySession || !feeTemplates.length) return;
+    const resolved = resolveFeeTemplate(feeTemplates, activeAssetType, { sessionTemplateId: replaySession.feeTemplateId });
+    if (resolved) {
+      setSelectedFeeTemplateId(resolved.id);
+      setFeeTouched(false);
+    }
+  }, [activeAssetType, feeTemplates, replaySession?.feeTemplateId, replaySession?.id]);
+
+  useEffect(() => {
+    if (feeTouched || !selectedFeeTemplate || quantity <= 0 || tradePrice <= 0) return;
+    const settings = templateToFeeSettings(selectedFeeTemplate);
+    setFee(Number(calculateTradeFee(tradeSide, tradePrice, quantity, settings).toFixed(2)));
+  }, [feeTouched, quantity, selectedFeeTemplate, tradePrice, tradeSide]);
 
   function applyReplaySession(session: ReplaySession, sourceBars: KLineBar[]) {
     const index = findBarIndexByDate(sourceBars, session.currentDate);
@@ -399,6 +459,7 @@ export function ReplayPage() {
         },
       ]);
       setNote("");
+      setFeeTouched(false);
       showSuccess(tradeSide === "buy" ? "买入记录已保存" : "卖出记录已保存");
     } catch {
       // apiFetch 已弹出错误提示
@@ -544,11 +605,14 @@ export function ReplayPage() {
       <aside className="trade-column">
         <TradePanel
           fee={fee}
+          feeTemplates={availableFeeTemplates}
           note={note}
           quantity={quantity}
           selectedBar={selectedBar}
+          selectedFeeTemplateId={selectedFeeTemplate?.id ?? null}
           side={tradeSide}
-          onFeeChange={setFee}
+          onFeeChange={handleFeeChange}
+          onFeeTemplateChange={handleFeeTemplateChange}
           onNoteChange={setNote}
           onQuantityChange={setQuantity}
           onSideChange={setTradeSide}
@@ -570,22 +634,28 @@ function TooltipWrap({ tip, children }: { tip: string; children: ReactNode }) {
 
 function TradePanel({
   fee,
+  feeTemplates,
   note,
   quantity,
   selectedBar,
+  selectedFeeTemplateId,
   side,
   onFeeChange,
+  onFeeTemplateChange,
   onNoteChange,
   onQuantityChange,
   onSideChange,
   onSubmit,
 }: {
   fee: number;
+  feeTemplates: FeeTemplate[];
   note: string;
   quantity: number;
   selectedBar?: KLineBar;
+  selectedFeeTemplateId: number | null;
   side: TradeSide;
   onFeeChange: (value: number) => void;
+  onFeeTemplateChange: (templateId: number) => void;
   onNoteChange: (value: string) => void;
   onQuantityChange: (value: number) => void;
   onSideChange: (value: TradeSide) => void;
@@ -639,6 +709,19 @@ function TradePanel({
           卖出
         </label>
       </div>
+      <label className="full-field">
+        费率模板
+        <select
+          value={selectedFeeTemplateId ?? ""}
+          onChange={(event) => onFeeTemplateChange(Number(event.target.value))}
+        >
+          {feeTemplates.map((template) => (
+            <option key={template.id} value={template.id}>
+              {feeTemplateLabel(template)}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="input-grid two-cols">
         <label className="trade-qty-field">
           数量（股）

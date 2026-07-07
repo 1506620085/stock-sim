@@ -82,6 +82,7 @@ class ReplaySessionCreate(SQLModel):
     hide_future: bool = True
     adjust_type: str = "qfq"
     indicator_config: dict[str, Any] = Field(default_factory=dict)
+    fee_template_id: int | None = None
 
 
 class ReplaySessionUpdate(SQLModel):
@@ -90,6 +91,7 @@ class ReplaySessionUpdate(SQLModel):
     hide_future: bool | None = None
     adjust_type: str | None = None
     indicator_config: dict[str, Any] | None = None
+    fee_template_id: int | None = None
 
 
 class ReplaySessionRead(ReplaySessionCreate):
@@ -165,6 +167,7 @@ class FeeTemplateRead(SQLModel):
     stamp_tax_rate: float
     transfer_rate: float
     config: dict[str, Any]
+    is_default: bool
     created_at: datetime
     updated_at: datetime
 

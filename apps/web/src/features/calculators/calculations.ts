@@ -220,6 +220,10 @@ function calculateCommission(amount: number, settings: FeeSettings) {
   return Math.max(amount * percentToRate(settings.commissionRate), settings.minCommission);
 }
 
+export function calculateTradeFee(side: "buy" | "sell", price: number, quantity: number, settings: FeeSettings) {
+  return calculateSideFees(side, price * quantity, settings);
+}
+
 function calculateSideFees(side: "buy" | "sell", amount: number, settings: FeeSettings) {
   const commission = calculateCommission(amount, settings);
   const transferFee = amount * percentToRate(settings.transferRate);

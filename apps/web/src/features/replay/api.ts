@@ -32,6 +32,7 @@ type ReplaySessionItem = {
   hide_future: boolean;
   adjust_type: string;
   indicator_config: IndicatorSettings;
+  fee_template_id: number | null;
 };
 
 type TradeItem = {
@@ -125,6 +126,7 @@ export async function createReplaySession(payload: {
   hideFuture: boolean;
   adjustType: string;
   indicatorConfig: IndicatorSettings;
+  feeTemplateId?: number | null;
 }): Promise<ReplaySession> {
   const item = await apiJson<ReplaySessionItem>(`${API_BASE}/api/replay-sessions`, {
     method: "POST",
@@ -137,6 +139,7 @@ export async function createReplaySession(payload: {
       hide_future: payload.hideFuture,
       adjust_type: payload.adjustType,
       indicator_config: payload.indicatorConfig,
+      fee_template_id: payload.feeTemplateId ?? null,
     }),
   });
   return toReplaySession(item);
@@ -149,6 +152,7 @@ export async function updateReplaySession(
     hideFuture: boolean;
     adjustType: string;
     indicatorConfig: IndicatorSettings;
+    feeTemplateId: number | null;
   }>,
 ): Promise<ReplaySession> {
   const body: Record<string, unknown> = {};
@@ -156,6 +160,7 @@ export async function updateReplaySession(
   if (payload.hideFuture !== undefined) body.hide_future = payload.hideFuture;
   if (payload.adjustType !== undefined) body.adjust_type = payload.adjustType;
   if (payload.indicatorConfig !== undefined) body.indicator_config = payload.indicatorConfig;
+  if (payload.feeTemplateId !== undefined) body.fee_template_id = payload.feeTemplateId;
 
   const item = await apiJson<ReplaySessionItem>(`${API_BASE}/api/replay-sessions/${sessionId}`, {
     method: "PATCH",
@@ -271,6 +276,7 @@ function toReplaySession(item: ReplaySessionItem): ReplaySession {
     hideFuture: item.hide_future,
     adjustType: item.adjust_type,
     indicatorConfig: item.indicator_config,
+    feeTemplateId: item.fee_template_id,
   };
 }
 
