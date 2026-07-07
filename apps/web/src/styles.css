@@ -376,9 +376,22 @@ textarea {
   flex: 1;
 }
 
+.template-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .template-edit-button {
   flex-shrink: 0;
   padding: 6px 10px;
+}
+
+.template-delete-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
 }
 
 .template-list button {
@@ -452,8 +465,25 @@ textarea {
   justify-content: flex-end;
 }
 
-.settings-modal .settings-actions .danger-button {
-  margin-right: auto;
+.settings-confirm-modal h2 {
+  margin: 0;
+}
+
+.settings-confirm-copy {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.danger-confirm-button {
+  background: #b52821;
+  border-color: #b52821;
+}
+
+.danger-confirm-button:hover {
+  background: #992018;
+  border-color: #992018;
 }
 
 .icon-button:disabled {

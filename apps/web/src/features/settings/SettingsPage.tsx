@@ -35,6 +35,7 @@ export function SettingsPage() {
   const [preferences, setPreferences] = useState<AppPreferences>(() => loadPreferences());
   const [feeTemplates, setFeeTemplates] = useState<FeeTemplate[]>([]);
   const [templateModal, setTemplateModal] = useState<null | { mode: "new" } | { mode: "edit"; templateId: number }>(null);
+  const [deleteConfirmTemplate, setDeleteConfirmTemplate] = useState<FeeTemplate | null>(null);
   const [modalFeeForm, setModalFeeForm] = useState<FeeTemplateInput>(emptyFeeForm);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<number | null>(null);
@@ -61,19 +62,22 @@ export function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!templateModal) return;
+    if (!templateModal && !deleteConfirmTemplate) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setTemplateModal(null);
+      if (event.key !== "Escape") return;
+      if (deleteConfirmTemplate) {
+        setDeleteConfirmTemplate(null);
+        return;
       }
+      setTemplateModal(null);
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [templateModal]);
+  }, [deleteConfirmTemplate, templateModal]);
 
   useEffect(() => {
     if (!selectedInstrumentId) return;
@@ -136,12 +140,14 @@ export function SettingsPage() {
     }
   }
 
-  async function handleDeleteTemplate() {
-    if (!editingTemplateId) return;
+  async function handleDeleteTemplate(templateId: number) {
     try {
-      await deleteFeeTemplate(editingTemplateId);
-      setFeeTemplates((items) => items.filter((item) => item.id !== editingTemplateId));
-      setTemplateModal(null);
+      await deleteFeeTemplate(templateId);
+      setFeeTemplates((items) => items.filter((item) => item.id !== templateId));
+      if (editingTemplateId === templateId) {
+        setTemplateModal(null);
+      }
+      setDeleteConfirmTemplate(null);
       showSuccess("费率模板已删除");
     } catch {
       // apiFetch 已弹出错误提示
@@ -222,9 +228,19 @@ export function SettingsPage() {
                       {template.assetType === "stock" ? "股票" : "ETF"} / {template.commissionMode === "fixed" ? `固定 ${template.fixedCommission}` : `佣金 ${template.commissionRate}%`}
                     </span>
                   </div>
-                  <button className="text-button template-edit-button" onClick={() => openEditTemplateModal(template)} type="button">
-                    编辑
-                  </button>
+                  <div className="template-list-actions">
+                    <button className="text-button template-edit-button" onClick={() => openEditTemplateModal(template)} type="button">
+                      编辑
+                    </button>
+                    <button
+                      aria-label={`删除模板 ${template.name}`}
+                      className="icon-button danger-button template-delete-button"
+                      onClick={() => setDeleteConfirmTemplate(template)}
+                      type="button"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (
@@ -251,17 +267,37 @@ export function SettingsPage() {
             </div>
             <FeeTemplateFormFields form={modalFeeForm} onChange={setModalFeeForm} />
             <div className="settings-actions">
-              {templateModal.mode === "edit" ? (
-                <button className="icon-button danger-button" onClick={handleDeleteTemplate} type="button" aria-label="删除模板">
-                  <Trash2 size={16} />
-                </button>
-              ) : null}
               <button className="text-button" onClick={closeTemplateModal} type="button">
                 取消
               </button>
               <button className="primary-button" onClick={handleSaveTemplate} type="button">
                 <Save size={15} />
                 保存模板
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteConfirmTemplate ? (
+        <div className="settings-modal-backdrop" onClick={() => setDeleteConfirmTemplate(null)} role="presentation">
+          <div
+            aria-labelledby="delete-template-title"
+            aria-modal="true"
+            className="settings-modal settings-confirm-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <h2 id="delete-template-title">删除模板</h2>
+            <p className="settings-confirm-copy">
+              确定删除「{deleteConfirmTemplate.name}」吗？删除后无法恢复。
+            </p>
+            <div className="settings-actions">
+              <button className="text-button" onClick={() => setDeleteConfirmTemplate(null)} type="button">
+                取消
+              </button>
+              <button className="primary-button danger-confirm-button" onClick={() => void handleDeleteTemplate(deleteConfirmTemplate.id)} type="button">
+                删除
               </button>
             </div>
           </div>
