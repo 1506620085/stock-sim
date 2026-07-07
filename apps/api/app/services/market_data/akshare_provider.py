@@ -1,5 +1,6 @@
 import re
 import time
+from dataclasses import replace
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from http.client import RemoteDisconnected
@@ -65,7 +66,8 @@ def fetch_daily_bars(symbol: str, asset_type: str, start_date: date | None, end_
     except Exception as exc:  # pragma: no cover - depends on external data source.
         raise MarketDataError(f"AKShare 获取历史 K 线失败：{exc}") from exc
 
-    return _bars_from_frame(frame, range_start, range_end)
+    bars = _bars_from_frame(frame, range_start, range_end)
+    return _fill_missing_turnover_rates(bars, code)
 
 
 def _fetch_stock_daily_frame(akshare: Any, code: str, start: str, end: str, adjust: str) -> pd.DataFrame:
@@ -213,6 +215,52 @@ def _estimate_amount(
 ) -> Decimal:
     typical_price = (open_price + high_price + low_price + close_price) / Decimal(4)
     return volume_lots * Decimal(100) * typical_price
+
+
+def _fill_missing_turnover_rates(bars: list[DailyBar], code: str) -> list[DailyBar]:
+    if not bars or all(bar.turnover_rate is not None for bar in bars):
+        return bars
+
+    float_shares = _fetch_tencent_float_shares(code, bars[-1].close)
+    if float_shares is None:
+        return bars
+
+    filled: list[DailyBar] = []
+    for bar in bars:
+        if bar.turnover_rate is not None:
+            filled.append(bar)
+            continue
+        turnover_rate = _estimate_turnover_rate(bar.volume, float_shares)
+        filled.append(replace(bar, turnover_rate=turnover_rate) if turnover_rate is not None else bar)
+    return filled
+
+
+def _fetch_tencent_float_shares(code: str, fallback_price: Decimal) -> Decimal | None:
+    exchange = _exchange_from_code(code)
+    prefix = "sh" if exchange == "SH" else "sz"
+    try:
+        response = requests.get(f"https://qt.gtimg.cn/q={prefix}{code}", timeout=10)
+        response.raise_for_status()
+        text = response.content.decode("gbk", errors="replace")
+        parts = text.split("~")
+        if len(parts) < 45:
+            return None
+
+        circulation_cap_yi = _optional_decimal(parts[44])
+        price = _optional_decimal(parts[3]) or fallback_price
+        if circulation_cap_yi is None or circulation_cap_yi <= 0 or price <= 0:
+            return None
+
+        circulation_cap_yuan = circulation_cap_yi * Decimal(100000000)
+        return circulation_cap_yuan / price
+    except Exception:
+        return None
+
+
+def _estimate_turnover_rate(volume_lots: Decimal, float_shares: Decimal) -> Decimal | None:
+    if volume_lots <= 0 or float_shares <= 0:
+        return None
+    return volume_lots * Decimal(10000) / float_shares
 
 
 def _load_akshare() -> Any:
