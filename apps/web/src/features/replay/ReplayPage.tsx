@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, Cl
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
+import { QuoteSummary } from "./QuoteSummary";
 import { aggregateKlines, findBarIndexByDate, resolveChartReplayDate } from "./aggregateKlines";
 import { ChartToolbar } from "./ChartToolbar";
 import { defaultChartDisplaySettings } from "./chartDisplay";
@@ -72,6 +73,7 @@ export function ReplayPage() {
   const [viewScrollToken, setViewScrollToken] = useState(0);
   const [viewScrollDate, setViewScrollDate] = useState("");
   const [klinePeriod, setKlinePeriod] = useState<KlinePeriod>("day");
+  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
   const [chartDisplay, setChartDisplay] = useState<ChartDisplaySettings>(defaultChartDisplaySettings);
   const [preferences] = useState(() => loadPreferences());
   const activeCode = activeInstrument?.code ?? "";
@@ -277,6 +279,12 @@ export function ReplayPage() {
   const chartBars = useMemo(() => aggregateKlines(visibleDailyBars, klinePeriod), [visibleDailyBars, klinePeriod]);
   const availableReplayDates = useMemo(() => bars.map((bar) => bar.date), [bars]);
   const chartReplayDate = useMemo(() => resolveChartReplayDate(chartBars, selectedBar?.date), [chartBars, selectedBar?.date]);
+  const summaryBarIndex = useMemo(() => {
+    if (!chartBars.length) return 0;
+    if (hoveredBarIndex !== null) return hoveredBarIndex;
+    const date = chartReplayDate ?? selectedBar?.date;
+    return date ? findBarIndexByDate(chartBars, date) : chartBars.length - 1;
+  }, [chartBars, chartReplayDate, hoveredBarIndex, selectedBar?.date]);
   const replayBars = bars.slice(0, normalizedIndex + 1);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
@@ -285,6 +293,10 @@ export function ReplayPage() {
   const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
 
   const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
+
+  useEffect(() => {
+    setHoveredBarIndex(null);
+  }, [chartReplayDate, chartBars, klinePeriod]);
 
   useEffect(() => {
     if (!replaySession || !feeTemplates.length) return;
@@ -556,6 +568,12 @@ export function ReplayPage() {
             />
           </div>
 
+          {!loadingBars && !syncingBars && chartBars.length ? (
+            <div className="chart-quote-summary">
+              <QuoteSummary barIndex={summaryBarIndex} bars={chartBars} />
+            </div>
+          ) : null}
+
           {loadingBars || syncingBars ? (
             <div className="panel empty-state chart-empty-state chart-loading-state">
               <p className="eyebrow">K 线</p>
@@ -568,6 +586,7 @@ export function ReplayPage() {
               chartDisplay={chartDisplay}
               code={activeCode}
               indicators={indicators}
+              onHoveredBarIndexChange={setHoveredBarIndex}
               period={klinePeriod}
               painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
               recenterToken={recenterToken}

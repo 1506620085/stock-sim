@@ -3,7 +3,6 @@ import { dispose, init, type Chart, type Crosshair, type KLineData } from "kline
 import { showInfo } from "../../components/ToastProvider";
 import { periodToChartSetting, findBarIndexByDate } from "./aggregateKlines";
 import { resolveEffectiveSubCharts, type EffectiveSubCharts } from "./chartDisplay";
-import { QuoteSummary } from "./QuoteSummary";
 import { registerCustomIndicators } from "./registerCustomIndicators";
 import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 
@@ -21,6 +20,7 @@ type Props = {
   viewScrollToken?: number;
   trades?: TradeRecord[];
   painPoint?: { date?: string; price?: number };
+  onHoveredBarIndexChange?: (index: number | null) => void;
 };
 
 const candlePaneId = "candle_pane";
@@ -59,24 +59,17 @@ const emptyTradeOverlayLayout: TradeOverlayLayout = {
   painPoint: null,
 };
 
-export function KLineChartPanel({ bars, code, indicators, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint }: Props) {
+export function KLineChartPanel({ bars, code, indicators, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint, onHoveredBarIndexChange }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const replayLabelLayerRef = useRef<HTMLDivElement | null>(null);
   const replayDayLabelRef = useRef<HTMLSpanElement | null>(null);
   const selectedDateRef = useRef(selectedDate);
+  const onHoveredBarIndexChangeRef = useRef(onHoveredBarIndexChange);
   const [activeTrade, setActiveTrade] = useState<TradeRecord | null>(null);
-  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
 
   selectedDateRef.current = selectedDate;
-
-  const fallbackBarIndex = useMemo(() => {
-    if (!bars.length) return 0;
-    if (selectedDate) return findBarIndexByDate(bars, selectedDate);
-    return bars.length - 1;
-  }, [bars, selectedDate]);
-
-  const summaryBarIndex = hoveredBarIndex ?? fallbackBarIndex;
+  onHoveredBarIndexChangeRef.current = onHoveredBarIndexChange;
 
   const chartData = useMemo<KLineData[]>(
     () =>
@@ -202,10 +195,10 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
     const handleCrosshairChange = (data: unknown) => {
       const crosshair = data as Crosshair;
       if (crosshair.dataIndex !== undefined && crosshair.dataIndex >= 0) {
-        setHoveredBarIndex(crosshair.dataIndex);
+        onHoveredBarIndexChangeRef.current?.(crosshair.dataIndex);
         return;
       }
-      setHoveredBarIndex(null);
+      onHoveredBarIndexChangeRef.current?.(null);
     };
 
     chart.subscribeAction("onCrosshairChange", handleCrosshairChange);
@@ -280,12 +273,11 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
   }, [viewScrollToken, viewScrollDate]);
 
   useEffect(() => {
-    setHoveredBarIndex(null);
+    onHoveredBarIndexChangeRef.current?.(null);
   }, [selectedDate, bars]);
 
   return (
     <div className="kline-chart-wrap">
-      {bars.length ? <QuoteSummary barIndex={summaryBarIndex} bars={bars} /> : null}
       <div className="kline-chart" ref={containerRef} style={{ height: chartHeight }} />
       <div
         className="trade-overlay-layer"
