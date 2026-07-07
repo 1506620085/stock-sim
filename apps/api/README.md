@@ -20,7 +20,14 @@ docker compose up -d postgres
 Run database migrations from `apps/api`:
 
 ```bash
-alembic upgrade head
+.venv\Scripts\activate
+python -m alembic upgrade head
+```
+
+If the virtual environment is not activated, you can also run:
+
+```bash
+.venv\Scripts\python.exe -m alembic upgrade head
 ```
 
 Alternatively, initialize an empty PostgreSQL database with SQL:
