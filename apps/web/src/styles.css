@@ -355,6 +355,32 @@ textarea {
   margin-top: 14px;
 }
 
+.template-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfdfc;
+  padding: 10px 10px 10px 12px;
+}
+
+.template-list-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.template-list-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.template-edit-button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+}
+
 .template-list button {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -424,6 +450,10 @@ textarea {
 
 .settings-modal .settings-actions {
   justify-content: flex-end;
+}
+
+.settings-modal .settings-actions .danger-button {
+  margin-right: auto;
 }
 
 .icon-button:disabled {

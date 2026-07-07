@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CreditCard, Database, RefreshCw, Save, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Database, RefreshCw, Save, Trash2 } from "lucide-react";
 import { showSuccess } from "../../components/ToastProvider";
 import type { Instrument } from "../replay/types";
 import {
@@ -34,15 +34,13 @@ const emptyFeeForm: FeeTemplateInput = {
 export function SettingsPage() {
   const [preferences, setPreferences] = useState<AppPreferences>(() => loadPreferences());
   const [feeTemplates, setFeeTemplates] = useState<FeeTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-  const [editFeeForm, setEditFeeForm] = useState<FeeTemplateInput>(emptyFeeForm);
-  const [newTemplateModalOpen, setNewTemplateModalOpen] = useState(false);
-  const [newFeeForm, setNewFeeForm] = useState<FeeTemplateInput>(emptyFeeForm);
+  const [templateModal, setTemplateModal] = useState<null | { mode: "new" } | { mode: "edit"; templateId: number }>(null);
+  const [modalFeeForm, setModalFeeForm] = useState<FeeTemplateInput>(emptyFeeForm);
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
 
-  const selectedTemplate = useMemo(() => feeTemplates.find((item) => item.id === selectedTemplateId) ?? null, [feeTemplates, selectedTemplateId]);
+  const editingTemplateId = templateModal?.mode === "edit" ? templateModal.templateId : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -51,10 +49,6 @@ export function SettingsPage() {
         if (cancelled) return;
         setFeeTemplates(templates);
         setInstruments(instrumentItems);
-        if (templates[0]) {
-          setSelectedTemplateId(templates[0].id);
-          setEditFeeForm(toForm(templates[0]));
-        }
         if (instrumentItems[0]?.id) {
           setSelectedInstrumentId(instrumentItems[0].id);
         }
@@ -67,16 +61,11 @@ export function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedTemplate) return;
-    setEditFeeForm(toForm(selectedTemplate));
-  }, [selectedTemplate]);
-
-  useEffect(() => {
-    if (!newTemplateModalOpen) return;
+    if (!templateModal) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setNewTemplateModalOpen(false);
+        setTemplateModal(null);
       }
     };
 
@@ -84,7 +73,7 @@ export function SettingsPage() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [newTemplateModalOpen]);
+  }, [templateModal]);
 
   useEffect(() => {
     if (!selectedInstrumentId) return;
@@ -120,29 +109,27 @@ export function SettingsPage() {
   }
 
   function openNewTemplateModal() {
-    setNewFeeForm({ ...emptyFeeForm });
-    setNewTemplateModalOpen(true);
+    setModalFeeForm({ ...emptyFeeForm });
+    setTemplateModal({ mode: "new" });
   }
 
-  async function handleSaveNewTemplate() {
-    try {
-      const saved = await createFeeTemplate(newFeeForm);
-      setFeeTemplates((items) => [saved, ...items].sort((a, b) => a.assetType.localeCompare(b.assetType) || a.name.localeCompare(b.name)));
-      setSelectedTemplateId(saved.id);
-      setEditFeeForm(toForm(saved));
-      setNewTemplateModalOpen(false);
-      showSuccess("费率模板已保存");
-    } catch {
-      // apiFetch 已弹出错误提示
-    }
+  function openEditTemplateModal(template: FeeTemplate) {
+    setModalFeeForm(toForm(template));
+    setTemplateModal({ mode: "edit", templateId: template.id });
   }
 
-  async function handleSaveEditTemplate() {
-    if (!selectedTemplateId) return;
+  function closeTemplateModal() {
+    setTemplateModal(null);
+  }
+
+  async function handleSaveTemplate() {
     try {
-      const saved = await updateFeeTemplate(selectedTemplateId, editFeeForm);
+      const saved =
+        templateModal?.mode === "edit"
+          ? await updateFeeTemplate(templateModal.templateId, modalFeeForm)
+          : await createFeeTemplate(modalFeeForm);
       setFeeTemplates((items) => [saved, ...items.filter((item) => item.id !== saved.id)].sort((a, b) => a.assetType.localeCompare(b.assetType) || a.name.localeCompare(b.name)));
-      setSelectedTemplateId(saved.id);
+      setTemplateModal(null);
       showSuccess("费率模板已保存");
     } catch {
       // apiFetch 已弹出错误提示
@@ -150,13 +137,11 @@ export function SettingsPage() {
   }
 
   async function handleDeleteTemplate() {
-    if (!selectedTemplateId) return;
+    if (!editingTemplateId) return;
     try {
-      await deleteFeeTemplate(selectedTemplateId);
-      const next = feeTemplates.filter((item) => item.id !== selectedTemplateId);
-      setFeeTemplates(next);
-      setSelectedTemplateId(next[0]?.id ?? null);
-      setEditFeeForm(next[0] ? toForm(next[0]) : emptyFeeForm);
+      await deleteFeeTemplate(editingTemplateId);
+      setFeeTemplates((items) => items.filter((item) => item.id !== editingTemplateId));
+      setTemplateModal(null);
       showSuccess("费率模板已删除");
     } catch {
       // apiFetch 已弹出错误提示
@@ -230,64 +215,51 @@ export function SettingsPage() {
           <div className="template-list">
             {feeTemplates.length ? (
               feeTemplates.map((template) => (
-                <button className={template.id === selectedTemplateId ? "active" : ""} key={template.id} onClick={() => setSelectedTemplateId(template.id)} type="button">
-                  <strong>{template.name}</strong>
-                  <span>
-                    {template.assetType === "stock" ? "股票" : "ETF"} / {template.commissionMode === "fixed" ? `固定 ${template.fixedCommission}` : `佣金 ${template.commissionRate}%`}
-                  </span>
-                </button>
+                <div className={`template-list-item${editingTemplateId === template.id ? " active" : ""}`} key={template.id}>
+                  <div className="template-list-main">
+                    <strong>{template.name}</strong>
+                    <span>
+                      {template.assetType === "stock" ? "股票" : "ETF"} / {template.commissionMode === "fixed" ? `固定 ${template.fixedCommission}` : `佣金 ${template.commissionRate}%`}
+                    </span>
+                  </div>
+                  <button className="text-button template-edit-button" onClick={() => openEditTemplateModal(template)} type="button">
+                    编辑
+                  </button>
+                </div>
               ))
             ) : (
               <p className="empty-copy">暂无费率模板。</p>
             )}
           </div>
         </section>
-
-        {selectedTemplateId ? (
-          <section className="panel settings-panel">
-            <div className="section-header">
-              <h2>编辑模板</h2>
-              <CreditCard size={18} />
-            </div>
-            <FeeTemplateFormFields form={editFeeForm} onChange={setEditFeeForm} />
-            <div className="settings-actions">
-              <button className="primary-button" onClick={handleSaveEditTemplate} type="button">
-                <Save size={15} />
-                保存模板
-              </button>
-              <button className="icon-button danger-button" onClick={handleDeleteTemplate} type="button" aria-label="删除模板">
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </section>
-        ) : null}
       </div>
 
-      {newTemplateModalOpen ? (
-        <div
-          className="settings-modal-backdrop"
-          onClick={() => setNewTemplateModalOpen(false)}
-          role="presentation"
-        >
+      {templateModal ? (
+        <div className="settings-modal-backdrop" onClick={closeTemplateModal} role="presentation">
           <div
-            aria-labelledby="new-template-modal-title"
+            aria-labelledby="template-modal-title"
             aria-modal="true"
             className="settings-modal"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
           >
             <div className="section-header">
-              <h2 id="new-template-modal-title">新建模板</h2>
-              <button aria-label="关闭" className="text-button" onClick={() => setNewTemplateModalOpen(false)} type="button">
+              <h2 id="template-modal-title">{templateModal.mode === "new" ? "新建模板" : "编辑模板"}</h2>
+              <button aria-label="关闭" className="text-button" onClick={closeTemplateModal} type="button">
                 ×
               </button>
             </div>
-            <FeeTemplateFormFields form={newFeeForm} onChange={setNewFeeForm} />
+            <FeeTemplateFormFields form={modalFeeForm} onChange={setModalFeeForm} />
             <div className="settings-actions">
-              <button className="text-button" onClick={() => setNewTemplateModalOpen(false)} type="button">
+              {templateModal.mode === "edit" ? (
+                <button className="icon-button danger-button" onClick={handleDeleteTemplate} type="button" aria-label="删除模板">
+                  <Trash2 size={16} />
+                </button>
+              ) : null}
+              <button className="text-button" onClick={closeTemplateModal} type="button">
                 取消
               </button>
-              <button className="primary-button" onClick={handleSaveNewTemplate} type="button">
+              <button className="primary-button" onClick={handleSaveTemplate} type="button">
                 <Save size={15} />
                 保存模板
               </button>
