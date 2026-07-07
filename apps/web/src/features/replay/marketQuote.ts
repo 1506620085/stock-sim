@@ -13,8 +13,6 @@ export type MarketQuote = {
   turnoverRate: number | null;
   volume: number;
   amount: number | null;
-  marketCap: number | null;
-  floatMarketCap: number | null;
 };
 
 export function buildMarketQuote(bars: KLineBar[], index: number): MarketQuote | null {
@@ -36,8 +34,6 @@ export function buildMarketQuote(bars: KLineBar[], index: number): MarketQuote |
     turnoverRate: bar.turnoverRate ?? null,
     volume: bar.volume,
     amount: bar.amount ?? null,
-    marketCap: bar.marketCap ?? null,
-    floatMarketCap: bar.floatMarketCap ?? null,
   };
 }
 

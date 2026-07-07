@@ -31,8 +31,6 @@ export function QuoteSummary({ bars, barIndex }: Props) {
     { label: "换手率", value: formatTurnoverRate(quote.turnoverRate) },
     { label: "总手", value: formatCompactNumber(quote.volume, "手") },
     { label: "成交额", value: formatCompactNumber(quote.amount) },
-    { label: "总市值", value: formatCompactNumber(quote.marketCap) },
-    { label: "流通市值", value: formatCompactNumber(quote.floatMarketCap) },
   ];
 
   return (

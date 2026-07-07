@@ -1390,7 +1390,7 @@ textarea {
 .quote-summary-grid {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
   gap: 12px 20px;
   min-width: 0;
 }
