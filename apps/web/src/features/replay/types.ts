@@ -20,6 +20,9 @@ export type KLineBar = {
   close: number;
   volume: number;
   amount?: number | null;
+  turnoverRate?: number | null;
+  marketCap?: number | null;
+  floatMarketCap?: number | null;
 };
 
 export type KlinePeriod = "day" | "week" | "month" | "quarter" | "year";

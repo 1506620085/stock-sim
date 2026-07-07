@@ -1350,6 +1350,107 @@ textarea {
   isolation: isolate;
 }
 
+.quote-summary {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  width: min(calc(100% - 24px), 920px);
+  padding: 2px 4px;
+  pointer-events: none;
+}
+
+.quote-summary-price-block {
+  flex: 0 0 auto;
+  min-width: 108px;
+}
+
+.quote-summary-price {
+  display: block;
+  color: #222222;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.quote-summary-change {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.quote-summary-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  gap: 12px 20px;
+  min-width: 0;
+}
+
+.quote-summary-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.quote-summary-label {
+  color: #999999;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.quote-summary-value {
+  color: #222222;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.quote-up {
+  color: #d83a31;
+}
+
+.quote-down {
+  color: #15845f;
+}
+
+.quote-flat {
+  color: #999999;
+}
+
+@media (max-width: 980px) {
+  .quote-summary {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .quote-summary-grid {
+    grid-template-columns: repeat(3, minmax(72px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .quote-summary-price {
+    font-size: 28px;
+  }
+
+  .quote-summary-grid {
+    grid-template-columns: repeat(2, minmax(72px, 1fr));
+    gap: 10px 14px;
+  }
+}
+
 .trade-overlay-layer {
   position: absolute;
   z-index: 3;
