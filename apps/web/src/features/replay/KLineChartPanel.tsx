@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { dispose, init, type Chart, type Crosshair, type KLineData } from "klinecharts";
 import { showInfo } from "../../components/ToastProvider";
 import { periodToChartSetting, findBarIndexByDate } from "./aggregateKlines";
+import { resolveDirection } from "./marketQuote";
 import { resolveEffectiveSubCharts, type EffectiveSubCharts } from "./chartDisplay";
 import { registerCustomIndicators } from "./registerCustomIndicators";
 import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
@@ -101,7 +102,7 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
     if (!containerRef.current || chartRef.current) return;
 
     const chart = init(containerRef.current, {
-      styles: buildChartStyles(chartDisplay),
+      styles: buildChartStyles(chartDisplay, bars),
     });
 
     if (!chart) return;
@@ -234,6 +235,7 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
     chart.resetData();
     applyChartScrollLimits(chart);
     syncIndicators(chart, indicators, effectiveSubCharts);
+    chart.setStyles(buildChartStyles(chartDisplay, bars));
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
@@ -248,8 +250,8 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.setStyles(buildChartStyles(chartDisplay));
-  }, [chartDisplay]);
+    chart.setStyles(buildChartStyles(chartDisplay, bars));
+  }, [chartDisplay, bars]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -487,7 +489,30 @@ function resolveCandlePaneId(chart: Chart): string {
   return candle?.id ?? candlePaneId;
 }
 
-function buildChartStyles(display: ChartDisplaySettings) {
+function buildLastPriceMarkStyle(lastBar?: KLineBar, prevClose?: number) {
+  if (!lastBar || prevClose === undefined) {
+    return {
+      upColor: candleUpColor,
+      downColor: candleDownColor,
+      noChangeColor: candleNoChangeColor,
+    };
+  }
+
+  const direction = resolveDirection(lastBar.close - prevClose);
+  const markColor = direction === "up" ? candleUpColor : direction === "down" ? candleDownColor : candleNoChangeColor;
+
+  return {
+    upColor: lastBar.close >= lastBar.open ? markColor : candleUpColor,
+    downColor: lastBar.close < lastBar.open ? markColor : candleDownColor,
+    noChangeColor: markColor,
+  };
+}
+
+function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = []) {
+  const lastIndex = bars.length - 1;
+  const lastBar = bars[lastIndex];
+  const prevClose = bars[lastIndex - 1]?.close ?? lastBar?.open;
+
   return {
     candle: {
       bar: {
@@ -500,6 +525,10 @@ function buildChartStyles(display: ChartDisplaySettings) {
         upWickColor: candleUpColor,
         downWickColor: candleDownColor,
         noChangeWickColor: candleNoChangeColor,
+      },
+      priceMark: {
+        show: true,
+        last: buildLastPriceMarkStyle(lastBar, prevClose),
       },
       tooltip: {
         showRule: "none" as const,
