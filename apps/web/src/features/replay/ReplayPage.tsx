@@ -38,14 +38,6 @@ const formatNumber = (value: number) =>
     minimumFractionDigits: 2,
   });
 
-function formatLots(quantity: number) {
-  if (quantity <= 0) {
-    return "";
-  }
-  const lots = quantity / SHARES_PER_LOT;
-  return Number.isInteger(lots) ? `${lots} 手（1手=100股）` : `约 ${lots.toFixed(2)} 手（1手=100股）`;
-}
-
 const adjustLabel = (value: string) => ({ none: "不复权", qfq: "前复权", hfq: "后复权" })[value] ?? value;
 
 export function ReplayPage() {
@@ -804,13 +796,9 @@ function TradePanel({
               +
             </button>
           </div>
-          {showAdjustHint || cappedPreviewQuantity > 0 ? (
-            <span className="trade-lot-hint">
-              {showAdjustHint
-                ? `失焦后将调整为 ${cappedPreviewQuantity.toLocaleString("zh-CN")} 股（${formatLots(cappedPreviewQuantity)}）`
-                : formatLots(cappedPreviewQuantity)}
-            </span>
-          ) : null}
+          <span className="trade-lot-hint">
+            {showAdjustHint ? `失焦后将调整为 ${cappedPreviewQuantity.toLocaleString("zh-CN")} 股` : null}
+          </span>
         </label>
         <div className="trade-fund-field">
           <div aria-label="资金信息" className="trade-fund-info">

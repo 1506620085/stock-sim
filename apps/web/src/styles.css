@@ -1652,9 +1652,11 @@ textarea {
 
 .trade-lot-hint {
   display: block;
+  min-height: 14px;
   margin-top: 4px;
   color: #8a9490;
   font-size: 12px;
+  line-height: 1.2;
 }
 
 .trade-fund-field {
