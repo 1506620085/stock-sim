@@ -1660,6 +1660,40 @@ textarea {
   font-size: 12px;
 }
 
+.trade-fund-field {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.trade-fund-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.trade-fund-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.trade-fund-label {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.trade-fund-value {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .trade-qty-field {
   min-width: 0;
 }

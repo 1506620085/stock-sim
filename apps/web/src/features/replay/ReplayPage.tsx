@@ -10,9 +10,16 @@ import { defaultChartDisplaySettings } from "./chartDisplay";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, type FeeTemplate } from "../settings/api";
 import { calculateTradeFee } from "../calculators/calculations";
+import {
+  calculateAvailableCash,
+  calculateMaxBuyableShares,
+  calculateTradeAmount,
+  formatCurrency,
+  formatShareCount,
+  normalizeTradeQuantity,
+  SHARES_PER_LOT,
+} from "./tradeFunds";
 import type { ChartDisplaySettings, Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
-
-const SHARES_PER_LOT = 100;
 
 const defaultIndicators: IndicatorSettings = {
   maFast: 5,
@@ -31,16 +38,9 @@ const formatNumber = (value: number) =>
     minimumFractionDigits: 2,
   });
 
-function normalizeTradeQuantity(raw: number) {
-  if (!Number.isFinite(raw) || raw <= 0) {
-    return 0;
-  }
-  return Math.floor(raw / SHARES_PER_LOT) * SHARES_PER_LOT;
-}
-
 function formatLots(quantity: number) {
   if (quantity <= 0) {
-    return "0 手（1手=100股）";
+    return "";
   }
   const lots = quantity / SHARES_PER_LOT;
   return Number.isInteger(lots) ? `${lots} 手（1手=100股）` : `约 ${lots.toFixed(2)} 手（1手=100股）`;
@@ -56,7 +56,6 @@ export function ReplayPage() {
   const [tradeSide, setTradeSide] = useState<TradeSide>("buy");
   const [quantity, setQuantity] = useState(SHARES_PER_LOT * 10);
   const [fee, setFee] = useState(5);
-  const [feeTouched, setFeeTouched] = useState(false);
   const [feeTemplates, setFeeTemplates] = useState<FeeTemplate[]>([]);
   const [selectedFeeTemplateId, setSelectedFeeTemplateId] = useState<number | null>(null);
   const [note, setNote] = useState("");
@@ -233,15 +232,9 @@ export function ReplayPage() {
 
   function handleFeeTemplateChange(templateId: number) {
     setSelectedFeeTemplateId(templateId);
-    setFeeTouched(false);
     if (replaySession) {
       syncReplaySession(replaySession.id, { feeTemplateId: templateId });
     }
-  }
-
-  function handleFeeChange(value: number) {
-    setFeeTouched(true);
-    setFee(value);
   }
 
   useEffect(() => {
@@ -293,6 +286,19 @@ export function ReplayPage() {
   const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
 
   const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
+  const availableCash = useMemo(() => calculateAvailableCash(replayTrades), [replayTrades]);
+  const sellableQuantity = useMemo(() => normalizeTradeQuantity(position.quantity), [position.quantity]);
+  const maxBuyableQuantity = useMemo(() => {
+    if (!selectedFeeTemplate || tradePrice <= 0) return 0;
+    return calculateMaxBuyableShares(availableCash, tradePrice, templateToFeeSettings(selectedFeeTemplate));
+  }, [availableCash, selectedFeeTemplate, tradePrice]);
+  const maxTradeQuantity = tradeSide === "buy" ? maxBuyableQuantity : sellableQuantity;
+
+  useEffect(() => {
+    if (quantity > maxTradeQuantity) {
+      setQuantity(maxTradeQuantity);
+    }
+  }, [maxTradeQuantity, quantity]);
 
   useEffect(() => {
     setHoveredBarIndex(null);
@@ -303,15 +309,14 @@ export function ReplayPage() {
     const resolved = resolveFeeTemplate(feeTemplates, activeAssetType, { sessionTemplateId: replaySession.feeTemplateId });
     if (resolved) {
       setSelectedFeeTemplateId(resolved.id);
-      setFeeTouched(false);
     }
   }, [activeAssetType, feeTemplates, replaySession?.feeTemplateId, replaySession?.id]);
 
   useEffect(() => {
-    if (feeTouched || !selectedFeeTemplate || quantity <= 0 || tradePrice <= 0) return;
+    if (!selectedFeeTemplate || quantity <= 0 || tradePrice <= 0) return;
     const settings = templateToFeeSettings(selectedFeeTemplate);
     setFee(Number(calculateTradeFee(tradeSide, tradePrice, quantity, settings).toFixed(2)));
-  }, [feeTouched, quantity, selectedFeeTemplate, tradePrice, tradeSide]);
+  }, [quantity, selectedFeeTemplate, tradePrice, tradeSide]);
 
   function applyReplaySession(session: ReplaySession, sourceBars: KLineBar[]) {
     const index = findBarIndexByDate(sourceBars, session.currentDate);
@@ -452,6 +457,16 @@ export function ReplayPage() {
       return;
     }
 
+    if (tradeSide === "buy" && normalizedQuantity > maxBuyableQuantity) {
+      showInfo(`资金不足，最多可买 ${maxBuyableQuantity.toLocaleString("zh-CN")} 股。`);
+      return;
+    }
+
+    if (tradeSide === "sell" && normalizedQuantity > sellableQuantity) {
+      showInfo(`持仓不足，最多可卖 ${sellableQuantity.toLocaleString("zh-CN")} 股。`);
+      return;
+    }
+
     if (normalizedQuantity !== quantity) {
       setQuantity(normalizedQuantity);
     }
@@ -471,7 +486,6 @@ export function ReplayPage() {
         },
       ]);
       setNote("");
-      setFeeTouched(false);
       showSuccess(tradeSide === "buy" ? "买入记录已保存" : "卖出记录已保存");
     } catch {
       // apiFetch 已弹出错误提示
@@ -623,14 +637,14 @@ export function ReplayPage() {
 
       <aside className="trade-column">
         <TradePanel
-          fee={fee}
+          availableCash={availableCash}
           feeTemplates={availableFeeTemplates}
+          maxTradeQuantity={maxTradeQuantity}
           note={note}
           quantity={quantity}
           selectedBar={selectedBar}
-          selectedFeeTemplateId={selectedFeeTemplate?.id ?? null}
+          selectedFeeTemplate={selectedFeeTemplate}
           side={tradeSide}
-          onFeeChange={handleFeeChange}
           onFeeTemplateChange={handleFeeTemplateChange}
           onNoteChange={setNote}
           onQuantityChange={setQuantity}
@@ -652,28 +666,28 @@ function TooltipWrap({ tip, children }: { tip: string; children: ReactNode }) {
 }
 
 function TradePanel({
-  fee,
+  availableCash,
   feeTemplates,
+  maxTradeQuantity,
   note,
   quantity,
   selectedBar,
-  selectedFeeTemplateId,
+  selectedFeeTemplate,
   side,
-  onFeeChange,
   onFeeTemplateChange,
   onNoteChange,
   onQuantityChange,
   onSideChange,
   onSubmit,
 }: {
-  fee: number;
+  availableCash: number;
   feeTemplates: FeeTemplate[];
+  maxTradeQuantity: number;
   note: string;
   quantity: number;
   selectedBar?: KLineBar;
-  selectedFeeTemplateId: number | null;
+  selectedFeeTemplate: FeeTemplate | null;
   side: TradeSide;
-  onFeeChange: (value: number) => void;
   onFeeTemplateChange: (templateId: number) => void;
   onNoteChange: (value: string) => void;
   onQuantityChange: (value: number) => void;
@@ -684,15 +698,27 @@ function TradePanel({
   const price = selectedBar ? (side === "buy" ? selectedBar.high : selectedBar.low) : 0;
   const draftNumber = Number(quantityDraft);
   const previewQuantity = Number.isFinite(draftNumber) ? normalizeTradeQuantity(draftNumber) : quantity;
-  const showAdjustHint = Number.isFinite(draftNumber) && draftNumber > 0 && draftNumber !== previewQuantity;
-  const stepperQuantity = normalizeTradeQuantity(Number.isFinite(draftNumber) ? draftNumber : quantity);
+  const cappedPreviewQuantity = Math.min(previewQuantity, maxTradeQuantity);
+  const showAdjustHint = Number.isFinite(draftNumber) && draftNumber > 0 && draftNumber !== cappedPreviewQuantity;
+  const stepperQuantity = Math.min(
+    normalizeTradeQuantity(Number.isFinite(draftNumber) ? draftNumber : quantity),
+    maxTradeQuantity,
+  );
+  const feeSettings = selectedFeeTemplate ? templateToFeeSettings(selectedFeeTemplate) : null;
+  const previewFee =
+    feeSettings && cappedPreviewQuantity > 0 && price > 0
+      ? Number(calculateTradeFee(side, price, cappedPreviewQuantity, feeSettings).toFixed(2))
+      : 0;
+  const previewAmount = calculateTradeAmount(side, price, cappedPreviewQuantity, previewFee);
+  const tradableLabel = side === "buy" ? "可买" : "可卖";
+  const amountToneClass = side === "buy" ? "positive" : "negative";
 
   useEffect(() => {
     setQuantityDraft(String(quantity));
   }, [quantity]);
 
   function applyQuantity(next: number) {
-    const normalized = Math.max(0, normalizeTradeQuantity(next));
+    const normalized = Math.max(0, Math.min(normalizeTradeQuantity(next), maxTradeQuantity));
     onQuantityChange(normalized);
     setQuantityDraft(String(normalized));
   }
@@ -707,7 +733,7 @@ function TradePanel({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalized = normalizeTradeQuantity(Number(quantityDraft));
+    const normalized = Math.min(normalizeTradeQuantity(Number(quantityDraft)), maxTradeQuantity);
     onQuantityChange(normalized);
     setQuantityDraft(String(normalized));
     onSubmit(normalized);
@@ -731,7 +757,7 @@ function TradePanel({
       <label className="full-field">
         费率模板
         <select
-          value={selectedFeeTemplateId ?? ""}
+          value={selectedFeeTemplate?.id ?? ""}
           onChange={(event) => onFeeTemplateChange(Number(event.target.value))}
         >
           {feeTemplates.map((template) => (
@@ -758,6 +784,9 @@ function TradePanel({
               <input
                 className="trade-qty-input"
                 inputMode="numeric"
+                max={maxTradeQuantity || undefined}
+                min={0}
+                step={SHARES_PER_LOT}
                 type="number"
                 value={quantityDraft}
                 onBlur={commitQuantityDraft}
@@ -767,22 +796,37 @@ function TradePanel({
             <button
               aria-label="增加 100 股"
               className="trade-qty-step"
+              disabled={stepperQuantity >= maxTradeQuantity}
               onClick={() => adjustQuantity(SHARES_PER_LOT)}
               type="button"
             >
               +
             </button>
           </div>
-          <span className="trade-lot-hint">
-            {showAdjustHint
-              ? `失焦后将调整为 ${previewQuantity.toLocaleString("zh-CN")} 股（${formatLots(previewQuantity)}）`
-              : formatLots(previewQuantity)}
-          </span>
+          {showAdjustHint || cappedPreviewQuantity > 0 ? (
+            <span className="trade-lot-hint">
+              {showAdjustHint
+                ? `失焦后将调整为 ${cappedPreviewQuantity.toLocaleString("zh-CN")} 股（${formatLots(cappedPreviewQuantity)}）`
+                : formatLots(cappedPreviewQuantity)}
+            </span>
+          ) : null}
         </label>
-        <label>
-          手续费
-          <input min={0} step={0.01} type="number" value={fee} onChange={(event) => onFeeChange(Number(event.target.value))} />
-        </label>
+        <div className="trade-fund-field">
+          <div aria-label="资金信息" className="trade-fund-info">
+            <div className="trade-fund-row">
+              <span className="trade-fund-label">资金：</span>
+              <span className="trade-fund-value">{formatCurrency(availableCash)}</span>
+            </div>
+            <div className="trade-fund-row">
+              <span className="trade-fund-label">{tradableLabel}：</span>
+              <span className="trade-fund-value">{formatShareCount(maxTradeQuantity)}</span>
+            </div>
+            <div className="trade-fund-row">
+              <span className="trade-fund-label">金额：</span>
+              <span className={`trade-fund-value ${amountToneClass}`}>{formatCurrency(previewAmount)}</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div className="quote-box">
         {side === "buy" ? "买入按当日最高价" : "卖出按当日最低价"}：<strong>{formatNumber(price)}</strong>
