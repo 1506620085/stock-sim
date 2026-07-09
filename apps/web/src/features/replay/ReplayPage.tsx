@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
@@ -712,6 +712,7 @@ function TradePanel({
   const previewAmount = calculateTradeAmount(side, price, cappedPreviewQuantity, previewFee);
   const tradableLabel = side === "buy" ? "可买" : "可卖";
   const amountToneClass = side === "buy" ? "positive" : "negative";
+  const [feeTemplateOpen, setFeeTemplateOpen] = useState(false);
 
   useEffect(() => {
     setQuantityDraft(String(quantity));
@@ -754,19 +755,35 @@ function TradePanel({
           卖出
         </label>
       </div>
-      <label className="full-field">
-        费率模板
-        <select
-          value={selectedFeeTemplate?.id ?? ""}
-          onChange={(event) => onFeeTemplateChange(Number(event.target.value))}
+      <div className="trade-fee-template-field">
+        <button
+          aria-expanded={feeTemplateOpen}
+          className="trade-fee-template-toggle"
+          onClick={() => setFeeTemplateOpen((open) => !open)}
+          type="button"
         >
-          {feeTemplates.map((template) => (
-            <option key={template.id} value={template.id}>
-              {feeTemplateLabel(template)}
-            </option>
-          ))}
-        </select>
-      </label>
+          <span>费率模板</span>
+          <span aria-hidden="true" className="trade-fee-template-caret">
+            {feeTemplateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        </button>
+        {feeTemplateOpen ? (
+          <select
+            className="trade-fee-template-select"
+            value={selectedFeeTemplate?.id ?? ""}
+            onChange={(event) => {
+              onFeeTemplateChange(Number(event.target.value));
+              setFeeTemplateOpen(false);
+            }}
+          >
+            {feeTemplates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {feeTemplateLabel(template)}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </div>
       <div className="input-grid two-cols">
         <label className="trade-qty-field">
           数量（股）

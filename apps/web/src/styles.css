@@ -1878,6 +1878,40 @@ textarea {
   margin-bottom: 12px;
 }
 
+.trade-fee-template-field {
+  margin-bottom: 14px;
+}
+
+.trade-fee-template-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.trade-fee-template-toggle:hover {
+  color: #125a77;
+}
+
+.trade-fee-template-caret {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+}
+
+.trade-fee-template-select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+
 .quote-box {
   border: 1px solid var(--line);
   border-radius: 6px;
