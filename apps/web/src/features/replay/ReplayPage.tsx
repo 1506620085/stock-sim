@@ -745,44 +745,28 @@ function TradePanel({
       <div className="section-header">
         <h2>模拟交易</h2>
       </div>
-      <div className="trade-type">
-        <label>
-          <input checked={side === "buy"} onChange={() => onSideChange("buy")} name="side" type="radio" />
-          买入
-        </label>
-        <label>
-          <input checked={side === "sell"} onChange={() => onSideChange("sell")} name="side" type="radio" />
-          卖出
-        </label>
-      </div>
-      <div className="trade-fee-template-field">
+      <div className="chart-period-tabs trade-side-tabs" role="tablist" aria-label="交易方向">
         <button
-          aria-expanded={feeTemplateOpen}
-          className="trade-fee-template-toggle"
-          onClick={() => setFeeTemplateOpen((open) => !open)}
+          aria-selected={side === "buy"}
+          className={`chart-period-tab${side === "buy" ? " active" : ""}`}
+          onClick={() => onSideChange("buy")}
+          role="tab"
           type="button"
         >
-          <span>费率模板</span>
-          <span aria-hidden="true" className="trade-fee-template-caret">
-            {feeTemplateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </span>
+          买入
         </button>
-        {feeTemplateOpen ? (
-          <select
-            className="trade-fee-template-select"
-            value={selectedFeeTemplate?.id ?? ""}
-            onChange={(event) => {
-              onFeeTemplateChange(Number(event.target.value));
-              setFeeTemplateOpen(false);
-            }}
-          >
-            {feeTemplates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {feeTemplateLabel(template)}
-              </option>
-            ))}
-          </select>
-        ) : null}
+        <button
+          aria-selected={side === "sell"}
+          className={`chart-period-tab${side === "sell" ? " active" : ""}`}
+          onClick={() => onSideChange("sell")}
+          role="tab"
+          type="button"
+        >
+          卖出
+        </button>
+      </div>
+      <div className="quote-box">
+        {side === "buy" ? "买入按当日最高价" : "卖出按当日最低价"}：<strong>{formatNumber(price)}</strong>
       </div>
       <div className="input-grid two-cols">
         <label className="trade-qty-field">
@@ -845,8 +829,34 @@ function TradePanel({
           </div>
         </div>
       </div>
-      <div className="quote-box">
-        {side === "buy" ? "买入按当日最高价" : "卖出按当日最低价"}：<strong>{formatNumber(price)}</strong>
+      <div className="trade-fee-template-field">
+        <button
+          aria-expanded={feeTemplateOpen}
+          className="trade-fee-template-toggle"
+          onClick={() => setFeeTemplateOpen((open) => !open)}
+          type="button"
+        >
+          <span>费率模板</span>
+          <span aria-hidden="true" className="trade-fee-template-caret">
+            {feeTemplateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        </button>
+        {feeTemplateOpen ? (
+          <select
+            className="trade-fee-template-select"
+            value={selectedFeeTemplate?.id ?? ""}
+            onChange={(event) => {
+              onFeeTemplateChange(Number(event.target.value));
+              setFeeTemplateOpen(false);
+            }}
+          >
+            {feeTemplates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {feeTemplateLabel(template)}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </div>
       <label className="full-field">
         交易笔记

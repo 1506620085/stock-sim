@@ -1212,8 +1212,7 @@ textarea {
 }
 
 .switch,
-.check-row,
-.trade-type label {
+.check-row {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1222,8 +1221,7 @@ textarea {
 }
 
 .switch input,
-.check-row input,
-.trade-type input {
+.check-row input {
   width: auto;
 }
 
@@ -1872,14 +1870,22 @@ textarea {
   margin-top: 14px;
 }
 
-.trade-type {
+.trade-side-tabs {
+  width: 100%;
+  margin: 10px 0 12px;
+  gap: 0;
+}
+
+.trade-side-tabs .chart-period-tab {
+  flex: 1;
   display: flex;
-  gap: 14px;
-  margin-bottom: 12px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .trade-fee-template-field {
-  margin-bottom: 14px;
+  margin: 12px 0;
 }
 
 .trade-fee-template-toggle {
