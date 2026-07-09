@@ -1861,6 +1861,10 @@ textarea {
   grid-template-columns: repeat(2, 1fr);
 }
 
+.trade-qty-fund-grid {
+  gap: 18px;
+}
+
 .input-grid input:not(.trade-qty-input) {
   margin-top: 6px;
 }

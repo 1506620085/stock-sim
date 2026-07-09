@@ -760,7 +760,7 @@ function TradePanel({
       <div className="quote-box">
         {side === "buy" ? "买入按当日最高价" : "卖出按当日最低价"}：<strong>{formatNumber(price)}</strong>
       </div>
-      <div className="input-grid two-cols">
+      <div className="input-grid two-cols trade-qty-fund-grid">
         <label className="trade-qty-field">
           数量（股）
           <div className="trade-qty-stepper">
