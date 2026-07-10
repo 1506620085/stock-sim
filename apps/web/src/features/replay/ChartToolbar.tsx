@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { RefreshCcw, Settings } from "lucide-react";
+import { AppSelect } from "../../components/AppSelect";
 import { KLINE_PERIOD_OPTIONS } from "./aggregateKlines";
 import { ReplayDatePicker } from "./ReplayDatePicker";
 import type { ChartDisplaySettings, IndicatorSettings, KlinePeriod } from "./types";
@@ -104,16 +105,14 @@ export function ChartToolbar({
 
               <label className="chart-settings-field">
                 <span>副图数量</span>
-                <select
+                <AppSelect
+                  onChange={(value) => onDisplaySettingsChange("subChartCount", Number(value))}
+                  options={[0, 1, 2, 3, 4].map((count) => ({
+                    label: String(count),
+                    value: count,
+                  }))}
                   value={displaySettings.subChartCount}
-                  onChange={(event) => onDisplaySettingsChange("subChartCount", Number(event.target.value))}
-                >
-                  {[0, 1, 2, 3, 4].map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
 
               <SettingToggle

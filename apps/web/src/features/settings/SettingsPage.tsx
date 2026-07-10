@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Database, RefreshCw, Save, Trash2 } from "lucide-react";
+import { AppSelect } from "../../components/AppSelect";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
 import type { Instrument } from "../replay/types";
 import {
@@ -194,18 +195,26 @@ export function SettingsPage() {
           <div className="settings-grid">
             <label>
               默认复权
-              <select value={preferences.adjustType} onChange={(event) => updatePreferences({ adjustType: event.target.value as AdjustType })}>
-                <option value="none">不复权</option>
-                <option value="qfq">前复权</option>
-                <option value="hfq">后复权</option>
-              </select>
+              <AppSelect
+                onChange={(value) => updatePreferences({ adjustType: value })}
+                options={[
+                  { label: "不复权", value: "none" },
+                  { label: "前复权", value: "qfq" },
+                  { label: "后复权", value: "hfq" },
+                ]}
+                value={preferences.adjustType}
+              />
             </label>
             <label>
               行情源
-              <select value={preferences.dataSource} onChange={(event) => updatePreferences({ dataSource: event.target.value as AppPreferences["dataSource"] })}>
-                <option value="akshare">AKShare</option>
-                <option value="tushare">Tushare Pro</option>
-              </select>
+              <AppSelect
+                onChange={(value) => updatePreferences({ dataSource: value })}
+                options={[
+                  { label: "AKShare", value: "akshare" },
+                  { label: "Tushare Pro", value: "tushare" },
+                ]}
+                value={preferences.dataSource}
+              />
             </label>
             <label className="settings-wide">
               Tushare Token
@@ -228,14 +237,18 @@ export function SettingsPage() {
           </div>
           <label>
             标的
-            <select value={selectedInstrumentId ?? ""} onChange={(event) => setSelectedInstrumentId(Number(event.target.value) || null)}>
-              <option value="">请选择</option>
-              {instruments.map((instrument) => (
-                <option key={instrument.id} value={instrument.id ?? ""}>
-                  {instrument.code} {instrument.name}
-                </option>
-              ))}
-            </select>
+            <AppSelect
+              onChange={(value) => setSelectedInstrumentId(Number(value))}
+              options={instruments
+                .filter((instrument) => instrument.id != null)
+                .map((instrument) => ({
+                  label: `${instrument.code} ${instrument.name}`,
+                  value: instrument.id as number,
+                }))}
+              placeholder="请选择"
+              searchable
+              value={selectedInstrumentId}
+            />
           </label>
           <DataQualityView quality={dataQuality} />
         </section>
@@ -407,17 +420,25 @@ function FeeTemplateFormFields({
       </label>
       <label>
         成本类型
-        <select value={form.assetType} onChange={(event) => onChange((current) => ({ ...current, assetType: event.target.value as FeeTemplateInput["assetType"] }))}>
-          <option value="stock">股票</option>
-          <option value="etf">ETF</option>
-        </select>
+        <AppSelect
+          onChange={(value) => onChange((current) => ({ ...current, assetType: value }))}
+          options={[
+            { label: "股票", value: "stock" },
+            { label: "ETF", value: "etf" },
+          ]}
+          value={form.assetType}
+        />
       </label>
       <label>
         佣金模式
-        <select value={form.commissionMode} onChange={(event) => onChange((current) => ({ ...current, commissionMode: event.target.value as FeeTemplateInput["commissionMode"] }))}>
-          <option value="rate">按比例</option>
-          <option value="fixed">固定手续费</option>
-        </select>
+        <AppSelect
+          onChange={(value) => onChange((current) => ({ ...current, commissionMode: value }))}
+          options={[
+            { label: "按比例", value: "rate" },
+            { label: "固定手续费", value: "fixed" },
+          ]}
+          value={form.commissionMode}
+        />
       </label>
       {form.commissionMode === "fixed" ? (
         <NumberField label="固定手续费" value={form.fixedCommission} onChange={(value) => onChange((current) => ({ ...current, fixedCommission: value }))} step={0.01} />

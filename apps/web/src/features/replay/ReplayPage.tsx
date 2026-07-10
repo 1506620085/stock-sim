@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
+import { AppSelect } from "../../components/AppSelect";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { QuoteSummary } from "./QuoteSummary";
@@ -830,20 +831,18 @@ function TradePanel({
           </span>
         </button>
         {feeTemplateOpen ? (
-          <select
+          <AppSelect
             className="trade-fee-template-select"
-            value={selectedFeeTemplate?.id ?? ""}
-            onChange={(event) => {
-              onFeeTemplateChange(Number(event.target.value));
+            onChange={(value) => {
+              onFeeTemplateChange(Number(value));
               setFeeTemplateOpen(false);
             }}
-          >
-            {feeTemplates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {feeTemplateLabel(template)}
-              </option>
-            ))}
-          </select>
+            options={feeTemplates.map((template) => ({
+              label: feeTemplateLabel(template),
+              value: template.id,
+            }))}
+            value={selectedFeeTemplate?.id ?? null}
+          />
         ) : null}
       </div>
       <label className="full-field">
@@ -1018,25 +1017,31 @@ function TradeReviewPanel({
         <div className="input-grid two-cols">
           <label>
             起点
-            <select value={startTradeId} onChange={(event) => setStartTradeId(event.target.value)}>
-              <option value="">自动</option>
-              {selectableTrades.map((trade) => (
-                <option key={trade.id} value={trade.id}>
-                  {trade.date} {trade.side === "buy" ? "买入" : "卖出"}
-                </option>
-              ))}
-            </select>
+            <AppSelect
+              onChange={setStartTradeId}
+              options={[
+                { label: "自动", value: "" },
+                ...selectableTrades.map((trade) => ({
+                  label: `${trade.date} ${trade.side === "buy" ? "买入" : "卖出"}`,
+                  value: String(trade.id),
+                })),
+              ]}
+              value={startTradeId}
+            />
           </label>
           <label>
             终点
-            <select value={endTradeId} onChange={(event) => setEndTradeId(event.target.value)}>
-              <option value="">自动</option>
-              {selectableTrades.map((trade) => (
-                <option key={trade.id} value={trade.id}>
-                  {trade.date} {trade.side === "buy" ? "买入" : "卖出"}
-                </option>
-              ))}
-            </select>
+            <AppSelect
+              onChange={setEndTradeId}
+              options={[
+                { label: "自动", value: "" },
+                ...selectableTrades.map((trade) => ({
+                  label: `${trade.date} ${trade.side === "buy" ? "买入" : "卖出"}`,
+                  value: String(trade.id),
+                })),
+              ]}
+              value={endTradeId}
+            />
           </label>
         </div>
         <div className="review-metrics">

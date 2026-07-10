@@ -57,6 +57,175 @@ textarea {
   resize: vertical;
 }
 
+.app-select {
+  position: relative;
+  width: 100%;
+}
+
+.app-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 11px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.app-select-trigger:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.app-select-trigger:focus-visible,
+.app-select-trigger.open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(23, 108, 143, 0.16);
+  outline: none;
+}
+
+.app-select-trigger.disabled {
+  cursor: not-allowed;
+  background: #f5f5f5;
+  color: #999999;
+}
+
+.app-select-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.app-select-value.placeholder {
+  color: #bfbfbf;
+}
+
+.app-select-arrow {
+  flex: 0 0 auto;
+  color: #8c8c8c;
+  transition: transform 0.2s ease, color 0.15s ease;
+}
+
+.app-select-trigger.open .app-select-arrow {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.app-select-dropdown {
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.08),
+    0 3px 6px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  transform: scale(0.98);
+  transform-origin: top center;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  pointer-events: none;
+}
+
+.app-select-dropdown.upward {
+  transform-origin: bottom center;
+}
+
+.app-select-dropdown.open {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.app-select-search {
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.app-select-search input {
+  min-height: 32px;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.app-select-list {
+  max-height: 256px;
+  margin: 4px;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.app-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.app-select-option:hover:not(:disabled),
+.app-select-option.highlighted:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.app-select-option.selected {
+  color: var(--accent);
+  font-weight: 500;
+  background: var(--accent-soft);
+}
+
+.app-select-option:disabled {
+  cursor: not-allowed;
+  color: #bfbfbf;
+}
+
+.app-select-option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-select-option-check {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.app-select-empty {
+  padding: 10px 12px;
+  color: #999999;
+  font-size: 13px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -297,7 +466,9 @@ textarea {
 
 .settings-grid input,
 .settings-grid select,
-.settings-panel > label select {
+.settings-grid .app-select,
+.settings-panel > label select,
+.settings-panel > label .app-select {
   margin-top: 6px;
 }
 
@@ -396,6 +567,10 @@ textarea {
 .fee-template-select {
   display: block;
   margin-bottom: 14px;
+}
+
+.fee-template-select .app-select {
+  width: 100%;
 }
 
 .fee-template-select select {
@@ -725,8 +900,10 @@ textarea {
 }
 
 .calculator-input-grid input,
+.calculator-input-grid .app-select,
 .fee-fields input,
 .fee-fields select,
+.fee-fields .app-select,
 .average-line input {
   margin-top: 6px;
 }
@@ -1116,14 +1293,9 @@ textarea {
   margin-bottom: 0;
 }
 
+.chart-settings-field .app-select,
 .chart-settings-field select {
   min-width: 72px;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #ffffff;
-  color: var(--ink);
-  font-size: 13px;
 }
 
 .chart-settings-toggle input {
@@ -1865,7 +2037,8 @@ textarea {
   gap: 18px;
 }
 
-.input-grid input:not(.trade-qty-input) {
+.input-grid input:not(.trade-qty-input),
+.input-grid .app-select {
   margin-top: 6px;
 }
 
@@ -1891,7 +2064,7 @@ textarea {
 }
 
 .trade-fee-template-field {
-  margin: 4px 0 12px;
+  margin: 0px 0 12px;
 }
 
 .trade-fee-template-toggle {
@@ -1918,7 +2091,7 @@ textarea {
   color: var(--accent);
 }
 
-.trade-fee-template-select {
+.trade-fee-template-select.app-select {
   display: block;
   width: 100%;
   margin-top: 8px;
@@ -2099,6 +2272,7 @@ textarea {
 }
 
 .review-panel select,
+.review-panel .app-select,
 .review-panel input,
 .review-panel textarea {
   margin-top: 6px;

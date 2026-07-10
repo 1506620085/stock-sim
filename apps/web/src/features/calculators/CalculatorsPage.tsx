@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Calculator, Copy, Plus, Trash2 } from "lucide-react";
+import { AppSelect } from "../../components/AppSelect";
 import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
   calculateAverage,
@@ -67,13 +68,14 @@ function FeeTemplateSelector({
   return (
     <label className="fee-template-select">
       费率模板
-      <select value={selectedTemplateId ?? ""} onChange={(event) => onSelect(Number(event.target.value))}>
-        {options.map((template) => (
-          <option key={template.id} value={template.id}>
-            {feeTemplateLabel(template)}
-          </option>
-        ))}
-      </select>
+      <AppSelect
+        onChange={onSelect}
+        options={options.map((template) => ({
+          label: feeTemplateLabel(template),
+          value: template.id,
+        }))}
+        value={selectedTemplateId ?? options[0]?.id ?? null}
+      />
     </label>
   );
 }
@@ -91,17 +93,25 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
     <section className="fee-fields">
       <label>
         成本类型
-        <select value={settings.assetType} onChange={(event) => update("assetType", event.target.value as AssetType)}>
-          <option value="stock">股票</option>
-          <option value="etf">ETF</option>
-        </select>
+        <AppSelect
+          onChange={(value) => update("assetType", value)}
+          options={[
+            { label: "股票", value: "stock" },
+            { label: "ETF", value: "etf" },
+          ]}
+          value={settings.assetType}
+        />
       </label>
       <label>
         佣金模式
-        <select value={settings.commissionMode} onChange={(event) => update("commissionMode", event.target.value as FeeSettings["commissionMode"])}>
-          <option value="rate">按比例</option>
-          <option value="fixed">固定手续费</option>
-        </select>
+        <AppSelect
+          onChange={(value) => update("commissionMode", value)}
+          options={[
+            { label: "按比例", value: "rate" },
+            { label: "固定手续费", value: "fixed" },
+          ]}
+          value={settings.commissionMode}
+        />
       </label>
       {settings.commissionMode === "fixed" ? (
         <NumberField label="固定手续费" value={settings.fixedCommission} onChange={(value) => update("fixedCommission", value)} step={0.01} />
@@ -186,10 +196,14 @@ function TCalculator() {
             <NumberField label="原平均成本" value={baseAvgCost} onChange={setBaseAvgCost} step={0.01} />
             <label>
               操作顺序
-              <select value={sequence} onChange={(event) => setSequence(event.target.value as "buyFirst" | "sellFirst")}>
-                <option value="buyFirst">先买后卖</option>
-                <option value="sellFirst">先卖后买</option>
-              </select>
+              <AppSelect
+                onChange={setSequence}
+                options={[
+                  { label: "先买后卖", value: "buyFirst" },
+                  { label: "先卖后买", value: "sellFirst" },
+                ]}
+                value={sequence}
+              />
             </label>
             <NumberField label="当日买入价格" value={buyPrice} onChange={setBuyPrice} step={0.01} />
             <NumberField label="当日买入数量" value={buyQuantity} onChange={setBuyQuantity} step={100} />
