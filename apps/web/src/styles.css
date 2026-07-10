@@ -573,6 +573,15 @@ textarea {
   width: 100%;
 }
 
+.fee-template-select .app-select-trigger {
+  min-height: 30px;
+  padding: 3px 10px;
+}
+
+.fee-template-select .app-select-value {
+  font-size: 13px;
+}
+
 .fee-template-select select {
   width: 100%;
 }
@@ -2095,6 +2104,15 @@ textarea {
   display: block;
   width: 100%;
   margin-top: 8px;
+}
+
+.trade-fee-template-select .app-select-trigger {
+  min-height: 30px;
+  padding: 3px 10px;
+}
+
+.trade-fee-template-select .app-select-value {
+  font-size: 13px;
 }
 
 .quote-box {
