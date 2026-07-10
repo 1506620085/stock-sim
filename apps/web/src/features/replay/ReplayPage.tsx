@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { AppSelect } from "../../components/AppSelect";
@@ -923,29 +924,148 @@ function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition>
 }
 
 function TradeHistory({ trades }: { trades: TradeRecord[] }) {
+  const [activeTradeId, setActiveTradeId] = useState<TradeRecord["id"] | null>(null);
+  const historyRef = useRef<HTMLDivElement | null>(null);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  const rowRefs = useRef<Map<TradeRecord["id"], HTMLElement>>(new Map());
+  const [bubbleStyle, setBubbleStyle] = useState<CSSProperties>({});
+  const [tailLeft, setTailLeft] = useState(28);
+  const [openUpward, setOpenUpward] = useState(false);
+
+  const orderedTrades = useMemo(() => [...trades].reverse(), [trades]);
+  const activeTrade = orderedTrades.find((trade) => trade.id === activeTradeId) ?? null;
+
+  function updateBubblePosition() {
+    if (!activeTradeId) return;
+    const row = rowRefs.current.get(activeTradeId);
+    const bubble = bubbleRef.current;
+    if (!row || !bubble) return;
+
+    const rowRect = row.getBoundingClientRect();
+    const bubbleRect = bubble.getBoundingClientRect();
+    const gap = 8;
+    const bubbleWidth = Math.min(Math.max(rowRect.width, 240), 320);
+    const spaceBelow = window.innerHeight - rowRect.bottom - gap;
+    const shouldOpenUpward = spaceBelow < bubbleRect.height + 16 && rowRect.top > bubbleRect.height + gap;
+    const left = Math.min(Math.max(12, rowRect.left), window.innerWidth - bubbleWidth - 12);
+    const top = shouldOpenUpward ? rowRect.top - gap - bubbleRect.height : rowRect.bottom + gap;
+    const tailCenter = rowRect.left + rowRect.width / 2 - left;
+
+    setOpenUpward(shouldOpenUpward);
+    setTailLeft(Math.min(Math.max(tailCenter, 22), bubbleWidth - 22));
+    setBubbleStyle({
+      position: "fixed",
+      top,
+      left,
+      width: bubbleWidth,
+      zIndex: 1100,
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (!activeTradeId) return;
+    updateBubblePosition();
+    const frame = window.requestAnimationFrame(updateBubblePosition);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTradeId, activeTrade?.note]);
+
+  useEffect(() => {
+    if (activeTradeId === null) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (historyRef.current?.contains(target) || bubbleRef.current?.contains(target)) return;
+      setActiveTradeId(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActiveTradeId(null);
+      }
+    };
+
+    const handleWindowChange = () => updateBubblePosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleWindowChange);
+    window.addEventListener("scroll", handleWindowChange, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleWindowChange);
+      window.removeEventListener("scroll", handleWindowChange, true);
+    };
+  }, [activeTradeId]);
+
+  function toggleTradeNote(tradeId: TradeRecord["id"]) {
+    setActiveTradeId((current) => (current === tradeId ? null : tradeId));
+  }
+
+  const noteBubble =
+    activeTrade &&
+    createPortal(
+      <div
+        className={`trade-note-bubble floating${openUpward ? " upward" : ""}`}
+        ref={bubbleRef}
+        role="note"
+        style={{ ...bubbleStyle, ["--tail-left" as string]: `${tailLeft}px` }}
+      >
+        <p className="trade-note-bubble-title">
+          {activeTrade.side === "buy" ? "买入笔记" : "卖出笔记"} · {activeTrade.date}
+        </p>
+        <p className="trade-note-bubble-body">{activeTrade.note || "未填写笔记"}</p>
+      </div>,
+      document.body,
+    );
+
   return (
-    <section className="panel">
+    <section className="panel trade-history-panel">
       <div className="section-header">
         <h2>交易记录</h2>
         <span>{trades.length}</span>
       </div>
-      <div className="trade-history">
+      <div className="trade-history" ref={historyRef}>
         {trades.length ? (
-          [...trades].reverse().map((trade) => (
-            <article className={`trade-row ${trade.side}`} key={trade.id}>
-              <strong>
-                {trade.side === "buy" ? "买入" : "卖出"} {trade.date}
-              </strong>
-              <span>
-                {formatNumber(trade.price)} / {trade.quantity.toLocaleString("zh-CN")} 份
-              </span>
-              <p>{trade.note || "未填写笔记"}</p>
-            </article>
-          ))
+          orderedTrades.map((trade) => {
+            const active = activeTradeId === trade.id;
+            return (
+              <article
+                aria-expanded={active}
+                className={`trade-row ${trade.side}${active ? " active" : ""}`}
+                key={trade.id}
+                onClick={() => toggleTradeNote(trade.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    toggleTradeNote(trade.id);
+                  }
+                }}
+                ref={(node) => {
+                  if (node) rowRefs.current.set(trade.id, node);
+                  else rowRefs.current.delete(trade.id);
+                }}
+                role="button"
+                tabIndex={0}
+                title="点击查看交易笔记"
+              >
+                <div className="trade-row-main">
+                  <strong>
+                    {trade.side === "buy" ? "买入" : "卖出"} {trade.date}
+                  </strong>
+                  <span>
+                    {formatNumber(trade.price)} / {trade.quantity.toLocaleString("zh-CN")} 份
+                  </span>
+                </div>
+              </article>
+            );
+          })
         ) : (
           <p className="empty-copy">还没有交易记录。选择复盘日后记录买入或卖出。</p>
         )}
       </div>
+      {noteBubble}
     </section>
   );
 }

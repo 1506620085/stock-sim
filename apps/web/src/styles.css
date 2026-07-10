@@ -2259,6 +2259,87 @@ textarea {
   border-radius: 6px;
   background: #fbfdfc;
   padding: 10px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.trade-row:hover {
+  background: #f5faf8;
+}
+
+.trade-row.active {
+  box-shadow: 0 0 0 2px rgba(23, 108, 143, 0.14);
+}
+
+.trade-history-panel {
+  position: relative;
+}
+
+.trade-note-bubble {
+  padding: 12px 14px 13px;
+  border: 2px solid #17201c;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 3px 4px 0 rgba(22, 32, 28, 0.1);
+  animation: trade-note-bubble-in 0.18s ease;
+}
+
+.trade-note-bubble.floating {
+  position: fixed;
+  margin: 0;
+  pointer-events: auto;
+}
+
+.trade-note-bubble::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: var(--tail-left, 28px);
+  width: 14px;
+  height: 14px;
+  border-top: 2px solid #17201c;
+  border-left: 2px solid #17201c;
+  background: #ffffff;
+  transform: rotate(45deg);
+}
+
+.trade-note-bubble.floating.upward::before {
+  top: auto;
+  bottom: -9px;
+  border-top: 0;
+  border-left: 0;
+  border-bottom: 2px solid #17201c;
+  border-right: 2px solid #17201c;
+}
+
+.trade-note-bubble-title {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trade-note-bubble-body {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+@keyframes trade-note-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .trade-row.buy {
@@ -2269,20 +2350,24 @@ textarea {
   border-left-color: #15845f;
 }
 
-.trade-row strong,
-.trade-row span {
-  display: block;
+.trade-row-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trade-row strong {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .trade-row span {
-  margin-top: 4px;
+  flex: 0 0 auto;
   color: var(--muted);
   font-size: 12px;
-}
-
-.trade-row p {
-  margin: 8px 0 0;
-  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .review-panel form {
