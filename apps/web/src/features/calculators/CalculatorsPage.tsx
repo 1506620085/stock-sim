@@ -140,9 +140,9 @@ function ProfitCostCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <NumberField label="买入价格" value={buyPrice} onChange={setBuyPrice} step={0.01} />
-            <NumberField label="卖出价格" value={sellPrice} onChange={setSellPrice} step={0.01} />
-            <NumberField label="买入数量" value={quantity} onChange={setQuantity} step={100} />
+            <NumberField label="买入价格" onChange={setBuyPrice} step={0.01} stepper value={buyPrice} />
+            <NumberField label="卖出价格" onChange={setSellPrice} step={0.01} stepper value={sellPrice} />
+            <NumberField label="买入数量" normalizeToStep onChange={setQuantity} step={100} stepper value={quantity} />
           </div>
           <FeeTemplateSelector
             assetType={settings.assetType}
@@ -407,11 +407,96 @@ function CalculatorShell({ children, description, title }: { children: ReactNode
   );
 }
 
-function NumberField({ label, onChange, step = 1, value }: { label: string; onChange: (value: number) => void; step?: number; value: number }) {
+function normalizeStepValue(raw: number, step: number) {
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  if (step >= 1) return Math.floor(raw / step) * step;
+  const decimals = String(step).includes(".") ? String(step).split(".")[1]?.length ?? 0 : 0;
+  const factor = 10 ** decimals;
+  return Math.round(raw * factor) / factor;
+}
+
+function NumberField({
+  label,
+  min = 0,
+  normalizeToStep = false,
+  onChange,
+  step = 1,
+  stepper = false,
+  value,
+}: {
+  label: string;
+  min?: number;
+  normalizeToStep?: boolean;
+  onChange: (value: number) => void;
+  step?: number;
+  stepper?: boolean;
+  value: number;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  function applyValue(raw: number) {
+    if (!Number.isFinite(raw)) {
+      setDraft(String(value));
+      return;
+    }
+    const normalized = normalizeToStep ? normalizeStepValue(raw, step) : normalizeStepValue(Math.max(min, raw), step);
+    const next = Math.max(min, normalized);
+    onChange(next);
+    setDraft(String(next));
+  }
+
+  function adjustValue(delta: number) {
+    applyValue(value + delta);
+  }
+
+  function commitDraft() {
+    applyValue(Number(draft));
+  }
+
+  if (!stepper) {
+    return (
+      <label>
+        {label}
+        <input min={min} step={step} type="number" value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Number(event.target.value))} />
+      </label>
+    );
+  }
+
+  const stepperValue = normalizeToStep ? normalizeStepValue(value, step) : value;
+
   return (
     <label>
       {label}
-      <input min={0} step={step} type="number" value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Number(event.target.value))} />
+      <div className="trade-qty-stepper">
+        <button
+          aria-label={`减少 ${step}`}
+          className="trade-qty-step"
+          disabled={stepperValue <= min}
+          onClick={() => adjustValue(-step)}
+          type="button"
+        >
+          −
+        </button>
+        <div className="trade-qty-input-wrap">
+          <input
+            className="trade-qty-input"
+            inputMode="decimal"
+            min={min}
+            step={step}
+            type="number"
+            value={draft}
+            onBlur={commitDraft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+        </div>
+        <button aria-label={`增加 ${step}`} className="trade-qty-step" onClick={() => adjustValue(step)} type="button">
+          +
+        </button>
+      </div>
     </label>
   );
 }

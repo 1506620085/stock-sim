@@ -909,6 +909,7 @@ textarea {
 }
 
 .calculator-input-grid input,
+.calculator-input-grid .trade-qty-stepper,
 .calculator-input-grid .app-select,
 .fee-fields input,
 .fee-fields select,
