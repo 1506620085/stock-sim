@@ -575,6 +575,7 @@ textarea {
 
 .calculator-fee-panel > label {
   display: block;
+  margin-bottom: 16px;
   color: var(--muted);
   font-size: 13px;
 }
