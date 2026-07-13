@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Calculator, ChevronDown, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
+import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppSwitch } from "../../components/AppSwitch";
 import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
@@ -144,9 +145,9 @@ function ProfitCostCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <NumberField label="买入价格" onChange={setBuyPrice} step={0.01} stepper value={buyPrice} />
-            <NumberField label="卖出价格" onChange={setSellPrice} step={0.01} stepper value={sellPrice} />
-            <NumberField label="买入数量" normalizeToStep onChange={setQuantity} step={100} stepper value={quantity} />
+            <AppNumberStepper label="买入价格" onChange={setBuyPrice} step={0.01} value={buyPrice} />
+            <AppNumberStepper label="卖出价格" onChange={setSellPrice} step={0.01} value={sellPrice} />
+            <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>
           <ProfitCostFeePanel {...fee} />
         </div>
@@ -524,37 +525,33 @@ function ProfitCostFeePanel({
                 />
               </label>
               {customSettings.commissionMode === "fixed" ? (
-                <NumberField
+                <AppNumberStepper
                   label="固定手续费"
                   onChange={(value) => updateCustom("fixedCommission", value)}
                   step={0.01}
-                  stepper
                   value={customSettings.fixedCommission}
                 />
               ) : (
                 <>
-                  <NumberField
+                  <AppNumberStepper
                     label="佣金费率(%)"
                     onChange={(value) => updateCustom("commissionRate", value)}
                     step={0.001}
-                    stepper
                     value={customSettings.commissionRate}
                   />
-                  <NumberField label="最低佣金" onChange={(value) => updateCustom("minCommission", value)} step={0.01} stepper value={customSettings.minCommission} />
+                  <AppNumberStepper label="最低佣金" onChange={(value) => updateCustom("minCommission", value)} step={0.01} value={customSettings.minCommission} />
                 </>
               )}
-              <NumberField
+              <AppNumberStepper
                 label="印花税率(%)"
                 onChange={(value) => updateCustom("stampTaxRate", value)}
                 step={0.001}
-                stepper
                 value={customSettings.stampTaxRate}
               />
-              <NumberField
+              <AppNumberStepper
                 label="过户费率(%)"
                 onChange={(value) => updateCustom("transferRate", value)}
                 step={0.001}
-                stepper
                 value={customSettings.transferRate}
               />
             </div>
@@ -639,14 +636,6 @@ function CalculatorShell({ children, description, title }: { children: ReactNode
   );
 }
 
-function normalizeStepValue(raw: number, step: number) {
-  if (!Number.isFinite(raw) || raw <= 0) return 0;
-  if (step >= 1) return Math.floor(raw / step) * step;
-  const decimals = String(step).includes(".") ? String(step).split(".")[1]?.length ?? 0 : 0;
-  const factor = 10 ** decimals;
-  return Math.round(raw * factor) / factor;
-}
-
 function NumberField({
   label,
   min = 0,
@@ -664,71 +653,16 @@ function NumberField({
   stepper?: boolean;
   value: number;
 }) {
-  const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
-    setDraft(String(value));
-  }, [value]);
-
-  function applyValue(raw: number) {
-    if (!Number.isFinite(raw)) {
-      setDraft(String(value));
-      return;
-    }
-    const normalized = normalizeToStep ? normalizeStepValue(raw, step) : normalizeStepValue(Math.max(min, raw), step);
-    const next = Math.max(min, normalized);
-    onChange(next);
-    setDraft(String(next));
-  }
-
-  function adjustValue(delta: number) {
-    applyValue(value + delta);
-  }
-
-  function commitDraft() {
-    applyValue(Number(draft));
-  }
-
-  if (!stepper) {
+  if (stepper) {
     return (
-      <label>
-        {label}
-        <input min={min} step={step} type="number" value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Number(event.target.value))} />
-      </label>
+      <AppNumberStepper label={label} min={min} normalizeToStep={normalizeToStep} onChange={onChange} step={step} value={value} />
     );
   }
-
-  const stepperValue = normalizeToStep ? normalizeStepValue(value, step) : value;
 
   return (
     <label>
       {label}
-      <div className="trade-qty-stepper">
-        <button
-          aria-label={`减少 ${step}`}
-          className="trade-qty-step"
-          disabled={stepperValue <= min}
-          onClick={() => adjustValue(-step)}
-          type="button"
-        >
-          −
-        </button>
-        <div className="trade-qty-input-wrap">
-          <input
-            className="trade-qty-input"
-            inputMode="decimal"
-            min={min}
-            step={step}
-            type="number"
-            value={draft}
-            onBlur={commitDraft}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-        </div>
-        <button aria-label={`增加 ${step}`} className="trade-qty-step" onClick={() => adjustValue(step)} type="button">
-          +
-        </button>
-      </div>
+      <input min={min} step={step} type="number" value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Number(event.target.value))} />
     </label>
   );
 }
