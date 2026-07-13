@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Database, RefreshCw, Save, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
+import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
 import type { Instrument } from "../replay/types";
 import {
@@ -441,15 +442,40 @@ function FeeTemplateFormFields({
         />
       </label>
       {form.commissionMode === "fixed" ? (
-        <NumberField label="固定手续费" value={form.fixedCommission} onChange={(value) => onChange((current) => ({ ...current, fixedCommission: value }))} step={0.01} />
+        <AppNumberStepper
+          label="固定手续费"
+          onChange={(value) => onChange((current) => ({ ...current, fixedCommission: value ?? 0 }))}
+          step={0.01}
+          value={form.fixedCommission}
+        />
       ) : (
         <>
-          <NumberField label="佣金费率(%)" value={form.commissionRate} onChange={(value) => onChange((current) => ({ ...current, commissionRate: value }))} step={0.001} />
-          <NumberField label="最低佣金" value={form.minCommission} onChange={(value) => onChange((current) => ({ ...current, minCommission: value }))} step={0.01} />
+          <AppNumberStepper
+            label="佣金费率(%)"
+            onChange={(value) => onChange((current) => ({ ...current, commissionRate: value ?? 0 }))}
+            step={0.001}
+            value={form.commissionRate}
+          />
+          <AppNumberStepper
+            label="最低佣金"
+            onChange={(value) => onChange((current) => ({ ...current, minCommission: value ?? 0 }))}
+            step={0.01}
+            value={form.minCommission}
+          />
         </>
       )}
-      <NumberField label="卖出印花税率(%)" value={form.stampTaxRate} onChange={(value) => onChange((current) => ({ ...current, stampTaxRate: value }))} step={0.001} />
-      <NumberField label="过户费率(%)" value={form.transferRate} onChange={(value) => onChange((current) => ({ ...current, transferRate: value }))} step={0.001} />
+      <AppNumberStepper
+        label="卖出印花税率(%)"
+        onChange={(value) => onChange((current) => ({ ...current, stampTaxRate: value ?? 0 }))}
+        step={0.001}
+        value={form.stampTaxRate}
+      />
+      <AppNumberStepper
+        label="过户费率(%)"
+        onChange={(value) => onChange((current) => ({ ...current, transferRate: value ?? 0 }))}
+        step={0.001}
+        value={form.transferRate}
+      />
     </div>
   );
 }
@@ -486,15 +512,6 @@ function DataQualityView({ quality }: { quality: DataQuality | null }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function NumberField({ label, onChange, step = 1, value }: { label: string; onChange: (value: number) => void; step?: number; value: number }) {
-  return (
-    <label>
-      {label}
-      <input min={0} step={step} type="number" value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Number(event.target.value))} />
-    </label>
   );
 }
 

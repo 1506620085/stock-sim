@@ -563,13 +563,16 @@ textarea {
 }
 
 .settings-grid label,
+.settings-grid .app-number-stepper-field > label,
 .settings-panel > label {
   display: block;
   color: var(--muted);
   font-size: 13px;
 }
 
-.settings-grid input,
+.settings-grid input:not(.trade-qty-input),
+.settings-grid .trade-qty-stepper,
+.settings-grid .app-number-stepper-field .trade-qty-stepper,
 .settings-grid select,
 .settings-grid .app-select,
 .settings-panel > label select,
