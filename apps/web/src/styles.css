@@ -569,6 +569,32 @@ textarea {
   margin-bottom: 14px;
 }
 
+.calculator-fee-panel {
+  margin-top: 14px;
+}
+
+.calculator-fee-panel > label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.calculator-fee-panel > label .app-select {
+  margin-top: 6px;
+}
+
+.calculator-custom-fee-fields {
+  margin-top: 8px;
+}
+
+.calculator-custom-fee-enable {
+  margin-bottom: 10px;
+}
+
+.calculator-custom-fee-grid.fee-fields {
+  margin-top: 0;
+}
+
 .fee-template-select .app-select {
   width: 100%;
 }

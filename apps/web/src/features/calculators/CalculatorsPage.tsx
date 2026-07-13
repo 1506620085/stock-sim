@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Calculator, Copy, Plus, Trash2 } from "lucide-react";
+import { Calculator, ChevronDown, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
@@ -57,12 +57,12 @@ function FeeTemplateSelector({
   templates,
   onSelect,
 }: {
-  assetType?: AssetType;
+  assetType: AssetType;
   selectedTemplateId: number | null;
   templates: FeeTemplate[];
   onSelect: (templateId: number) => void;
 }) {
-  const options = assetType ? templates.filter((template) => template.assetType === assetType) : templates;
+  const options = templates.filter((template) => template.assetType === assetType);
   if (!options.length) return null;
 
   return (
@@ -128,11 +128,14 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
 }
 
 function ProfitCostCalculator() {
-  const { settings, selectedTemplateId, setSelectedTemplateId, templates } = useTemplateFeeSettings();
+  const fee = useProfitCostFeeSettings();
   const [buyPrice, setBuyPrice] = useState(10);
   const [sellPrice, setSellPrice] = useState(11.8);
   const [quantity, setQuantity] = useState(1000);
-  const result = useMemo(() => calculateProfitCost({ ...settings, buyPrice, sellPrice, quantity }), [buyPrice, quantity, sellPrice, settings]);
+  const result = useMemo(
+    () => calculateProfitCost({ ...fee.effectiveSettings, buyPrice, sellPrice, quantity }),
+    [buyPrice, fee.effectiveSettings, quantity, sellPrice],
+  );
 
   return (
     <CalculatorShell description="按股票或 ETF 费率计算一买一卖后的净盈亏、净利润率和交易成本。" title="利润成本计算器">
@@ -144,7 +147,7 @@ function ProfitCostCalculator() {
             <NumberField label="卖出价格" onChange={setSellPrice} step={0.01} stepper value={sellPrice} />
             <NumberField label="买入数量" normalizeToStep onChange={setQuantity} step={100} stepper value={quantity} />
           </div>
-          <FeeTemplateSelector selectedTemplateId={selectedTemplateId} templates={templates} onSelect={setSelectedTemplateId} />
+          <ProfitCostFeePanel {...fee} />
         </div>
         <ResultTable
           rows={[
@@ -324,6 +327,232 @@ function AveragePriceCalculator() {
         />
       </div>
     </CalculatorShell>
+  );
+}
+
+function useProfitCostFeeSettings() {
+  const [templates, setTemplates] = useState<FeeTemplate[]>([]);
+  const [assetType, setAssetType] = useState<AssetType>("stock");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [customEnabled, setCustomEnabled] = useState(false);
+  const [customSettings, setCustomSettings] = useState<FeeSettings>(defaultFeeSettings);
+
+  const selectedTemplate = useMemo(
+    () => resolveFeeTemplate(templates, assetType, { preferredTemplateId: selectedTemplateId ?? undefined }),
+    [assetType, selectedTemplateId, templates],
+  );
+
+  const templateSettings = useMemo(
+    () => (selectedTemplate ? templateToFeeSettings(selectedTemplate) : { ...defaultFeeSettings, assetType }),
+    [assetType, selectedTemplate],
+  );
+
+  const effectiveSettings = useMemo(
+    () => ({
+      ...(customEnabled ? customSettings : templateSettings),
+      assetType,
+    }),
+    [assetType, customEnabled, customSettings, templateSettings],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    loadFeeTemplates()
+      .then((items) => {
+        if (cancelled) return;
+        setTemplates(items);
+        const preferences = loadFeePreferences();
+        const initialAssetType = defaultFeeSettings.assetType;
+        const resolved = resolveFeeTemplate(items, initialAssetType, {
+          preferredTemplateId: preferences.calculatorTemplateId,
+        });
+        if (resolved) {
+          setAssetType(resolved.assetType);
+          setSelectedTemplateId(resolved.id);
+          setCustomSettings(templateToFeeSettings(resolved));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function selectTemplate(templateId: number) {
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) return;
+    setSelectedTemplateId(template.id);
+    setAssetType(template.assetType);
+    saveFeePreferences({ calculatorTemplateId: template.id });
+  }
+
+  function changeAssetType(nextAssetType: AssetType) {
+    const resolved = resolveFeeTemplate(templates, nextAssetType, {
+      preferredTemplateId: selectedTemplateId ?? undefined,
+    });
+    setAssetType(nextAssetType);
+    if (resolved) {
+      setSelectedTemplateId(resolved.id);
+      saveFeePreferences({ calculatorTemplateId: resolved.id });
+    }
+    setCustomSettings((current) => ({
+      ...current,
+      assetType: nextAssetType,
+      stampTaxRate: nextAssetType === "stock" ? current.stampTaxRate : 0,
+    }));
+  }
+
+  function updateCustomSettings(next: FeeSettings) {
+    setCustomSettings({ ...next, assetType });
+  }
+
+  return {
+    assetType,
+    changeAssetType,
+    customEnabled,
+    customSettings,
+    effectiveSettings,
+    selectTemplate,
+    selectedTemplateId,
+    setCustomEnabled,
+    setCustomSettings: updateCustomSettings,
+    templates,
+  };
+}
+
+function ProfitCostFeePanel({
+  assetType,
+  changeAssetType,
+  customEnabled,
+  customSettings,
+  selectTemplate,
+  selectedTemplateId,
+  setCustomEnabled,
+  setCustomSettings,
+  templates,
+}: ReturnType<typeof useProfitCostFeeSettings>) {
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const templateOptions = templates.filter((template) => template.assetType === assetType);
+
+  function updateCustom<K extends keyof FeeSettings>(key: K, value: FeeSettings[K]) {
+    const next = { ...customSettings, [key]: value, assetType };
+    if (key === "assetType") {
+      next.stampTaxRate = value === "stock" ? customSettings.stampTaxRate : 0;
+    }
+    setCustomSettings(next);
+  }
+
+  return (
+    <section className="calculator-fee-panel">
+      <label>
+        成本类型
+        <AppSelect
+          onChange={changeAssetType}
+          options={[
+            { label: "股票", value: "stock" },
+            { label: "ETF", value: "etf" },
+          ]}
+          value={assetType}
+        />
+      </label>
+
+      {templateOptions.length ? (
+        <div className="trade-fee-template-field">
+          <button
+            aria-expanded={templateOpen}
+            className="trade-fee-template-toggle"
+            onClick={() => setTemplateOpen((open) => !open)}
+            type="button"
+          >
+            <span>费率模板</span>
+            <span aria-hidden="true" className="trade-fee-template-caret">
+              {templateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </span>
+          </button>
+          {templateOpen ? (
+            <AppSelect
+              className="trade-fee-template-select"
+              onChange={(value) => {
+                selectTemplate(Number(value));
+                setTemplateOpen(false);
+              }}
+              options={templateOptions.map((template) => ({
+                label: feeTemplateLabel(template),
+                value: template.id,
+              }))}
+              value={selectedTemplateId ?? templateOptions[0]?.id ?? null}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="trade-fee-template-field">
+        <button
+          aria-expanded={customOpen}
+          className="trade-fee-template-toggle"
+          onClick={() => setCustomOpen((open) => !open)}
+          type="button"
+        >
+          <span>自定义</span>
+          <span aria-hidden="true" className="trade-fee-template-caret">
+            {customOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        </button>
+        {customOpen ? (
+          <div className="calculator-custom-fee-fields">
+            <label className="check-row calculator-custom-fee-enable">
+              <input checked={customEnabled} onChange={(event) => setCustomEnabled(event.target.checked)} type="checkbox" />
+              启用
+            </label>
+            <div className="fee-fields calculator-custom-fee-grid">
+              <label>
+                佣金模式
+                <AppSelect
+                  onChange={(value) => updateCustom("commissionMode", value)}
+                  options={[
+                    { label: "按比例", value: "rate" },
+                    { label: "固定手续费", value: "fixed" },
+                  ]}
+                  value={customSettings.commissionMode}
+                />
+              </label>
+              {customSettings.commissionMode === "fixed" ? (
+                <NumberField
+                  label="固定手续费"
+                  onChange={(value) => updateCustom("fixedCommission", value)}
+                  step={0.01}
+                  value={customSettings.fixedCommission}
+                />
+              ) : (
+                <>
+                  <NumberField
+                    label="佣金费率(%)"
+                    onChange={(value) => updateCustom("commissionRate", value)}
+                    step={0.001}
+                    value={customSettings.commissionRate}
+                  />
+                  <NumberField label="最低佣金" onChange={(value) => updateCustom("minCommission", value)} step={0.01} value={customSettings.minCommission} />
+                </>
+              )}
+              <NumberField
+                label="印花税率(%)"
+                onChange={(value) => updateCustom("stampTaxRate", value)}
+                step={0.001}
+                value={customSettings.stampTaxRate}
+              />
+              <NumberField
+                label="过户费率(%)"
+                onChange={(value) => updateCustom("transferRate", value)}
+                step={0.001}
+                value={customSettings.transferRate}
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
