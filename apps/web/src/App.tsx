@@ -89,7 +89,7 @@ export default function App() {
       </nav>
 
       <section className="workspace">
-        {activePage !== "replay" ? (
+        {activePage !== "replay" && activePage !== "calculators" ? (
           <header className="topbar">
             <div>
               <p className="eyebrow">{activeMeta.eyebrow}</p>

@@ -995,23 +995,51 @@ textarea {
   gap: 16px;
 }
 
-.calculator-heading {
+.calculator-page-header {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  gap: 16px;
+  align-items: stretch;
 }
 
-.calculator-heading svg {
+.calculator-page-meta {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.calculator-page-meta h1 {
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+.calculator-page-meta .stage-pill {
+  font-size: 12px;
+  padding: 5px 9px;
+}
+
+.calculator-page-heading {
+  display: flex;
+  flex: 2;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.calculator-page-heading svg {
   color: var(--accent);
+  flex: 0 0 auto;
   margin-top: 4px;
 }
 
-.calculator-heading h2 {
+.calculator-page-heading h2 {
   margin-top: 5px;
   font-size: 22px;
 }
 
-.calculator-heading p:last-child {
+.calculator-page-heading p:last-child {
   color: var(--muted);
   line-height: 1.7;
   margin: 8px 0 0;
@@ -2777,6 +2805,16 @@ textarea {
 
   .calculators-tabs {
     overflow-x: auto;
+  }
+
+  .calculator-page-header {
+    flex-direction: column;
+  }
+
+  .calculator-page-meta,
+  .calculator-page-heading {
+    flex: 1 1 auto;
+    width: 100%;
   }
 
   .calculators-tabs button {

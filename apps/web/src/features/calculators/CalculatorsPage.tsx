@@ -24,6 +24,25 @@ const tabs: Array<{ id: CalculatorTab; label: string }> = [
   { id: "average", label: "平均价格" },
 ];
 
+const calculatorTabMeta: Record<CalculatorTab, { title: string; description: string }> = {
+  profit: {
+    title: "利润成本计算器",
+    description: "按股票或 ETF 费率计算一买一卖后的净盈亏、净利润率和交易成本。",
+  },
+  t: {
+    title: "做 T 计算器",
+    description: "根据底仓、当日买入和当日卖出计算做 T 后成本、现金流和当日 T 盈亏。",
+  },
+  change: {
+    title: "涨跌幅计算器",
+    description: "输入基准价和当前价计算涨跌幅，也可以输入目标涨跌幅反推目标价格。",
+  },
+  average: {
+    title: "平均价格计算器",
+    description: "录入多笔买入价格、数量和费用，计算加权平均价格与含费用平均成本。",
+  },
+};
+
 const currency = (value: number) =>
   value.toLocaleString("zh-CN", {
     maximumFractionDigits: 2,
@@ -34,9 +53,28 @@ const percent = (value: number) => `${value.toFixed(2)}%`;
 
 export function CalculatorsPage() {
   const [activeTab, setActiveTab] = useState<CalculatorTab>("profit");
+  const activeMeta = calculatorTabMeta[activeTab];
 
   return (
     <section className="calculators-page">
+      <div className="calculator-page-header">
+        <header className="panel calculator-page-meta">
+          <div>
+            <p className="eyebrow">Tools</p>
+            <h1>交易计算器</h1>
+          </div>
+          <span className="stage-pill">工具箱</span>
+        </header>
+        <div className="panel calculator-page-heading">
+          <Calculator aria-hidden="true" size={28} />
+          <div>
+            <p className="eyebrow">Calculator</p>
+            <h2>{activeMeta.title}</h2>
+            <p>{activeMeta.description}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="panel calculators-tabs" role="tablist" aria-label="计算器类型">
         {tabs.map((tab) => (
           <button aria-selected={activeTab === tab.id} className={activeTab === tab.id ? "active" : ""} key={tab.id} onClick={() => setActiveTab(tab.id)} role="tab" type="button">
@@ -140,7 +178,7 @@ function ProfitCostCalculator() {
   );
 
   return (
-    <CalculatorShell description="按股票或 ETF 费率计算一买一卖后的净盈亏、净利润率和交易成本。" title="利润成本计算器">
+    <CalculatorShell>
       <div className="calculator-form">
         <div className="panel">
           <h2>输入参数</h2>
@@ -186,7 +224,7 @@ function TCalculator() {
   );
 
   return (
-    <CalculatorShell description="根据底仓、当日买入和当日卖出计算做 T 后成本、现金流和当日 T 盈亏。" title="做 T 计算器">
+    <CalculatorShell>
       <div className="calculator-form">
         <div className="panel">
           <h2>输入参数</h2>
@@ -243,7 +281,7 @@ function ChangeCalculator() {
   const result = useMemo(() => calculateChange({ basePrice, currentPrice, targetRate }), [basePrice, currentPrice, targetRate]);
 
   return (
-    <CalculatorShell description="输入基准价和当前价计算涨跌幅，也可以输入目标涨跌幅反推目标价格。" title="涨跌幅计算器">
+    <CalculatorShell>
       <div className="calculator-form">
         <div className="panel">
           <h2>输入参数</h2>
@@ -293,7 +331,7 @@ function AveragePriceCalculator() {
   }
 
   return (
-    <CalculatorShell description="录入多笔买入价格、数量和费用，计算加权平均价格与含费用平均成本。" title="平均价格计算器">
+    <CalculatorShell>
       <div className="calculator-form">
         <div className="panel">
           <div className="section-header">
@@ -620,20 +658,8 @@ function useTemplateFeeSettings() {
   };
 }
 
-function CalculatorShell({ children, description, title }: { children: ReactNode; description: string; title: string }) {
-  return (
-    <section className="calculator-shell">
-      <div className="panel calculator-heading">
-        <Calculator aria-hidden="true" size={28} />
-        <div>
-          <p className="eyebrow">Calculator</p>
-          <h2>{title}</h2>
-          <p>{description}</p>
-        </div>
-      </div>
-      {children}
-    </section>
-  );
+function CalculatorShell({ children }: { children: ReactNode }) {
+  return <section className="calculator-shell">{children}</section>;
 }
 
 function NumberField({
