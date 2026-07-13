@@ -9,8 +9,8 @@ export function normalizeStepValue(raw: number, step: number) {
 }
 
 type AppNumberStepperProps = {
-  value: number;
-  onChange: (value: number) => void;
+  value: number | null;
+  onChange: (value: number | null) => void;
   step?: number;
   min?: number;
   max?: number;
@@ -40,15 +40,15 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   "aria-label": ariaLabel,
 }: AppNumberStepperProps) {
   const inputId = useId();
-  const [draft, setDraft] = useState(String(value));
+  const [draft, setDraft] = useState(value == null ? "" : String(value));
 
   useEffect(() => {
-    setDraft(String(value));
+    setDraft(value == null ? "" : String(value));
   }, [value]);
 
   function applyValue(raw: number) {
     if (!Number.isFinite(raw)) {
-      setDraft(String(value));
+      setDraft(value == null ? "" : String(value));
       return;
     }
     const normalized = normalizeToStep ? normalizeStepValue(raw, step) : normalizeStepValue(Math.max(min, raw), step);
@@ -59,14 +59,19 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   }
 
   function adjustValue(delta: number) {
-    applyValue(value + delta);
+    applyValue((value ?? 0) + delta);
   }
 
   function commitDraft() {
+    if (draft.trim() === "") {
+      onChange(null);
+      setDraft("");
+      return;
+    }
     applyValue(Number(draft));
   }
 
-  const stepperValue = normalizeToStep ? normalizeStepValue(value, step) : value;
+  const stepperValue = value == null ? min : normalizeToStep ? normalizeStepValue(value, step) : value;
   const canDecrement = !disabled && stepperValue > min;
   const canIncrement = !disabled && (max == null || stepperValue < max);
 

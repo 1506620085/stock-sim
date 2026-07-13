@@ -169,11 +169,17 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
 
 function ProfitCostCalculator() {
   const fee = useProfitCostFeeSettings();
-  const [buyPrice, setBuyPrice] = useState(10);
-  const [sellPrice, setSellPrice] = useState(11.8);
-  const [quantity, setQuantity] = useState(1000);
+  const [buyPrice, setBuyPrice] = useState<number | null>(null);
+  const [sellPrice, setSellPrice] = useState<number | null>(null);
+  const [quantity, setQuantity] = useState<number | null>(null);
   const result = useMemo(
-    () => calculateProfitCost({ ...fee.effectiveSettings, buyPrice, sellPrice, quantity }),
+    () =>
+      calculateProfitCost({
+        ...fee.effectiveSettings,
+        buyPrice: buyPrice ?? 0,
+        sellPrice: sellPrice ?? 0,
+        quantity: quantity ?? 0,
+      }),
     [buyPrice, fee.effectiveSettings, quantity, sellPrice],
   );
 
@@ -565,7 +571,7 @@ function ProfitCostFeePanel({
               {customSettings.commissionMode === "fixed" ? (
                 <AppNumberStepper
                   label="固定手续费"
-                  onChange={(value) => updateCustom("fixedCommission", value)}
+                  onChange={(value) => updateCustom("fixedCommission", value ?? 0)}
                   step={0.01}
                   value={customSettings.fixedCommission}
                 />
@@ -573,22 +579,22 @@ function ProfitCostFeePanel({
                 <>
                   <AppNumberStepper
                     label="佣金费率(%)"
-                    onChange={(value) => updateCustom("commissionRate", value)}
+                    onChange={(value) => updateCustom("commissionRate", value ?? 0)}
                     step={0.001}
                     value={customSettings.commissionRate}
                   />
-                  <AppNumberStepper label="最低佣金" onChange={(value) => updateCustom("minCommission", value)} step={0.01} value={customSettings.minCommission} />
+                  <AppNumberStepper label="最低佣金" onChange={(value) => updateCustom("minCommission", value ?? 0)} step={0.01} value={customSettings.minCommission} />
                 </>
               )}
               <AppNumberStepper
                 label="印花税率(%)"
-                onChange={(value) => updateCustom("stampTaxRate", value)}
+                onChange={(value) => updateCustom("stampTaxRate", value ?? 0)}
                 step={0.001}
                 value={customSettings.stampTaxRate}
               />
               <AppNumberStepper
                 label="过户费率(%)"
-                onChange={(value) => updateCustom("transferRate", value)}
+                onChange={(value) => updateCustom("transferRate", value ?? 0)}
                 step={0.001}
                 value={customSettings.transferRate}
               />
@@ -681,7 +687,7 @@ function NumberField({
 }) {
   if (stepper) {
     return (
-      <AppNumberStepper label={label} min={min} normalizeToStep={normalizeToStep} onChange={onChange} step={step} value={value} />
+      <AppNumberStepper label={label} min={min} normalizeToStep={normalizeToStep} onChange={(value) => onChange(value ?? 0)} step={step} value={value} />
     );
   }
 
