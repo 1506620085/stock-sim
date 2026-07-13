@@ -351,9 +351,9 @@ function AveragePriceCalculator() {
             {lines.map((line, index) => (
               <div className="average-line" key={line.id}>
                 <span>{index + 1}</span>
-                <NumberField label="价格" value={line.price} onChange={(value) => updateLine(line.id, { price: value })} step={0.01} />
-                <NumberField label="数量" value={line.quantity} onChange={(value) => updateLine(line.id, { quantity: value })} step={100} />
-                <NumberField label="费用" value={line.fee} onChange={(value) => updateLine(line.id, { fee: value })} step={0.01} />
+                <AppNumberStepper label="价格" onChange={(value) => updateLine(line.id, { price: value ?? 0 })} step={0.01} value={line.price} />
+                <AppNumberStepper label="数量" normalizeToStep onChange={(value) => updateLine(line.id, { quantity: value ?? 0 })} step={100} value={line.quantity} />
+                <AppNumberStepper label="费用" onChange={(value) => updateLine(line.id, { fee: value ?? 0 })} step={0.01} value={line.fee} />
                 <button aria-label="删除买入行" className="icon-button danger-button" onClick={() => removeLine(line.id)} type="button">
                   <Trash2 size={16} />
                 </button>

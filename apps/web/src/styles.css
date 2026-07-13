@@ -1103,7 +1103,8 @@ textarea {
 
 .calculator-input-grid label,
 .fee-fields label,
-.average-line label {
+.average-line label,
+.average-line .app-number-stepper-field > label {
   display: block;
   color: var(--muted);
   font-size: 13px;
@@ -1116,7 +1117,9 @@ textarea {
 .fee-fields .trade-qty-stepper,
 .fee-fields select,
 .fee-fields .app-select,
-.average-line input {
+.average-line input:not(.trade-qty-input),
+.average-line .trade-qty-stepper,
+.average-line .app-number-stepper-field .trade-qty-stepper {
   margin-top: 6px;
 }
 
