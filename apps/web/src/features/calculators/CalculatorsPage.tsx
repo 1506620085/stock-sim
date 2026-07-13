@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Calculator, ChevronDown, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
+import { AppSwitch } from "../../components/AppSwitch";
 import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
   calculateAverage,
@@ -502,10 +503,9 @@ function ProfitCostFeePanel({
         </button>
         {customOpen ? (
           <div className="calculator-custom-fee-fields">
-            <label className="check-row calculator-custom-fee-enable">
-              <input checked={customEnabled} onChange={(event) => setCustomEnabled(event.target.checked)} type="checkbox" />
+            <AppSwitch checked={customEnabled} className="calculator-custom-fee-enable" onChange={setCustomEnabled}>
               启用
-            </label>
+            </AppSwitch>
             <div className="fee-fields calculator-custom-fee-grid">
               <label>
                 佣金模式

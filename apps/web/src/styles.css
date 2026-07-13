@@ -226,6 +226,80 @@ textarea {
   font-size: 13px;
 }
 
+.app-switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.app-switch-row.is-disabled {
+  cursor: not-allowed;
+}
+
+.app-switch-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app-switch {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 22px;
+  min-width: 44px;
+  border-radius: 100px;
+  background: rgba(0, 0, 0, 0.25);
+  transition: background 0.2s ease;
+}
+
+.app-switch-handle {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 35, 11, 0.2);
+  transition: left 0.2s ease;
+}
+
+.app-switch-input:checked + .app-switch {
+  background: var(--accent);
+}
+
+.app-switch-input:checked + .app-switch .app-switch-handle {
+  left: calc(100% - 20px);
+}
+
+.app-switch-input:focus-visible + .app-switch {
+  box-shadow: 0 0 0 3px rgba(23, 108, 143, 0.12);
+}
+
+.app-switch-row.is-disabled .app-switch {
+  opacity: 0.4;
+}
+
+.app-switch-row.is-disabled .app-switch-text {
+  color: var(--muted);
+}
+
+.app-switch-text {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 22px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
