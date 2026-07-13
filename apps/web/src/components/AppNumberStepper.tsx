@@ -21,6 +21,7 @@ type AppNumberStepperProps = {
   label?: ReactNode;
   decrementAriaLabel?: string;
   incrementAriaLabel?: string;
+  onDraftChange?: (draft: string) => void;
   "aria-label"?: string;
 };
 
@@ -37,25 +38,33 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   label,
   decrementAriaLabel,
   incrementAriaLabel,
+  onDraftChange,
   "aria-label": ariaLabel,
 }: AppNumberStepperProps) {
   const inputId = useId();
   const [draft, setDraft] = useState(value == null ? "" : String(value));
 
   useEffect(() => {
-    setDraft(value == null ? "" : String(value));
-  }, [value]);
+    const nextDraft = value == null ? "" : String(value);
+    setDraft(nextDraft);
+    onDraftChange?.(nextDraft);
+  }, [value, onDraftChange]);
+
+  function syncDraft(nextDraft: string) {
+    setDraft(nextDraft);
+    onDraftChange?.(nextDraft);
+  }
 
   function applyValue(raw: number) {
     if (!Number.isFinite(raw)) {
-      setDraft(value == null ? "" : String(value));
+      syncDraft(value == null ? "" : String(value));
       return;
     }
     const normalized = normalizeToStep ? normalizeStepValue(raw, step) : normalizeStepValue(Math.max(min, raw), step);
     let next = Math.max(min, normalized);
     if (max != null) next = Math.min(max, next);
     onChange(next);
-    setDraft(String(next));
+    syncDraft(String(next));
   }
 
   function adjustValue(delta: number) {
@@ -65,7 +74,7 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   function commitDraft() {
     if (draft.trim() === "") {
       onChange(null);
-      setDraft("");
+      syncDraft("");
       return;
     }
     applyValue(Number(draft));
@@ -99,7 +108,7 @@ export const AppNumberStepper = memo(function AppNumberStepper({
           type="number"
           value={draft}
           onBlur={commitDraft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => syncDraft(event.target.value)}
         />
       </div>
       <button

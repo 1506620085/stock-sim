@@ -1999,6 +1999,7 @@ textarea {
 
 .field-label,
 .input-grid label,
+.input-grid .app-number-stepper-field > label,
 .full-field {
   display: block;
   color: var(--muted);
@@ -2233,6 +2234,8 @@ textarea {
 }
 
 .input-grid input:not(.trade-qty-input),
+.input-grid .trade-qty-stepper,
+.input-grid .app-number-stepper-field .trade-qty-stepper,
 .input-grid .app-select {
   margin-top: 6px;
 }

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { AppSelect } from "../../components/AppSelect";
+import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { QuoteSummary } from "./QuoteSummary";
@@ -694,10 +695,6 @@ function TradePanel({
   const previewQuantity = Number.isFinite(draftNumber) ? normalizeTradeQuantity(draftNumber) : quantity;
   const cappedPreviewQuantity = Math.min(previewQuantity, maxTradeQuantity);
   const showAdjustHint = Number.isFinite(draftNumber) && draftNumber > 0 && draftNumber !== cappedPreviewQuantity;
-  const stepperQuantity = Math.min(
-    normalizeTradeQuantity(Number.isFinite(draftNumber) ? draftNumber : quantity),
-    maxTradeQuantity,
-  );
   const feeSettings = selectedFeeTemplate ? templateToFeeSettings(selectedFeeTemplate) : null;
   const previewFee =
     feeSettings && cappedPreviewQuantity > 0 && price > 0
@@ -708,29 +705,10 @@ function TradePanel({
   const amountToneClass = side === "buy" ? "positive" : "negative";
   const [feeTemplateOpen, setFeeTemplateOpen] = useState(false);
 
-  useEffect(() => {
-    setQuantityDraft(String(quantity));
-  }, [quantity]);
-
-  function applyQuantity(next: number) {
-    const normalized = Math.max(0, Math.min(normalizeTradeQuantity(next), maxTradeQuantity));
-    onQuantityChange(normalized);
-    setQuantityDraft(String(normalized));
-  }
-
-  function commitQuantityDraft() {
-    applyQuantity(Number(quantityDraft));
-  }
-
-  function adjustQuantity(delta: number) {
-    applyQuantity(stepperQuantity + delta);
-  }
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalized = Math.min(normalizeTradeQuantity(Number(quantityDraft)), maxTradeQuantity);
     onQuantityChange(normalized);
-    setQuantityDraft(String(normalized));
     onSubmit(normalized);
   }
 
@@ -763,45 +741,23 @@ function TradePanel({
         {side === "buy" ? "买入按当日最高价" : "卖出按当日最低价"}：<strong>{formatNumber(price)}</strong>
       </div>
       <div className="input-grid two-cols trade-qty-fund-grid">
-        <label className="trade-qty-field">
-          数量（股）
-          <div className="trade-qty-stepper">
-            <button
-              aria-label="减少 100 股"
-              className="trade-qty-step"
-              disabled={stepperQuantity <= 0}
-              onClick={() => adjustQuantity(-SHARES_PER_LOT)}
-              type="button"
-            >
-              −
-            </button>
-            <div className="trade-qty-input-wrap">
-              <input
-                className="trade-qty-input"
-                inputMode="numeric"
-                max={maxTradeQuantity || undefined}
-                min={0}
-                step={SHARES_PER_LOT}
-                type="number"
-                value={quantityDraft}
-                onBlur={commitQuantityDraft}
-                onChange={(event) => setQuantityDraft(event.target.value)}
-              />
-            </div>
-            <button
-              aria-label="增加 100 股"
-              className="trade-qty-step"
-              disabled={stepperQuantity >= maxTradeQuantity}
-              onClick={() => adjustQuantity(SHARES_PER_LOT)}
-              type="button"
-            >
-              +
-            </button>
-          </div>
+        <div className="trade-qty-field">
+          <AppNumberStepper
+            decrementAriaLabel="减少 100 股"
+            incrementAriaLabel="增加 100 股"
+            inputMode="numeric"
+            label="数量（股）"
+            max={maxTradeQuantity > 0 ? maxTradeQuantity : 0}
+            normalizeToStep
+            onChange={(value) => onQuantityChange(value ?? 0)}
+            onDraftChange={setQuantityDraft}
+            step={SHARES_PER_LOT}
+            value={quantity}
+          />
           <span className="trade-lot-hint">
             {showAdjustHint ? `失焦后将调整为 ${cappedPreviewQuantity.toLocaleString("zh-CN")} 股` : null}
           </span>
-        </label>
+        </div>
         <div className="trade-fund-field">
           <div aria-label="资金信息" className="trade-fund-info">
             <div className="trade-fund-row">
