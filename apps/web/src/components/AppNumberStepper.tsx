@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, type ReactNode } from "react";
+import { memo, useEffect, useId, useState, type ReactNode } from "react";
 
 export function normalizeStepValue(raw: number, step: number) {
   if (!Number.isFinite(raw) || raw <= 0) return 0;
@@ -39,6 +39,7 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   incrementAriaLabel,
   "aria-label": ariaLabel,
 }: AppNumberStepperProps) {
+  const inputId = useId();
   const [draft, setDraft] = useState(String(value));
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export const AppNumberStepper = memo(function AppNumberStepper({
           aria-label={label ? undefined : ariaLabel}
           className="trade-qty-input"
           disabled={disabled}
+          id={inputId}
           inputMode={inputMode}
           max={max}
           min={min}
@@ -110,9 +112,9 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   if (label == null) return control;
 
   return (
-    <label className={className}>
-      {label}
+    <div className={["app-number-stepper-field", className].filter(Boolean).join(" ")}>
+      <label htmlFor={inputId}>{label}</label>
       {control}
-    </label>
+    </div>
   );
 });
