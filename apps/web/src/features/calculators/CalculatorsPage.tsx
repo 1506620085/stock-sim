@@ -57,12 +57,12 @@ function FeeTemplateSelector({
   templates,
   onSelect,
 }: {
-  assetType: AssetType;
+  assetType?: AssetType;
   selectedTemplateId: number | null;
   templates: FeeTemplate[];
   onSelect: (templateId: number) => void;
 }) {
-  const options = templates.filter((template) => template.assetType === assetType);
+  const options = assetType ? templates.filter((template) => template.assetType === assetType) : templates;
   if (!options.length) return null;
 
   return (
@@ -128,7 +128,7 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
 }
 
 function ProfitCostCalculator() {
-  const { settings, setSettings, selectedTemplateId, setSelectedTemplateId, templates } = useTemplateFeeSettings();
+  const { settings, selectedTemplateId, setSelectedTemplateId, templates } = useTemplateFeeSettings();
   const [buyPrice, setBuyPrice] = useState(10);
   const [sellPrice, setSellPrice] = useState(11.8);
   const [quantity, setQuantity] = useState(1000);
@@ -144,13 +144,7 @@ function ProfitCostCalculator() {
             <NumberField label="卖出价格" onChange={setSellPrice} step={0.01} stepper value={sellPrice} />
             <NumberField label="买入数量" normalizeToStep onChange={setQuantity} step={100} stepper value={quantity} />
           </div>
-          <FeeTemplateSelector
-            assetType={settings.assetType}
-            selectedTemplateId={selectedTemplateId}
-            templates={templates}
-            onSelect={setSelectedTemplateId}
-          />
-          <FeeFields settings={settings} onChange={setSettings} />
+          <FeeTemplateSelector selectedTemplateId={selectedTemplateId} templates={templates} onSelect={setSelectedTemplateId} />
         </div>
         <ResultTable
           rows={[
