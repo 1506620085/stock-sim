@@ -503,9 +503,14 @@ function ProfitCostFeePanel({
         </button>
         {customOpen ? (
           <div className="calculator-custom-fee-fields">
-            <AppSwitch checked={customEnabled} className="calculator-custom-fee-enable" onChange={setCustomEnabled}>
-              启用
-            </AppSwitch>
+            <AppSwitch
+              aria-label="自定义费率"
+              checked={customEnabled}
+              checkedChildren="开启"
+              className="calculator-custom-fee-enable"
+              onChange={setCustomEnabled}
+              unCheckedChildren="关闭"
+            />
             <div className="fee-fields calculator-custom-fee-grid">
               <label>
                 佣金模式
@@ -531,21 +536,24 @@ function ProfitCostFeePanel({
                     label="佣金费率(%)"
                     onChange={(value) => updateCustom("commissionRate", value)}
                     step={0.001}
+                    stepper
                     value={customSettings.commissionRate}
                   />
-                  <NumberField label="最低佣金" onChange={(value) => updateCustom("minCommission", value)} step={0.01} value={customSettings.minCommission} />
+                  <NumberField label="最低佣金" onChange={(value) => updateCustom("minCommission", value)} step={0.01} stepper value={customSettings.minCommission} />
                 </>
               )}
               <NumberField
                 label="印花税率(%)"
                 onChange={(value) => updateCustom("stampTaxRate", value)}
                 step={0.001}
+                stepper
                 value={customSettings.stampTaxRate}
               />
               <NumberField
                 label="过户费率(%)"
                 onChange={(value) => updateCustom("transferRate", value)}
                 step={0.001}
+                stepper
                 value={customSettings.transferRate}
               />
             </div>

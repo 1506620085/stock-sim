@@ -260,12 +260,41 @@ textarea {
   border-radius: 100px;
   background: rgba(0, 0, 0, 0.25);
   transition: background 0.2s ease;
+  overflow: hidden;
+}
+
+.app-switch--with-text {
+  width: auto;
+  min-width: 52px;
+}
+
+.app-switch-inner {
+  display: block;
+  height: 100%;
+  padding: 0 6px 0 22px;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 22px;
+  transition: padding 0.2s ease;
+}
+
+.app-switch-inner-checked,
+.app-switch-inner-unchecked {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.app-switch-inner-checked {
+  display: none;
 }
 
 .app-switch-handle {
   position: absolute;
   top: 2px;
   left: 2px;
+  z-index: 1;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -282,22 +311,24 @@ textarea {
   left: calc(100% - 20px);
 }
 
+.app-switch-input:checked + .app-switch .app-switch-inner {
+  padding: 0 22px 0 6px;
+}
+
+.app-switch-input:checked + .app-switch .app-switch-inner-checked {
+  display: block;
+}
+
+.app-switch-input:checked + .app-switch .app-switch-inner-unchecked {
+  display: none;
+}
+
 .app-switch-input:focus-visible + .app-switch {
   box-shadow: 0 0 0 3px rgba(23, 108, 143, 0.12);
 }
 
 .app-switch-row.is-disabled .app-switch {
   opacity: 0.4;
-}
-
-.app-switch-row.is-disabled .app-switch-text {
-  color: var(--muted);
-}
-
-.app-switch-text {
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 22px;
 }
 
 .app-shell {
@@ -1013,6 +1044,7 @@ textarea {
 .calculator-input-grid .trade-qty-stepper,
 .calculator-input-grid .app-select,
 .fee-fields input,
+.fee-fields .trade-qty-stepper,
 .fee-fields select,
 .fee-fields .app-select,
 .average-line input {

@@ -6,7 +6,8 @@ type AppSwitchProps = {
   disabled?: boolean;
   className?: string;
   id?: string;
-  children?: ReactNode;
+  checkedChildren?: ReactNode;
+  unCheckedChildren?: ReactNode;
   "aria-label"?: string;
 };
 
@@ -16,16 +17,18 @@ export function AppSwitch({
   disabled = false,
   className,
   id,
-  children,
+  checkedChildren,
+  unCheckedChildren,
   "aria-label": ariaLabel,
 }: AppSwitchProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
+  const hasInnerText = checkedChildren != null || unCheckedChildren != null;
 
   return (
     <label className={["app-switch-row", disabled ? "is-disabled" : "", className].filter(Boolean).join(" ")}>
       <input
-        aria-label={children ? undefined : ariaLabel}
+        aria-label={ariaLabel}
         checked={checked}
         className="app-switch-input"
         disabled={disabled}
@@ -33,10 +36,15 @@ export function AppSwitch({
         onChange={(event) => onChange?.(event.target.checked)}
         type="checkbox"
       />
-      <span aria-hidden="true" className="app-switch">
+      <span aria-hidden="true" className={["app-switch", hasInnerText ? "app-switch--with-text" : ""].filter(Boolean).join(" ")}>
+        {hasInnerText ? (
+          <span className="app-switch-inner">
+            {checkedChildren != null ? <span className="app-switch-inner-checked">{checkedChildren}</span> : null}
+            {unCheckedChildren != null ? <span className="app-switch-inner-unchecked">{unCheckedChildren}</span> : null}
+          </span>
+        ) : null}
         <span className="app-switch-handle" />
       </span>
-      {children ? <span className="app-switch-text">{children}</span> : null}
     </label>
   );
 }
