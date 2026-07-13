@@ -1040,10 +1040,10 @@ textarea {
   font-size: 13px;
 }
 
-.calculator-input-grid input,
+.calculator-input-grid input:not(.trade-qty-input),
 .calculator-input-grid .trade-qty-stepper,
 .calculator-input-grid .app-select,
-.fee-fields input,
+.fee-fields input:not(.trade-qty-input),
 .fee-fields .trade-qty-stepper,
 .fee-fields select,
 .fee-fields .app-select,
@@ -2063,24 +2063,26 @@ textarea {
   flex: 1;
   align-items: center;
   justify-content: center;
+  align-self: stretch;
   min-width: 0;
-  height: 38px;
+  padding: 0;
 }
 
 .trade-qty-input {
   flex: 1;
   min-width: 0;
   width: 100%;
-  height: 100%;
+  height: auto;
   margin: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  box-sizing: border-box;
   color: var(--ink);
   font-size: 15px;
   font-weight: 600;
-  line-height: 38px;
+  line-height: 1.2;
   text-align: center;
   padding: 0 4px;
   -moz-appearance: textfield;
