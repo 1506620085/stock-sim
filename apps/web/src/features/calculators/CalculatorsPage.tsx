@@ -292,9 +292,9 @@ function ChangeCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <NumberField label="基准价格" value={basePrice} onChange={setBasePrice} step={0.01} />
-            <NumberField label="当前价格" value={currentPrice} onChange={setCurrentPrice} step={0.01} />
-            <NumberField label="目标涨跌幅(%)" value={targetRate} onChange={setTargetRate} step={0.1} />
+            <AppNumberStepper label="基准价格" onChange={(value) => setBasePrice(value ?? 0)} step={0.01} value={basePrice} />
+            <AppNumberStepper label="当前价格" onChange={(value) => setCurrentPrice(value ?? 0)} step={0.01} value={currentPrice} />
+            <AppNumberStepper label="目标涨跌幅(%)" onChange={(value) => setTargetRate(value ?? 0)} step={0.1} value={targetRate} />
           </div>
         </div>
         <ResultTable
