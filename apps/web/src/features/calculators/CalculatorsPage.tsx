@@ -115,7 +115,7 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
         />
       </label>
       {settings.commissionMode === "fixed" ? (
-        <NumberField label="固定手续费" value={settings.fixedCommission} onChange={(value) => update("fixedCommission", value)} step={0.01} />
+        <NumberField label="固定手续费" onChange={(value) => update("fixedCommission", value)} step={0.01} stepper value={settings.fixedCommission} />
       ) : (
         <>
           <NumberField label="佣金费率(%)" value={settings.commissionRate} onChange={(value) => update("commissionRate", value)} step={0.001} />
@@ -528,6 +528,7 @@ function ProfitCostFeePanel({
                   label="固定手续费"
                   onChange={(value) => updateCustom("fixedCommission", value)}
                   step={0.01}
+                  stepper
                   value={customSettings.fixedCommission}
                 />
               ) : (
