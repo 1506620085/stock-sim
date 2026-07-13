@@ -305,7 +305,7 @@ export function SettingsPage() {
             </div>
             <FeeTemplateFormFields form={modalFeeForm} onChange={setModalFeeForm} />
             <div className="settings-actions">
-              <button className="text-button" onClick={closeTemplateModal} type="button">
+              <button className="secondary-button" onClick={closeTemplateModal} type="button">
                 取消
               </button>
               <button className="primary-button" onClick={handleSaveTemplate} type="button">

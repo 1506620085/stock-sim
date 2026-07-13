@@ -798,8 +798,34 @@ textarea {
   display: inline-flex;
   width: auto;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-height: 40px;
+  margin-top: 0;
   padding: 0 14px;
+}
+
+.settings-actions .secondary-button {
+  display: inline-flex;
+  width: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  margin-top: 0;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.settings-actions .secondary-button:hover {
+  background: #fafafa;
+  border-color: #c8d3cd;
 }
 
 .settings-modal-backdrop {
