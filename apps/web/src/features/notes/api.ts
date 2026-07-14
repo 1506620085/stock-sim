@@ -1,4 +1,12 @@
 import { API_BASE, apiFetch, apiJson, buildApiUrl } from "../../api/client";
+import {
+  mockCreateJournalEntry,
+  mockDeleteJournalEntry,
+  mockLoadJournalEntries,
+  mockLoadJournalPeriodSummary,
+  mockUpdateJournalEntry,
+  USE_JOURNAL_MOCK,
+} from "./mockJournal";
 import type {
   JournalEntry,
   JournalEntryInput,
@@ -118,6 +126,8 @@ export async function loadJournalEntries(filters?: {
   symbol?: string;
   emotionScore?: number;
 }): Promise<JournalEntry[]> {
+  if (USE_JOURNAL_MOCK) return mockLoadJournalEntries(filters);
+
   const items = await apiJson<JournalEntryItem[]>(
     buildApiUrl("/api/notes/journal-entries", {
       side: filters?.side,
@@ -130,6 +140,8 @@ export async function loadJournalEntries(filters?: {
 }
 
 export async function createJournalEntry(input: JournalEntryInput): Promise<JournalEntry> {
+  if (USE_JOURNAL_MOCK) return mockCreateJournalEntry(input);
+
   const item = await apiJson<JournalEntryItem>(`${API_BASE}/api/notes/journal-entries`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -139,6 +151,8 @@ export async function createJournalEntry(input: JournalEntryInput): Promise<Jour
 }
 
 export async function updateJournalEntry(id: number, input: Partial<JournalEntryInput>): Promise<JournalEntry> {
+  if (USE_JOURNAL_MOCK) return mockUpdateJournalEntry(id, input);
+
   const body: Record<string, unknown> = {};
   if (input.entryDate !== undefined) body.entry_date = input.entryDate;
   if (input.side !== undefined) body.side = input.side;
@@ -163,6 +177,7 @@ export async function updateJournalEntry(id: number, input: Partial<JournalEntry
 }
 
 export async function deleteJournalEntry(id: number): Promise<void> {
+  if (USE_JOURNAL_MOCK) return mockDeleteJournalEntry(id);
   await apiFetch(`${API_BASE}/api/notes/journal-entries/${id}`, { method: "DELETE" });
 }
 
@@ -205,6 +220,8 @@ export async function deleteTradingRule(id: number): Promise<void> {
 }
 
 export async function loadJournalPeriodSummary(startDate: string, endDate: string): Promise<JournalPeriodSummary> {
+  if (USE_JOURNAL_MOCK) return mockLoadJournalPeriodSummary(startDate, endDate);
+
   const item = await apiJson<PeriodSummaryItem>(
     buildApiUrl("/api/notes/journal-period-summary", {
       start_date: startDate,
