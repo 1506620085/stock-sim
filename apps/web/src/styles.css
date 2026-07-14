@@ -1929,37 +1929,46 @@ textarea {
   white-space: nowrap;
 }
 
+.app-date-picker.replay-day-picker-input,
 .replay-day-picker-input {
   width: 156px;
 }
 
+.app-date-picker .ant-picker-input > input,
 .replay-day-picker-input .ant-picker-input > input {
   font-weight: 600;
   color: #333333;
 }
 
+.app-date-picker-popup .ant-picker-panel,
 .replay-day-picker-popup .ant-picker-panel {
   border: none;
 }
 
+.app-date-picker-popup .ant-picker-date-panel .ant-picker-content th,
+.app-date-picker-popup .ant-picker-date-panel .ant-picker-content td,
 .replay-day-picker-popup .ant-picker-date-panel .ant-picker-content th,
 .replay-day-picker-popup .ant-picker-date-panel .ant-picker-content td {
   padding: 2px;
 }
 
+.app-date-picker-popup .ant-picker-date-panel .ant-picker-cell,
 .replay-day-picker-popup .ant-picker-date-panel .ant-picker-cell {
   padding: 2px;
 }
 
+.app-date-picker-popup .ant-picker-date-panel .ant-picker-content th,
 .replay-day-picker-popup .ant-picker-date-panel .ant-picker-content th {
   height: 36px;
   vertical-align: middle;
 }
 
+.app-date-picker-popup .ant-picker-date-panel .ant-picker-cell-inner,
 .replay-day-picker-popup .ant-picker-date-panel .ant-picker-cell-inner {
   margin: 0 auto;
 }
 
+.app-date-picker-popup .ant-picker-footer,
 .replay-day-picker-popup .ant-picker-footer {
   padding: 10px 12px 12px;
   border-top: 1px solid #edf1ee;
