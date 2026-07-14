@@ -623,6 +623,10 @@ textarea {
   margin-top: 14px;
 }
 
+.notes-summary-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .notes-summary-grid article {
   border: 1px solid var(--line);
   border-radius: 6px;

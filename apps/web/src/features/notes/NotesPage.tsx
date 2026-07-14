@@ -36,7 +36,7 @@ const tabs: Array<{ id: NotesTab; label: string }> = [
 const tabMeta: Record<NotesTab, { title: string; description: string }> = {
   journal: {
     title: "实盘笔记",
-    description: "记录真实买卖时的思考：为什么买、为什么卖，以及当时情绪与计划。",
+    description: "记录真实买卖时的思考：为什么买、为什么卖，以及当时计划。",
   },
   rules: {
     title: "操作规则",
@@ -44,7 +44,7 @@ const tabMeta: Record<NotesTab, { title: string; description: string }> = {
   },
   period: {
     title: "区间复盘",
-    description: "按日期区间汇总笔记数量、方向分布、情绪与标签。",
+    description: "按日期区间汇总笔记数量、方向分布与标签。",
   },
 };
 
@@ -103,8 +103,6 @@ function emptyJournalForm(): JournalEntryInput {
     quantity: null,
     reason: "",
     planNote: "",
-    emotionScore: null,
-    emotionNote: "",
     resultNote: "",
     tags: [],
     ruleIds: [],
@@ -173,7 +171,6 @@ function JournalPanel() {
   const [sideFilter, setSideFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState("");
   const [symbolFilter, setSymbolFilter] = useState("");
-  const [emotionFilter, setEmotionFilter] = useState<string>("all");
   const [modal, setModal] = useState<null | { mode: "new" } | { mode: "edit"; id: number }>(null);
   const [form, setForm] = useState<JournalEntryInput>(emptyJournalForm());
   const [tagsDraft, setTagsDraft] = useState("");
@@ -193,7 +190,6 @@ function JournalPanel() {
           side: sideFilter === "all" ? undefined : sideFilter,
           tag: tagFilter || undefined,
           symbol: symbolFilter || undefined,
-          emotionScore: emotionFilter === "all" ? undefined : Number(emotionFilter),
         }),
         loadTradingRules({ status: "active" }),
       ]);
@@ -206,7 +202,7 @@ function JournalPanel() {
 
   useEffect(() => {
     void refresh();
-  }, [sideFilter, tagFilter, symbolFilter, emotionFilter]);
+  }, [sideFilter, tagFilter, symbolFilter]);
 
   function openNew() {
     setForm(emptyJournalForm());
@@ -223,8 +219,6 @@ function JournalPanel() {
       quantity: entry.quantity,
       reason: entry.reason,
       planNote: entry.planNote ?? "",
-      emotionScore: entry.emotionScore,
-      emotionNote: entry.emotionNote ?? "",
       resultNote: entry.resultNote ?? "",
       tags: entry.tags,
       ruleIds: entry.ruleIds,
@@ -239,7 +233,8 @@ function JournalPanel() {
       symbolCode: null,
       symbolName: form.symbolName || null,
       planNote: form.planNote || null,
-      emotionNote: form.emotionNote || null,
+      emotionScore: null,
+      emotionNote: null,
       resultNote: form.resultNote || null,
       tags: parseTags(tagsDraft),
       ruleIds: form.ruleIds ?? [],
@@ -280,24 +275,13 @@ function JournalPanel() {
           </button>
         </div>
 
-        <div className="notes-filters notes-filters-4">
+        <div className="notes-filters">
           <label>
             方向
             <AppSelect
               onChange={setSideFilter}
               options={[{ label: "全部", value: "all" }, ...sideOptions]}
               value={sideFilter}
-            />
-          </label>
-          <label>
-            情绪
-            <AppSelect
-              onChange={setEmotionFilter}
-              options={[
-                { label: "全部", value: "all" },
-                ...[1, 2, 3, 4, 5].map((score) => ({ label: `${score} 分`, value: String(score) })),
-              ]}
-              value={emotionFilter}
             />
           </label>
           <label>
@@ -326,10 +310,7 @@ function JournalPanel() {
                     {sideLabel(entry.side)}
                     {entry.symbolName ? ` · ${entry.symbolName}` : ""}
                   </strong>
-                  <span className="notes-card-meta">
-                    {entry.entryDate}
-                    {entry.emotionScore != null ? ` · 情绪 ${entry.emotionScore}/5` : ""}
-                  </span>
+                  <span className="notes-card-meta">{entry.entryDate}</span>
                 </div>
                 <div className="notes-card-actions">
                   <button className="text-button" onClick={() => openEdit(entry)} type="button">
@@ -409,29 +390,6 @@ function JournalPanel() {
                   rows={3}
                   value={form.planNote ?? ""}
                   onChange={(event) => setForm((current) => ({ ...current, planNote: event.target.value }))}
-                />
-              </label>
-              <label>
-                情绪分（1–5）
-                <AppSelect
-                  onChange={(value) =>
-                    setForm((current) => ({
-                      ...current,
-                      emotionScore: value === "" ? null : Number(value),
-                    }))
-                  }
-                  options={[
-                    { label: "未填写", value: "" },
-                    ...[1, 2, 3, 4, 5].map((score) => ({ label: String(score), value: String(score) })),
-                  ]}
-                  value={form.emotionScore == null ? "" : String(form.emotionScore)}
-                />
-              </label>
-              <label>
-                情绪短评
-                <input
-                  value={form.emotionNote ?? ""}
-                  onChange={(event) => setForm((current) => ({ ...current, emotionNote: event.target.value }))}
                 />
               </label>
               <label className="settings-wide">
@@ -722,18 +680,10 @@ function PeriodPanel() {
 
         {summary && !loading ? (
           <>
-            <div className="notes-summary-grid">
+            <div className="notes-summary-grid notes-summary-grid-2">
               <article>
                 <span>笔记条数</span>
                 <strong>{summary.entryCount}</strong>
-              </article>
-              <article>
-                <span>情绪均分</span>
-                <strong>{summary.emotionAvg == null ? "-" : summary.emotionAvg.toFixed(1)}</strong>
-              </article>
-              <article>
-                <span>含情绪条数</span>
-                <strong>{summary.emotionCount}</strong>
               </article>
               <article>
                 <span>规则引用次数</span>

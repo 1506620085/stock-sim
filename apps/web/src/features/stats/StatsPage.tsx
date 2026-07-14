@@ -57,7 +57,7 @@ export function StatsPage() {
           icon={NotebookPen}
           label="实盘笔记"
           value={summary.journal_entry_count.toLocaleString("zh-CN")}
-          meta={`情绪均分 ${summary.journal_emotion_avg == null ? "-" : summary.journal_emotion_avg.toFixed(1)} · 规则引用 ${summary.journal_rule_ref_count}`}
+          meta={`规则引用 ${summary.journal_rule_ref_count}`}
         />
       </div>
 
@@ -166,7 +166,6 @@ export function StatsPage() {
                   </strong>
                   <span>
                     {entry.entry_date}
-                    {entry.emotion_score != null ? ` · 情绪 ${entry.emotion_score}/5` : ""}
                     {entry.tags.length ? ` · ${entry.tags.join(" / ")}` : ""}
                   </span>
                   <p>{entry.reason}</p>
