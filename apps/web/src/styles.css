@@ -584,16 +584,6 @@ textarea {
   padding: 3px 8px;
 }
 
-.notes-modal {
-  width: min(100%, 720px);
-}
-
-.notes-journal-modal {
-  width: 50%;
-  max-width: none;
-  min-width: min(100%, 480px);
-}
-
 .notes-rule-picker {
   margin-top: 16px;
   border-top: 1px solid var(--line);
@@ -1035,6 +1025,19 @@ textarea {
   background: #ffffff;
   box-shadow: var(--shadow);
   padding: 18px 20px 20px;
+}
+
+/* Must come after .settings-modal — same element uses both classes */
+.settings-modal.notes-modal {
+  width: 50%;
+  max-width: none;
+  max-height: min(88vh, 900px);
+}
+
+@media (max-width: 720px) {
+  .settings-modal.notes-modal {
+    width: min(100%, calc(100vw - 24px));
+  }
 }
 
 .settings-modal .section-header h2 {
@@ -3078,11 +3081,6 @@ textarea {
   .notes-filters-4,
   .notes-summary-grid {
     grid-template-columns: 1fr;
-  }
-
-  .notes-journal-modal {
-    width: 100%;
-    min-width: 0;
   }
 
   .average-line > span {
