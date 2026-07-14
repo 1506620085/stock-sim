@@ -189,8 +189,8 @@ function ProfitCostCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <AppNumberStepper label="买入价格" onChange={setBuyPrice} step={0.01} value={buyPrice} />
-            <AppNumberStepper label="卖出价格" onChange={setSellPrice} step={0.01} value={sellPrice} />
+            <AppNumberStepper label="买入价格" onChange={setBuyPrice} step={0.001} value={buyPrice} />
+            <AppNumberStepper label="卖出价格" onChange={setSellPrice} step={0.001} value={sellPrice} />
             <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>
           <ProfitCostFeePanel {...fee} />
