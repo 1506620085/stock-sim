@@ -351,31 +351,33 @@ function JournalPanel() {
             </div>
 
             <div className="settings-grid">
-              <label>
-                日期
-                <input type="date" value={form.entryDate} onChange={(event) => setForm((current) => ({ ...current, entryDate: event.target.value }))} />
-              </label>
-              <label>
-                方向
-                <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
-              </label>
-              <label>
-                标的名称
-                <input value={form.symbolName ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolName: event.target.value }))} />
-              </label>
-              <AppNumberStepper
-                label="价格（可选）"
-                onChange={(value) => setForm((current) => ({ ...current, price: value }))}
-                step={0.001}
-                value={form.price ?? null}
-              />
-              <AppNumberStepper
-                label="数量（可选）"
-                normalizeToStep
-                onChange={(value) => setForm((current) => ({ ...current, quantity: value }))}
-                step={100}
-                value={form.quantity ?? null}
-              />
+              <div className="notes-modal-meta">
+                <label>
+                  日期
+                  <input type="date" value={form.entryDate} onChange={(event) => setForm((current) => ({ ...current, entryDate: event.target.value }))} />
+                </label>
+                <label>
+                  方向
+                  <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
+                </label>
+                <label>
+                  标的名称
+                  <input value={form.symbolName ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolName: event.target.value }))} />
+                </label>
+                <AppNumberStepper
+                  label="价格（可选）"
+                  onChange={(value) => setForm((current) => ({ ...current, price: value }))}
+                  step={0.001}
+                  value={form.price ?? null}
+                />
+                <AppNumberStepper
+                  label="数量（可选）"
+                  normalizeToStep
+                  onChange={(value) => setForm((current) => ({ ...current, quantity: value }))}
+                  step={100}
+                  value={form.quantity ?? null}
+                />
+              </div>
               <label className="settings-wide">
                 为什么买/卖
                 <textarea

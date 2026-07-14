@@ -1034,9 +1034,46 @@ textarea {
   max-height: min(88vh, 900px);
 }
 
+.notes-modal-meta {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 8.5rem));
+  gap: 12px;
+  justify-content: start;
+}
+
+.notes-modal-meta > label,
+.notes-modal-meta .app-number-stepper-field {
+  min-width: 0;
+}
+
+.notes-modal-meta input:not(.trade-qty-input),
+.notes-modal-meta .app-select,
+.notes-modal-meta .trade-qty-stepper {
+  width: 100%;
+  max-width: 8.5rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .notes-modal-meta {
+    grid-template-columns: repeat(3, minmax(0, 8.5rem));
+  }
+}
+
 @media (max-width: 720px) {
   .settings-modal.notes-modal {
     width: min(100%, calc(100vw - 24px));
+  }
+
+  .notes-modal-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .notes-modal-meta input:not(.trade-qty-input),
+  .notes-modal-meta .app-select,
+  .notes-modal-meta .trade-qty-stepper {
+    max-width: none;
   }
 }
 
