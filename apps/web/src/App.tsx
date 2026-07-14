@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Calculator, CandlestickChart, Dumbbell, NotebookPen, Settings, Star } from "lucide-react";
 import { CalculatorsPage } from "./features/calculators/CalculatorsPage";
+import { NotesPage } from "./features/notes/NotesPage";
 import { ReplayPage } from "./features/replay/ReplayPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { StatsPage } from "./features/stats/StatsPage";
@@ -32,7 +33,7 @@ const pageMeta: Record<PageId, { eyebrow: string; title: string; badge: string }
   training: { eyebrow: "Training", title: "训练", badge: "规划中" },
   calculators: { eyebrow: "Tools", title: "交易计算器", badge: "工具箱" },
   stats: { eyebrow: "Analytics", title: "训练统计", badge: "统计面板" },
-  notes: { eyebrow: "Journal", title: "交易笔记", badge: "规划中" },
+  notes: { eyebrow: "Journal", title: "交易笔记", badge: "实盘与规则" },
   settings: { eyebrow: "Preferences", title: "系统设置", badge: "设置面板" },
 };
 
@@ -89,7 +90,7 @@ export default function App() {
       </nav>
 
       <section className="workspace">
-        {activePage !== "replay" && activePage !== "calculators" ? (
+        {activePage !== "replay" && activePage !== "calculators" && activePage !== "notes" ? (
           <header className="topbar">
             <div>
               <p className="eyebrow">{activeMeta.eyebrow}</p>
@@ -126,24 +127,19 @@ function PageContent({ activePage }: { activePage: PageId }) {
     return <StatsPage />;
   }
 
+  if (activePage === "notes") {
+    return <NotesPage />;
+  }
+
   if (activePage === "settings") {
     return <SettingsPage />;
   }
-
-  const copy: Record<Exclude<PageId, "watchlist" | "replay" | "training" | "calculators" | "stats" | "settings">, string[]> = {
-    notes: ["交易笔记", "区间复盘", "情绪记录", "标签归档"],
-  };
 
   return (
     <section className="panel empty-state">
       <div>
         <p className="eyebrow">Coming Next</p>
-        <h2>{pageMeta[activePage].title}</h2>
-        <div className="placeholder-list inline-list">
-          {copy[activePage].map((item) => (
-            <span key={item}>{item}</span>
-          ))}
-        </div>
+        <h2>{pageMeta.training.title}</h2>
       </div>
     </section>
   );

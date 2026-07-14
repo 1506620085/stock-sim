@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 from decimal import Decimal
 from typing import Any
 
@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
 from app.core.database import get_session
-from app.models import ReplaySession, Trade, TradeReview
+from app.models import JournalEntry, ReplaySession, Trade, TradeReview
 from app.schemas import StatsSummaryRead
 from app.services.replay.pnl import calculate_fifo_position
 
@@ -18,6 +18,7 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
     replay_sessions = list(session.exec(select(ReplaySession).order_by(ReplaySession.updated_at.desc())).all())
     trades = list(session.exec(select(Trade).order_by(Trade.trade_date, Trade.id)).all())
     reviews = list(session.exec(select(TradeReview).order_by(TradeReview.created_at.desc())).all())
+    journal_entries = list(session.exec(select(JournalEntry).order_by(JournalEntry.entry_date.desc(), JournalEntry.id.desc())).all())
 
     trades_by_session: dict[int, list[Trade]] = defaultdict(list)
     for trade in trades:
@@ -29,6 +30,12 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
     losing_sessions = [value for value in session_pnls if value < 0]
     average_profit = average(profitable_sessions)
     average_loss = average(losing_sessions)
+    journal_emotions = [item.emotion_score for item in journal_entries if item.emotion_score is not None]
+    journal_tag_counter: Counter[str] = Counter()
+    journal_rule_ref_count = 0
+    for entry in journal_entries:
+        journal_tag_counter.update(entry.tags or [])
+        journal_rule_ref_count += len(entry.rule_ids or [])
 
     return StatsSummaryRead(
         total_sessions=len(replay_sessions),
@@ -44,6 +51,23 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
         calendar=build_calendar(replay_sessions, trades_by_session),
         tag_stats=build_tag_stats(reviews),
         recent_reviews=reviews[:5],
+        journal_entry_count=len(journal_entries),
+        journal_emotion_avg=(sum(journal_emotions) / len(journal_emotions)) if journal_emotions else None,
+        journal_rule_ref_count=journal_rule_ref_count,
+        journal_tag_stats=[{"tag": tag, "count": count} for tag, count in journal_tag_counter.most_common(12)],
+        recent_journal_entries=[
+            {
+                "id": entry.id,
+                "entry_date": entry.entry_date.isoformat(),
+                "side": entry.side,
+                "symbol_code": entry.symbol_code,
+                "symbol_name": entry.symbol_name,
+                "reason": entry.reason,
+                "emotion_score": entry.emotion_score,
+                "tags": entry.tags or [],
+            }
+            for entry in journal_entries[:5]
+        ],
     )
 
 

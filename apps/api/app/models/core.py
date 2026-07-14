@@ -132,3 +132,39 @@ class FeeTemplate(SQLModel, table=True):
     is_default: bool = Field(default=False, sa_column=Column(Boolean, nullable=False))
     created_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
     updated_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
+
+
+class JournalEntry(SQLModel, table=True):
+    __tablename__ = "journal_entries"
+    __table_args__ = (Index("ix_journal_entries_entry_date", "entry_date"),)
+
+    id: int | None = Field(default=None, sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
+    entry_date: date = Field(sa_column=Column(Date, nullable=False))
+    side: str = Field(sa_column=Column(String(16), nullable=False))
+    symbol_code: str | None = Field(default=None, sa_column=Column(String(16)))
+    symbol_name: str | None = Field(default=None, sa_column=Column(String(64)))
+    price: Decimal | None = Field(default=None, sa_column=Column(Numeric(18, 4)))
+    quantity: Decimal | None = Field(default=None, sa_column=Column(Numeric(24, 4)))
+    reason: str = Field(sa_column=Column(Text, nullable=False))
+    plan_note: str | None = Field(default=None, sa_column=Column(Text))
+    emotion_score: int | None = Field(default=None)
+    emotion_note: str | None = Field(default=None, sa_column=Column(String(255)))
+    result_note: str | None = Field(default=None, sa_column=Column(Text))
+    tags: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    rule_ids: list[int] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    created_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
+    updated_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
+
+
+class TradingRule(SQLModel, table=True):
+    __tablename__ = "trading_rules"
+    __table_args__ = (Index("ix_trading_rules_status_category", "status", "category"),)
+
+    id: int | None = Field(default=None, sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
+    title: str = Field(sa_column=Column(String(128), nullable=False))
+    body: str = Field(sa_column=Column(Text, nullable=False))
+    category: str = Field(sa_column=Column(String(32), nullable=False))
+    status: str = Field(default="active", sa_column=Column(String(16), nullable=False))
+    tags: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    created_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
+    updated_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())

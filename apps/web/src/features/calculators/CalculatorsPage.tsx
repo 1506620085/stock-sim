@@ -345,8 +345,8 @@ function ChangeCalculator() {
 function AveragePriceCalculator() {
   const fee = useCalculatorFeeSettings();
   const [lines, setLines] = useState<AverageLine[]>([
-    { id: "1", price: 10, quantity: 1000 },
-    { id: "2", price: 9.2, quantity: 1000 },
+    { id: "1", price: null, quantity: null },
+    { id: "2", price: null, quantity: null },
   ]);
   const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
   const result = useMemo(() => calculateAverage(lines, fee.effectiveSettings), [fee.effectiveSettings, lines]);
@@ -356,7 +356,7 @@ function AveragePriceCalculator() {
     setLines((items) =>
       items.map((line) => ({
         ...line,
-        price: Number(line.price.toFixed(decimals)),
+        price: line.price == null ? null : Number(line.price.toFixed(decimals)),
       })),
     );
   }, [fee.assetType]);
@@ -366,7 +366,7 @@ function AveragePriceCalculator() {
   }
 
   function addLine() {
-    setLines((items) => [...items, { id: crypto.randomUUID(), price: 0, quantity: 0 }]);
+    setLines((items) => [...items, { id: crypto.randomUUID(), price: null, quantity: null }]);
   }
 
   function removeLine(id: string) {
@@ -409,11 +409,17 @@ function AveragePriceCalculator() {
                 <AppNumberStepper
                   label="价格"
                   normalizeToStep
-                  onChange={(value) => updateLine(line.id, { price: value ?? 0 })}
+                  onChange={(value) => updateLine(line.id, { price: value })}
                   step={priceStep}
                   value={line.price}
                 />
-                <AppNumberStepper label="数量" normalizeToStep onChange={(value) => updateLine(line.id, { quantity: value ?? 0 })} step={100} value={line.quantity} />
+                <AppNumberStepper
+                  label="数量"
+                  normalizeToStep
+                  onChange={(value) => updateLine(line.id, { quantity: value })}
+                  step={100}
+                  value={line.quantity}
+                />
                 <button aria-label="删除买入行" className="icon-button danger-button" onClick={() => removeLine(line.id)} type="button">
                   <Trash2 size={16} />
                 </button>

@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.core.config import get_settings
-from app.routers import health, instruments, replay_sessions, settings as settings_router, stats, trades, watchlist
+from app.routers import health, instruments, notes, replay_sessions, settings as settings_router, stats, trades, watchlist
 
 settings = get_settings()
 
@@ -34,4 +34,5 @@ app.include_router(watchlist.router)
 app.include_router(replay_sessions.router)
 app.include_router(trades.router)
 app.include_router(stats.router)
+app.include_router(notes.router)
 app.include_router(settings_router.router)

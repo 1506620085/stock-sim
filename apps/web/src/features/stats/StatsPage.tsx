@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, BarChart3, CalendarDays, ListChecks, TrendingUp } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarDays, ListChecks, NotebookPen, TrendingUp } from "lucide-react";
 import { loadStatsSummary, type StatsSummary } from "./api";
 
 const emptySummary: StatsSummary = {
@@ -16,6 +16,18 @@ const emptySummary: StatsSummary = {
   calendar: [],
   tag_stats: [],
   recent_reviews: [],
+  journal_entry_count: 0,
+  journal_emotion_avg: null,
+  journal_rule_ref_count: 0,
+  journal_tag_stats: [],
+  recent_journal_entries: [],
+};
+
+const sideLabels: Record<string, string> = {
+  buy: "买入",
+  sell: "卖出",
+  watch: "观察",
+  other: "其他",
 };
 
 export function StatsPage() {
@@ -41,6 +53,12 @@ export function StatsPage() {
         <MetricCard icon={BarChart3} label="交易次数" value={summary.total_trades.toLocaleString("zh-CN")} meta={`买 ${summary.buy_count} / 卖 ${summary.sell_count}`} />
         <MetricCard icon={TrendingUp} label="胜率" value={`${summary.win_rate.toFixed(1)}%`} />
         <MetricCard icon={AlertTriangle} label="盈亏比" value={summary.profit_loss_ratio ? summary.profit_loss_ratio.toFixed(2) : "-"} meta={`复盘总结 ${summary.review_count}`} />
+        <MetricCard
+          icon={NotebookPen}
+          label="实盘笔记"
+          value={summary.journal_entry_count.toLocaleString("zh-CN")}
+          meta={`情绪均分 ${summary.journal_emotion_avg == null ? "-" : summary.journal_emotion_avg.toFixed(1)} · 规则引用 ${summary.journal_rule_ref_count}`}
+        />
       </div>
 
       <div className="stats-layout">
@@ -110,6 +128,52 @@ export function StatsPage() {
               ))
             ) : (
               <p className="empty-copy">保存区间复盘后，这里会集中展示最近总结。</p>
+            )}
+          </div>
+        </section>
+
+        <section className="panel stats-panel">
+          <div className="section-header">
+            <h2>实盘笔记标签</h2>
+            <span>{summary.journal_tag_stats.length}</span>
+          </div>
+          <div className="tag-stat-list">
+            {summary.journal_tag_stats.length ? (
+              summary.journal_tag_stats.map((item) => (
+                <article key={item.tag}>
+                  <strong>{item.tag}</strong>
+                  <span>{item.count} 次</span>
+                </article>
+              ))
+            ) : (
+              <p className="empty-copy">在交易笔记中添加标签后，这里会显示分布。</p>
+            )}
+          </div>
+        </section>
+
+        <section className="panel stats-panel">
+          <div className="section-header">
+            <h2>最近实盘笔记</h2>
+            <span>{summary.recent_journal_entries.length}</span>
+          </div>
+          <div className="recent-review-list">
+            {summary.recent_journal_entries.length ? (
+              summary.recent_journal_entries.map((entry) => (
+                <article key={entry.id}>
+                  <strong>
+                    {sideLabels[entry.side] ?? entry.side}
+                    {entry.symbol_name || entry.symbol_code ? ` · ${entry.symbol_name || entry.symbol_code}` : ""}
+                  </strong>
+                  <span>
+                    {entry.entry_date}
+                    {entry.emotion_score != null ? ` · 情绪 ${entry.emotion_score}/5` : ""}
+                    {entry.tags.length ? ` · ${entry.tags.join(" / ")}` : ""}
+                  </span>
+                  <p>{entry.reason}</p>
+                </article>
+              ))
+            ) : (
+              <p className="empty-copy">写过实盘笔记后，这里会展示最近几条。</p>
             )}
           </div>
         </section>

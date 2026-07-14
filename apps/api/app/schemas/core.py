@@ -203,6 +203,11 @@ class StatsSummaryRead(SQLModel):
     calendar: list[dict[str, Any]]
     tag_stats: list[dict[str, Any]]
     recent_reviews: list[TradeReviewRead]
+    journal_entry_count: int = 0
+    journal_emotion_avg: float | None = None
+    journal_rule_ref_count: int = 0
+    journal_tag_stats: list[dict[str, Any]] = Field(default_factory=list)
+    recent_journal_entries: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class DataQualityRead(SQLModel):
@@ -217,3 +222,93 @@ class DataQualityRead(SQLModel):
     last_synced_at: datetime | None = None
     missing_weekdays: list[date] = Field(default_factory=list)
     possible_suspended_dates: list[date] = Field(default_factory=list)
+
+
+class JournalEntryCreate(SQLModel):
+    entry_date: date
+    side: str
+    reason: str
+    symbol_code: str | None = None
+    symbol_name: str | None = None
+    price: Decimal | None = None
+    quantity: Decimal | None = None
+    plan_note: str | None = None
+    emotion_score: int | None = None
+    emotion_note: str | None = None
+    result_note: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    rule_ids: list[int] = Field(default_factory=list)
+
+
+class JournalEntryUpdate(SQLModel):
+    entry_date: date | None = None
+    side: str | None = None
+    reason: str | None = None
+    symbol_code: str | None = None
+    symbol_name: str | None = None
+    price: Decimal | None = None
+    quantity: Decimal | None = None
+    plan_note: str | None = None
+    emotion_score: int | None = None
+    emotion_note: str | None = None
+    result_note: str | None = None
+    tags: list[str] | None = None
+    rule_ids: list[int] | None = None
+
+
+class JournalEntryRead(SQLModel):
+    id: int
+    entry_date: date
+    side: str
+    symbol_code: str | None = None
+    symbol_name: str | None = None
+    price: float | None = None
+    quantity: float | None = None
+    reason: str
+    plan_note: str | None = None
+    emotion_score: int | None = None
+    emotion_note: str | None = None
+    result_note: str | None = None
+    tags: list[str]
+    rule_ids: list[int]
+    created_at: datetime
+    updated_at: datetime
+
+
+class TradingRuleCreate(SQLModel):
+    title: str
+    body: str
+    category: str
+    status: str = "active"
+    tags: list[str] = Field(default_factory=list)
+
+
+class TradingRuleUpdate(SQLModel):
+    title: str | None = None
+    body: str | None = None
+    category: str | None = None
+    status: str | None = None
+    tags: list[str] | None = None
+
+
+class TradingRuleRead(SQLModel):
+    id: int
+    title: str
+    body: str
+    category: str
+    status: str
+    tags: list[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class JournalPeriodSummaryRead(SQLModel):
+    start_date: date
+    end_date: date
+    entry_count: int
+    side_stats: list[dict[str, Any]]
+    tag_stats: list[dict[str, Any]]
+    emotion_avg: float | None = None
+    emotion_count: int
+    rule_ref_count: int
+    entries: list[JournalEntryRead]
