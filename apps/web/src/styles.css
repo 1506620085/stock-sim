@@ -1042,6 +1042,23 @@ textarea {
   justify-content: start;
 }
 
+.notes-modal-reason-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.notes-modal-reason-row > label {
+  min-width: 0;
+}
+
+.notes-modal-reason-row textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  resize: vertical;
+}
+
 .notes-modal-meta > label,
 .notes-modal-meta .app-number-stepper-field {
   min-width: 0;
@@ -1074,6 +1091,10 @@ textarea {
   .notes-modal-meta .app-select,
   .notes-modal-meta .trade-qty-stepper {
     max-width: none;
+  }
+
+  .notes-modal-reason-row {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -36,7 +36,7 @@ const tabs: Array<{ id: NotesTab; label: string }> = [
 const tabMeta: Record<NotesTab, { title: string; description: string }> = {
   journal: {
     title: "实盘笔记",
-    description: "记录真实买卖时的思考：为什么买、为什么卖，以及当时计划。",
+    description: "记录真实买卖时的思考：为什么买、为什么卖，以及当时情绪与计划。",
   },
   rules: {
     title: "操作规则",
@@ -103,6 +103,7 @@ function emptyJournalForm(): JournalEntryInput {
     quantity: null,
     reason: "",
     planNote: "",
+    emotionNote: "",
     resultNote: "",
     tags: [],
     ruleIds: [],
@@ -219,6 +220,7 @@ function JournalPanel() {
       quantity: entry.quantity,
       reason: entry.reason,
       planNote: entry.planNote ?? "",
+      emotionNote: entry.emotionNote ?? "",
       resultNote: entry.resultNote ?? "",
       tags: entry.tags,
       ruleIds: entry.ruleIds,
@@ -234,7 +236,7 @@ function JournalPanel() {
       symbolName: form.symbolName || null,
       planNote: form.planNote || null,
       emotionScore: null,
-      emotionNote: null,
+      emotionNote: form.emotionNote || null,
       resultNote: form.resultNote || null,
       tags: parseTags(tagsDraft),
       ruleIds: form.ruleIds ?? [],
@@ -378,14 +380,25 @@ function JournalPanel() {
                   value={form.quantity ?? null}
                 />
               </div>
-              <label className="settings-wide">
-                为什么买/卖
-                <textarea
-                  rows={4}
-                  value={form.reason}
-                  onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))}
-                />
-              </label>
+              <div className="notes-modal-reason-row settings-wide">
+                <label>
+                  为什么买/卖
+                  <textarea
+                    rows={4}
+                    value={form.reason}
+                    onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  当时情绪
+                  <textarea
+                    rows={4}
+                    value={form.emotionNote ?? ""}
+                    onChange={(event) => setForm((current) => ({ ...current, emotionNote: event.target.value }))}
+                    placeholder="如：冷静、犹豫、追高焦虑"
+                  />
+                </label>
+              </div>
               <label className="settings-wide">
                 当时计划 / 失效条件
                 <textarea
