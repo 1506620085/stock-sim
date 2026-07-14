@@ -117,7 +117,7 @@ export function AppDatePicker({
         token: {
           colorPrimary: primaryColor,
           borderRadius: 6,
-          controlHeight: 38,
+          controlHeight: 40,
           fontSize: 14,
           colorBorder: "var(--line)",
         },
