@@ -194,6 +194,17 @@ function ProfitCostCalculator() {
       <div className="calculator-form">
         <div className="panel">
           <h2>输入参数</h2>
+          <label className="calculator-asset-type-field">
+            成本类型
+            <AppSelect
+              onChange={fee.changeAssetType}
+              options={[
+                { label: "股票", value: "stock" },
+                { label: "ETF", value: "etf" },
+              ]}
+              value={fee.assetType}
+            />
+          </label>
           <div className="calculator-input-grid">
             <AppNumberStepper
               label={
@@ -493,7 +504,6 @@ function useProfitCostFeeSettings() {
 
 function ProfitCostFeePanel({
   assetType,
-  changeAssetType,
   customEnabled,
   customSettings,
   selectTemplate,
@@ -516,18 +526,6 @@ function ProfitCostFeePanel({
 
   return (
     <section className="calculator-fee-panel">
-      <label>
-        成本类型
-        <AppSelect
-          onChange={changeAssetType}
-          options={[
-            { label: "股票", value: "stock" },
-            { label: "ETF", value: "etf" },
-          ]}
-          value={assetType}
-        />
-      </label>
-
       {templateOptions.length ? (
         <div className="trade-fee-template-field">
           <button
