@@ -30,6 +30,8 @@ export type AppDatePickerProps = {
   format?: string;
   placement?: DatePickerProps["placement"];
   renderExtraFooter?: () => ReactNode;
+  /** Calendar primary color; defaults to form accent. */
+  primaryColor?: string;
 };
 
 export function AppDatePicker({
@@ -46,6 +48,7 @@ export function AppDatePicker({
   format = "YYYY-MM-DD",
   placement = "bottomLeft",
   renderExtraFooter,
+  primaryColor = "#176c8f",
 }: AppDatePickerProps) {
   const availableSet = useMemo(
     () => (availableDates?.length ? new Set(availableDates) : null),
@@ -112,16 +115,19 @@ export function AppDatePicker({
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: "#f44336",
-          borderRadius: 8,
-          controlHeight: 34,
+          colorPrimary: primaryColor,
+          borderRadius: 6,
+          controlHeight: 38,
           fontSize: 14,
+          colorBorder: "var(--line)",
         },
         components: {
           DatePicker: {
             cellWidth: 36,
             cellHeight: 36,
             textHeight: 36,
+            activeBorderColor: primaryColor,
+            hoverBorderColor: primaryColor,
           },
         },
       }}

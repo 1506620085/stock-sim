@@ -23,6 +23,7 @@ export function ReplayDatePicker({ value, availableDates, disabled = false, onCh
         placeholder="选择复盘日"
         placement="bottomRight"
         popupClassName="replay-day-picker-popup"
+        primaryColor="#f44336"
         value={value}
         renderExtraFooter={() =>
           bounds ? (
