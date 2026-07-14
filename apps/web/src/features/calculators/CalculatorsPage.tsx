@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Calculator, ChevronDown, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
+import { Calculator, ChevronDown, ChevronRight, CircleHelp, Copy, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppSwitch } from "../../components/AppSwitch";
@@ -195,7 +195,25 @@ function ProfitCostCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <AppNumberStepper label="买入价格" normalizeToStep onChange={setBuyPrice} step={priceStep} value={buyPrice} />
+            <AppNumberStepper
+              label={
+                <span className="field-label-with-tip">
+                  买入价格
+                  <span
+                    aria-label="价格精度说明"
+                    className="tooltip-wrap field-help-tip"
+                    data-tooltip="股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
+                    tabIndex={0}
+                  >
+                    <CircleHelp aria-hidden="true" size={14} />
+                  </span>
+                </span>
+              }
+              normalizeToStep
+              onChange={setBuyPrice}
+              step={priceStep}
+              value={buyPrice}
+            />
             <AppNumberStepper label="卖出价格" normalizeToStep onChange={setSellPrice} step={priceStep} value={sellPrice} />
             <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>

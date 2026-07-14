@@ -1598,6 +1598,33 @@ textarea {
   transform: translateX(-50%) translateY(0);
 }
 
+.field-label-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-help-tip {
+  color: var(--muted);
+  cursor: help;
+}
+
+.field-help-tip:hover,
+.field-help-tip:focus-visible {
+  color: var(--accent);
+}
+
+.field-help-tip::after {
+  max-width: 240px;
+  transition:
+    opacity 0.15s ease 0.45s,
+    transform 0.15s ease 0.45s;
+}
+
+.field-help-tip:not(:hover):not(:focus-within)::after {
+  transition-delay: 0s;
+}
+
 .switch,
 .check-row {
   display: flex;
