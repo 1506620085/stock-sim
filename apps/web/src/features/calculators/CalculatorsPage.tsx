@@ -172,6 +172,7 @@ function ProfitCostCalculator() {
   const [buyPrice, setBuyPrice] = useState<number | null>(null);
   const [sellPrice, setSellPrice] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number | null>(null);
+  const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
   const result = useMemo(
     () =>
       calculateProfitCost({
@@ -183,14 +184,19 @@ function ProfitCostCalculator() {
     [buyPrice, fee.effectiveSettings, quantity, sellPrice],
   );
 
+  useEffect(() => {
+    setBuyPrice((current) => (current == null ? current : Number(current.toFixed(fee.assetType === "etf" ? 3 : 2))));
+    setSellPrice((current) => (current == null ? current : Number(current.toFixed(fee.assetType === "etf" ? 3 : 2))));
+  }, [fee.assetType]);
+
   return (
     <CalculatorShell>
       <div className="calculator-form">
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <AppNumberStepper label="买入价格" onChange={setBuyPrice} step={0.001} value={buyPrice} />
-            <AppNumberStepper label="卖出价格" onChange={setSellPrice} step={0.001} value={sellPrice} />
+            <AppNumberStepper label="买入价格" normalizeToStep onChange={setBuyPrice} step={priceStep} value={buyPrice} />
+            <AppNumberStepper label="卖出价格" normalizeToStep onChange={setSellPrice} step={priceStep} value={sellPrice} />
             <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>
           <ProfitCostFeePanel {...fee} />
