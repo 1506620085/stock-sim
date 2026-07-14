@@ -380,33 +380,33 @@ function JournalPanel() {
                   value={form.quantity ?? null}
                 />
               </div>
+              <label className="settings-wide">
+                为什么买/卖（可选）
+                <textarea
+                  rows={4}
+                  value={form.reason}
+                  onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))}
+                />
+              </label>
               <div className="notes-modal-reason-row settings-wide">
                 <label>
-                  为什么买/卖（可选）
+                  当时计划 / 失效条件（可选）
                   <textarea
-                    rows={4}
-                    value={form.reason}
-                    onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))}
+                    rows={3}
+                    value={form.planNote ?? ""}
+                    onChange={(event) => setForm((current) => ({ ...current, planNote: event.target.value }))}
                   />
                 </label>
                 <label>
                   当时情绪（可选）
                   <textarea
-                    rows={4}
+                    rows={3}
                     value={form.emotionNote ?? ""}
                     onChange={(event) => setForm((current) => ({ ...current, emotionNote: event.target.value }))}
                     placeholder="如：冷静、犹豫、追高焦虑"
                   />
                 </label>
               </div>
-              <label className="settings-wide">
-                当时计划 / 失效条件（可选）
-                <textarea
-                  rows={3}
-                  value={form.planNote ?? ""}
-                  onChange={(event) => setForm((current) => ({ ...current, planNote: event.target.value }))}
-                />
-              </label>
               <label className="settings-wide">
                 结果复盘（可选）
                 <textarea
