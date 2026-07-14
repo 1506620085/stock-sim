@@ -40,8 +40,6 @@ def normalize_tags(tags: list[str] | None) -> list[str]:
 def validate_journal_payload(side: str, reason: str, emotion_score: int | None) -> None:
     if side not in JOURNAL_SIDES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的交易方向")
-    if not reason.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请填写为什么买/卖")
     if emotion_score is not None and (emotion_score < 1 or emotion_score > 5):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="情绪分需在 1–5 之间")
 

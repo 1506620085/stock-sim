@@ -363,7 +363,7 @@ function JournalPanel() {
                   <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
                 </label>
                 <label>
-                  标的名称
+                  标的名称（可选）
                   <input value={form.symbolName ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolName: event.target.value }))} />
                 </label>
                 <AppNumberStepper
@@ -382,7 +382,7 @@ function JournalPanel() {
               </div>
               <div className="notes-modal-reason-row settings-wide">
                 <label>
-                  为什么买/卖
+                  为什么买/卖（可选）
                   <textarea
                     rows={4}
                     value={form.reason}
@@ -390,7 +390,7 @@ function JournalPanel() {
                   />
                 </label>
                 <label>
-                  当时情绪
+                  当时情绪（可选）
                   <textarea
                     rows={4}
                     value={form.emotionNote ?? ""}
@@ -400,7 +400,7 @@ function JournalPanel() {
                 </label>
               </div>
               <label className="settings-wide">
-                当时计划 / 失效条件
+                当时计划 / 失效条件（可选）
                 <textarea
                   rows={3}
                   value={form.planNote ?? ""}
@@ -408,7 +408,7 @@ function JournalPanel() {
                 />
               </label>
               <label className="settings-wide">
-                结果复盘
+                结果复盘（可选）
                 <textarea
                   rows={3}
                   value={form.resultNote ?? ""}
@@ -416,7 +416,7 @@ function JournalPanel() {
                 />
               </label>
               <label className="settings-wide">
-                标签（逗号或空格分隔）
+                标签（可选，逗号或空格分隔）
                 <input value={tagsDraft} onChange={(event) => setTagsDraft(event.target.value)} placeholder="如：突破，做T，纪律执行" />
               </label>
             </div>

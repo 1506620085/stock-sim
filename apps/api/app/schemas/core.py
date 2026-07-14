@@ -227,7 +227,7 @@ class DataQualityRead(SQLModel):
 class JournalEntryCreate(SQLModel):
     entry_date: date
     side: str
-    reason: str
+    reason: str = ""
     symbol_code: str | None = None
     symbol_name: str | None = None
     price: Decimal | None = None
