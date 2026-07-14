@@ -194,9 +194,20 @@ function ProfitCostCalculator() {
       <div className="calculator-form">
         <div className="panel">
           <h2>输入参数</h2>
-          <label className="calculator-asset-type-field">
-            成本类型
+          <div className="calculator-asset-type-field">
+            <span className="field-label-with-tip">
+              <label htmlFor="profit-cost-asset-type">成本类型</label>
+              <span
+                aria-label="价格精度说明"
+                className="tooltip-wrap field-help-tip"
+                data-tooltip="在买卖价格中，股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
+                tabIndex={0}
+              >
+                <CircleHelp aria-hidden="true" size={14} />
+              </span>
+            </span>
             <AppSelect
+              id="profit-cost-asset-type"
               onChange={fee.changeAssetType}
               options={[
                 { label: "股票", value: "stock" },
@@ -204,27 +215,9 @@ function ProfitCostCalculator() {
               ]}
               value={fee.assetType}
             />
-          </label>
+          </div>
           <div className="calculator-input-grid">
-            <AppNumberStepper
-              label={
-                <span className="field-label-with-tip">
-                  买入价格
-                  <span
-                    aria-label="价格精度说明"
-                    className="tooltip-wrap field-help-tip"
-                    data-tooltip="股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
-                    tabIndex={0}
-                  >
-                    <CircleHelp aria-hidden="true" size={14} />
-                  </span>
-                </span>
-              }
-              normalizeToStep
-              onChange={setBuyPrice}
-              step={priceStep}
-              value={buyPrice}
-            />
+            <AppNumberStepper label="买入价格" normalizeToStep onChange={setBuyPrice} step={priceStep} value={buyPrice} />
             <AppNumberStepper label="卖出价格" normalizeToStep onChange={setSellPrice} step={priceStep} value={sellPrice} />
             <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>

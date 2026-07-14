@@ -686,6 +686,12 @@ textarea {
   font-size: 13px;
 }
 
+.calculator-asset-type-field > .field-label-with-tip > label {
+  color: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
 .calculator-asset-type-field .app-select {
   width: 100%;
   margin-top: 6px;
