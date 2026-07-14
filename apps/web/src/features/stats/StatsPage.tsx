@@ -162,7 +162,7 @@ export function StatsPage() {
                 <article key={entry.id}>
                   <strong>
                     {sideLabels[entry.side] ?? entry.side}
-                    {entry.symbol_name || entry.symbol_code ? ` · ${entry.symbol_name || entry.symbol_code}` : ""}
+                    {entry.symbol_name ? ` · ${entry.symbol_name}` : ""}
                   </strong>
                   <span>
                     {entry.entry_date}

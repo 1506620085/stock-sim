@@ -10,7 +10,7 @@ const seedEntries: JournalEntry[] = [
     id: 1,
     entryDate: "2026-07-10",
     side: "buy",
-    symbolCode: "600519",
+    symbolCode: null,
     symbolName: "贵州茅台",
     price: 1480.5,
     quantity: 100,
@@ -28,7 +28,7 @@ const seedEntries: JournalEntry[] = [
     id: 2,
     entryDate: "2026-07-11",
     side: "sell",
-    symbolCode: "300750",
+    symbolCode: null,
     symbolName: "宁德时代",
     price: 182.3,
     quantity: 200,
@@ -46,7 +46,7 @@ const seedEntries: JournalEntry[] = [
     id: 3,
     entryDate: "2026-07-13",
     side: "watch",
-    symbolCode: "159915",
+    symbolCode: null,
     symbolName: "创业板ETF",
     price: null,
     quantity: null,
@@ -64,7 +64,7 @@ const seedEntries: JournalEntry[] = [
     id: 4,
     entryDate: "2026-07-14",
     side: "buy",
-    symbolCode: "510300",
+    symbolCode: null,
     symbolName: "沪深300ETF",
     price: 3.862,
     quantity: 5000,
@@ -101,10 +101,7 @@ export async function mockLoadJournalEntries(filters?: {
   if (filters?.emotionScore != null) items = items.filter((entry) => entry.emotionScore === filters.emotionScore);
   if (filters?.symbol) {
     const keyword = filters.symbol.trim().toLowerCase();
-    items = items.filter(
-      (entry) =>
-        (entry.symbolCode || "").toLowerCase().includes(keyword) || (entry.symbolName || "").toLowerCase().includes(keyword),
-    );
+    items = items.filter((entry) => (entry.symbolName || "").toLowerCase().includes(keyword));
   }
   items.sort((a, b) => (a.entryDate === b.entryDate ? b.id - a.id : b.entryDate.localeCompare(a.entryDate)));
   return delay(items.map((entry) => ({ ...entry, tags: [...entry.tags], ruleIds: [...entry.ruleIds] })));

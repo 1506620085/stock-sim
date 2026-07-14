@@ -98,7 +98,6 @@ function emptyJournalForm(): JournalEntryInput {
   return {
     entryDate: todayIso(),
     side: "buy",
-    symbolCode: "",
     symbolName: "",
     price: null,
     quantity: null,
@@ -219,7 +218,6 @@ function JournalPanel() {
     setForm({
       entryDate: entry.entryDate,
       side: entry.side,
-      symbolCode: entry.symbolCode ?? "",
       symbolName: entry.symbolName ?? "",
       price: entry.price,
       quantity: entry.quantity,
@@ -238,7 +236,7 @@ function JournalPanel() {
   async function handleSave() {
     const payload: JournalEntryInput = {
       ...form,
-      symbolCode: form.symbolCode || null,
+      symbolCode: null,
       symbolName: form.symbolName || null,
       planNote: form.planNote || null,
       emotionNote: form.emotionNote || null,
@@ -312,7 +310,7 @@ function JournalPanel() {
           </label>
           <label>
             标的
-            <input placeholder="代码或名称" value={symbolFilter} onChange={(event) => setSymbolFilter(event.target.value)} />
+            <input placeholder="标的名称" value={symbolFilter} onChange={(event) => setSymbolFilter(event.target.value)} />
           </label>
         </div>
 
@@ -326,7 +324,7 @@ function JournalPanel() {
                 <div>
                   <strong>
                     {sideLabel(entry.side)}
-                    {entry.symbolCode || entry.symbolName ? ` · ${entry.symbolName || entry.symbolCode}` : ""}
+                    {entry.symbolName ? ` · ${entry.symbolName}` : ""}
                   </strong>
                   <span className="notes-card-meta">
                     {entry.entryDate}
@@ -379,10 +377,6 @@ function JournalPanel() {
               <label>
                 方向
                 <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
-              </label>
-              <label>
-                标的代码
-                <input value={form.symbolCode ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolCode: event.target.value }))} />
               </label>
               <label>
                 标的名称
@@ -786,7 +780,7 @@ function PeriodPanel() {
                       <div>
                         <strong>
                           {sideLabel(entry.side)}
-                          {entry.symbolCode || entry.symbolName ? ` · ${entry.symbolName || entry.symbolCode}` : ""}
+                          {entry.symbolName ? ` · ${entry.symbolName}` : ""}
                         </strong>
                         <span className="notes-card-meta">{entry.entryDate}</span>
                       </div>
