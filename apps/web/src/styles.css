@@ -588,6 +588,12 @@ textarea {
   width: min(100%, 720px);
 }
 
+.notes-journal-modal {
+  width: 50%;
+  max-width: none;
+  min-width: min(100%, 480px);
+}
+
 .notes-rule-picker {
   margin-top: 16px;
   border-top: 1px solid var(--line);
@@ -3072,6 +3078,11 @@ textarea {
   .notes-filters-4,
   .notes-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .notes-journal-modal {
+    width: 100%;
+    min-width: 0;
   }
 
   .average-line > span {

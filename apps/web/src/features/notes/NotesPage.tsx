@@ -339,7 +339,7 @@ function JournalPanel() {
           <div
             aria-labelledby="journal-modal-title"
             aria-modal="true"
-            className="settings-modal notes-modal"
+            className="settings-modal notes-modal notes-journal-modal"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
           >
