@@ -1034,32 +1034,95 @@ textarea {
 /* Must come after .settings-modal — same element uses both classes */
 .settings-modal.notes-modal {
   width: 50%;
+  height: 80vh;
+  max-height: 80vh;
   max-width: none;
-  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.notes-modal-meta {
-  grid-column: 1 / -1;
+.notes-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.notes-modal-form.settings-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: stretch;
+  margin-top: 12px;
   gap: 12px;
 }
 
-.notes-modal-reason-row {
+.settings-modal.notes-modal label.notes-modal-grow {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-modal.notes-modal .notes-modal-reason-row.notes-modal-grow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  min-height: 0;
+  height: 100%;
 }
 
-.notes-modal-reason-row > label {
+.settings-modal.notes-modal .notes-modal-reason-row > label.notes-modal-grow {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
 }
 
-.notes-modal-reason-row textarea {
+/* height:0 + flex:1 lets textarea actually consume leftover space */
+.settings-modal.notes-modal .notes-modal-grow > textarea {
+  flex: 1 1 auto;
   width: 100%;
-  box-sizing: border-box;
+  height: 0;
+  min-height: 0;
   margin-top: 6px;
-  resize: vertical;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.notes-modal-tags {
+  min-height: 0;
+}
+
+.notes-modal-meta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 0;
+}
+
+.settings-modal.notes-modal .notes-rule-picker {
+  flex: 0 0 auto;
+  max-height: 112px;
+  margin-top: 0;
+  overflow: auto;
+}
+
+.settings-modal.notes-modal .section-header {
+  flex: 0 0 auto;
+}
+
+.settings-modal.notes-modal .settings-actions {
+  flex: 0 0 auto;
+  margin-top: 14px;
 }
 
 .notes-modal-meta > label,
@@ -1120,8 +1183,13 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .notes-modal-reason-row {
+  .settings-modal.notes-modal .notes-modal-reason-row.notes-modal-grow {
     grid-template-columns: 1fr;
+  }
+
+  .notes-modal-form.settings-grid {
+    grid-template-rows: auto minmax(120px, 1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
+    overflow: auto;
   }
 }
 

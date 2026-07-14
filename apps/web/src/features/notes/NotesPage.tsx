@@ -353,98 +353,96 @@ function JournalPanel() {
               </button>
             </div>
 
-            <div className="settings-grid">
-              <div className="notes-modal-meta">
-                <label>
-                  日期
-                  <AppDatePicker
-                    onChange={(date) => setForm((current) => ({ ...current, entryDate: date }))}
-                    placeholder="选择日期"
-                    value={form.entryDate}
+            <div className="notes-modal-body">
+              <div className="settings-grid notes-modal-form">
+                <div className="notes-modal-meta">
+                  <label>
+                    日期
+                    <AppDatePicker
+                      onChange={(date) => setForm((current) => ({ ...current, entryDate: date }))}
+                      placeholder="选择日期"
+                      value={form.entryDate}
+                    />
+                  </label>
+                  <label>
+                    方向
+                    <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
+                  </label>
+                  <label>
+                    标的名称（可选）
+                    <input value={form.symbolName ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolName: event.target.value }))} />
+                  </label>
+                  <AppNumberStepper
+                    label="价格（可选）"
+                    onChange={(value) => setForm((current) => ({ ...current, price: value }))}
+                    step={0.001}
+                    value={form.price ?? null}
                   />
-                </label>
-                <label>
-                  方向
-                  <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
-                </label>
-                <label>
-                  标的名称（可选）
-                  <input value={form.symbolName ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolName: event.target.value }))} />
-                </label>
-                <AppNumberStepper
-                  label="价格（可选）"
-                  onChange={(value) => setForm((current) => ({ ...current, price: value }))}
-                  step={0.001}
-                  value={form.price ?? null}
-                />
-                <AppNumberStepper
-                  label="数量（可选）"
-                  normalizeToStep
-                  onChange={(value) => setForm((current) => ({ ...current, quantity: value }))}
-                  step={100}
-                  value={form.quantity ?? null}
-                />
-              </div>
-              <label className="settings-wide">
-                为什么买/卖（可选）
-                <textarea
-                  rows={4}
-                  value={form.reason}
-                  onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))}
-                />
-              </label>
-              <div className="notes-modal-reason-row settings-wide">
-                <label>
-                  当时计划 / 失效条件（可选）
-                  <textarea
-                    rows={3}
-                    value={form.planNote ?? ""}
-                    onChange={(event) => setForm((current) => ({ ...current, planNote: event.target.value }))}
+                  <AppNumberStepper
+                    label="数量（可选）"
+                    normalizeToStep
+                    onChange={(value) => setForm((current) => ({ ...current, quantity: value }))}
+                    step={100}
+                    value={form.quantity ?? null}
                   />
-                </label>
-                <label>
-                  当时情绪（可选）
-                  <textarea
-                    rows={3}
-                    value={form.emotionNote ?? ""}
-                    onChange={(event) => setForm((current) => ({ ...current, emotionNote: event.target.value }))}
-                    placeholder="如：冷静、犹豫、追高焦虑"
-                  />
-                </label>
-              </div>
-              <label className="settings-wide">
-                结果复盘（可选）
-                <textarea
-                  rows={3}
-                  value={form.resultNote ?? ""}
-                  onChange={(event) => setForm((current) => ({ ...current, resultNote: event.target.value }))}
-                />
-              </label>
-              <label className="settings-wide">
-                标签（可选，逗号或空格分隔）
-                <input value={tagsDraft} onChange={(event) => setTagsDraft(event.target.value)} placeholder="如：突破，做T，纪律执行" />
-              </label>
-            </div>
-
-            {rules.length ? (
-              <div className="notes-rule-picker">
-                <h3>关联规则（可选）</h3>
-                <div className="notes-rule-picker-list">
-                  {rules.map((rule) => {
-                    const checked = (form.ruleIds ?? []).includes(rule.id);
-                    return (
-                      <label className="check-row" key={rule.id}>
-                        <input checked={checked} onChange={() => toggleRule(rule.id)} type="checkbox" />
-                        <span>
-                          {rule.title}
-                          <em>{categoryLabel(rule.category)}</em>
-                        </span>
-                      </label>
-                    );
-                  })}
                 </div>
+                <label className="settings-wide notes-modal-grow">
+                  为什么买/卖（可选）
+                  <textarea
+                    value={form.reason}
+                    onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))}
+                  />
+                </label>
+                <div className="notes-modal-reason-row settings-wide notes-modal-grow">
+                  <label className="notes-modal-grow">
+                    当时计划 / 失效条件（可选）
+                    <textarea
+                      value={form.planNote ?? ""}
+                      onChange={(event) => setForm((current) => ({ ...current, planNote: event.target.value }))}
+                    />
+                  </label>
+                  <label className="notes-modal-grow">
+                    当时情绪（可选）
+                    <textarea
+                      value={form.emotionNote ?? ""}
+                      onChange={(event) => setForm((current) => ({ ...current, emotionNote: event.target.value }))}
+                      placeholder="如：冷静、犹豫、追高焦虑"
+                    />
+                  </label>
+                </div>
+                <label className="settings-wide notes-modal-grow">
+                  结果复盘（可选）
+                  <textarea
+                    value={form.resultNote ?? ""}
+                    onChange={(event) => setForm((current) => ({ ...current, resultNote: event.target.value }))}
+                  />
+                </label>
+                <label className="settings-wide notes-modal-tags">
+                  标签（可选，逗号或空格分隔）
+                  <input value={tagsDraft} onChange={(event) => setTagsDraft(event.target.value)} placeholder="如：突破，做T，纪律执行" />
+                </label>
               </div>
-            ) : null}
+
+              {rules.length ? (
+                <div className="notes-rule-picker">
+                  <h3>关联规则（可选）</h3>
+                  <div className="notes-rule-picker-list">
+                    {rules.map((rule) => {
+                      const checked = (form.ruleIds ?? []).includes(rule.id);
+                      return (
+                        <label className="check-row" key={rule.id}>
+                          <input checked={checked} onChange={() => toggleRule(rule.id)} type="checkbox" />
+                          <span>
+                            {rule.title}
+                            <em>{categoryLabel(rule.category)}</em>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             <div className="settings-actions">
               <button className="secondary-button" onClick={() => setModal(null)} type="button">
