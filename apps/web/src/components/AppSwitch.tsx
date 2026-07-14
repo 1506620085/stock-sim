@@ -1,3 +1,7 @@
+/**
+ * AppSwitch
+ * 通用开关组件：布尔开/关切换，可选开关内文案，用于设置项与表单开关。
+ */
 import { useId, type ReactNode } from "react";
 
 type AppSwitchProps = {

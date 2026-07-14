@@ -1,3 +1,7 @@
+/**
+ * toast
+ * Toast 状态与命令式 API：提供订阅、推送与关闭能力，供 ToastProvider 与业务侧直接调用。
+ */
 export type ToastKind = "error" | "success" | "info";
 
 export type ToastItem = {

@@ -1,3 +1,7 @@
+/**
+ * AppSelect
+ * 通用下拉选择组件：支持搜索、键盘操作与 Portal 浮层，用于表单与工具栏中的选项选择。
+ */
 import {
   useEffect,
   useId,

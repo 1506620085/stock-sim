@@ -1,3 +1,7 @@
+/**
+ * AppNumberStepper
+ * 通用数字步进输入：支持加减按钮、步长对齐、上下限与草稿态，用于价格/数量等数值录入。
+ */
 import { memo, useEffect, useId, useState, type ReactNode } from "react";
 
 export function normalizeStepValue(raw: number, step: number) {

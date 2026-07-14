@@ -1,3 +1,7 @@
+/**
+ * FieldHelpTip / FieldLabelWithTip
+ * 字段说明提示：问号图标悬停展示提示文案；FieldLabelWithTip 将标签与提示组合在同一行。
+ */
 import { CircleHelp } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -29,7 +33,6 @@ type FieldLabelWithTipProps = {
   className?: string;
 };
 
-/** 字段标签与右侧问号提示的组合，便于标签行复用。 */
 export function FieldLabelWithTip({ tip, tipAriaLabel, htmlFor, children, className }: FieldLabelWithTipProps) {
   return (
     <span className={["field-label-with-tip", className].filter(Boolean).join(" ")}>

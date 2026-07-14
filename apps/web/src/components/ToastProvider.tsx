@@ -1,3 +1,7 @@
+/**
+ * ToastProvider
+ * 全局 Toast 容器：订阅 toast 状态并渲染成功/错误/信息提示栈，需挂在应用根节点。
+ */
 import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { dismissToast, subscribeToasts, type ToastItem, type ToastKind } from "./toast";

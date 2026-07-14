@@ -1,3 +1,7 @@
+/**
+ * AppDatePicker
+ * 通用日期选择组件：基于 Ant Design DatePicker，支持可选日期白名单、起止范围与底部扩展区。
+ */
 import { useMemo, type ReactNode } from "react";
 import { ConfigProvider, DatePicker } from "antd";
 import type { DatePickerProps } from "antd";
