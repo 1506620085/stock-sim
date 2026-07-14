@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Calculator, ChevronDown, ChevronRight, CircleHelp, Copy, Plus, Trash2 } from "lucide-react";
+import { Calculator, ChevronDown, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppSwitch } from "../../components/AppSwitch";
+import { FieldLabelWithTip } from "../../components/FieldHelpTip";
 import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
   calculateAverage,
@@ -195,17 +196,13 @@ function ProfitCostCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-asset-type-field">
-            <span className="field-label-with-tip">
-              <label htmlFor="profit-cost-asset-type">成本类型</label>
-              <span
-                aria-label="价格精度说明"
-                className="tooltip-wrap field-help-tip"
-                data-tooltip="在买卖价格中，股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
-                tabIndex={0}
-              >
-                <CircleHelp aria-hidden="true" size={14} />
-              </span>
-            </span>
+            <FieldLabelWithTip
+              htmlFor="profit-cost-asset-type"
+              tip="在买卖价格中，股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
+              tipAriaLabel="价格精度说明"
+            >
+              成本类型
+            </FieldLabelWithTip>
             <AppSelect
               id="profit-cost-asset-type"
               onChange={fee.changeAssetType}
