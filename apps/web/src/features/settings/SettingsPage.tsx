@@ -452,8 +452,9 @@ function FeeTemplateFormFields({
         <>
           <AppNumberStepper
             label="佣金费率(%)"
+            normalizeToStep
             onChange={(value) => onChange((current) => ({ ...current, commissionRate: value ?? 0 }))}
-            step={0.001}
+            step={0.00001}
             value={form.commissionRate}
           />
           <AppNumberStepper
@@ -466,14 +467,16 @@ function FeeTemplateFormFields({
       )}
       <AppNumberStepper
         label="卖出印花税率(%)"
+        normalizeToStep
         onChange={(value) => onChange((current) => ({ ...current, stampTaxRate: value ?? 0 }))}
-        step={0.001}
+        step={0.00001}
         value={form.stampTaxRate}
       />
       <AppNumberStepper
         label="过户费率(%)"
+        normalizeToStep
         onChange={(value) => onChange((current) => ({ ...current, transferRate: value ?? 0 }))}
-        step={0.001}
+        step={0.00001}
         value={form.transferRate}
       />
     </div>

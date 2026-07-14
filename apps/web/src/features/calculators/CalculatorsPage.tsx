@@ -40,7 +40,7 @@ const calculatorTabMeta: Record<CalculatorTab, { title: string; description: str
   },
   average: {
     title: "平均价格计算器",
-    description: "录入多笔买入价格、数量和费用，计算加权平均价格与含费用平均成本。",
+    description: "录入多笔买入价格与数量，按费率模板或自定义费率计算加权平均价格与含费用平均成本。",
   },
 };
 
@@ -169,7 +169,7 @@ function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (s
 }
 
 function ProfitCostCalculator() {
-  const fee = useProfitCostFeeSettings();
+  const fee = useCalculatorFeeSettings();
   const [buyPrice, setBuyPrice] = useState<number | null>(null);
   const [sellPrice, setSellPrice] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number | null>(null);
@@ -218,7 +218,7 @@ function ProfitCostCalculator() {
             <AppNumberStepper label="卖出价格" normalizeToStep onChange={setSellPrice} step={priceStep} value={sellPrice} />
             <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>
-          <ProfitCostFeePanel {...fee} />
+          <CalculatorFeePanel {...fee} />
         </div>
         <ResultTable
           rows={[
@@ -343,18 +343,30 @@ function ChangeCalculator() {
 }
 
 function AveragePriceCalculator() {
+  const fee = useCalculatorFeeSettings();
   const [lines, setLines] = useState<AverageLine[]>([
-    { id: "1", price: 10, quantity: 1000, fee: 5 },
-    { id: "2", price: 9.2, quantity: 1000, fee: 5 },
+    { id: "1", price: 10, quantity: 1000 },
+    { id: "2", price: 9.2, quantity: 1000 },
   ]);
-  const result = useMemo(() => calculateAverage(lines), [lines]);
+  const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
+  const result = useMemo(() => calculateAverage(lines, fee.effectiveSettings), [fee.effectiveSettings, lines]);
+
+  useEffect(() => {
+    const decimals = fee.assetType === "etf" ? 3 : 2;
+    setLines((items) =>
+      items.map((line) => ({
+        ...line,
+        price: Number(line.price.toFixed(decimals)),
+      })),
+    );
+  }, [fee.assetType]);
 
   function updateLine(id: string, patch: Partial<AverageLine>) {
     setLines((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
   function addLine() {
-    setLines((items) => [...items, { id: crypto.randomUUID(), price: 0, quantity: 0, fee: 0 }]);
+    setLines((items) => [...items, { id: crypto.randomUUID(), price: 0, quantity: 0 }]);
   }
 
   function removeLine(id: string) {
@@ -372,19 +384,43 @@ function AveragePriceCalculator() {
               新增
             </button>
           </div>
+          <div className="calculator-asset-type-field">
+            <FieldLabelWithTip
+              htmlFor="average-price-asset-type"
+              tip="在买卖价格中，股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
+              tipAriaLabel="价格精度说明"
+            >
+              成本类型
+            </FieldLabelWithTip>
+            <AppSelect
+              id="average-price-asset-type"
+              onChange={fee.changeAssetType}
+              options={[
+                { label: "股票", value: "stock" },
+                { label: "ETF", value: "etf" },
+              ]}
+              value={fee.assetType}
+            />
+          </div>
           <div className="average-lines">
             {lines.map((line, index) => (
               <div className="average-line" key={line.id}>
                 <span>{index + 1}</span>
-                <AppNumberStepper label="价格" onChange={(value) => updateLine(line.id, { price: value ?? 0 })} step={0.01} value={line.price} />
+                <AppNumberStepper
+                  label="价格"
+                  normalizeToStep
+                  onChange={(value) => updateLine(line.id, { price: value ?? 0 })}
+                  step={priceStep}
+                  value={line.price}
+                />
                 <AppNumberStepper label="数量" normalizeToStep onChange={(value) => updateLine(line.id, { quantity: value ?? 0 })} step={100} value={line.quantity} />
-                <AppNumberStepper label="费用" onChange={(value) => updateLine(line.id, { fee: value ?? 0 })} step={0.01} value={line.fee} />
                 <button aria-label="删除买入行" className="icon-button danger-button" onClick={() => removeLine(line.id)} type="button">
                   <Trash2 size={16} />
                 </button>
               </div>
             ))}
           </div>
+          <CalculatorFeePanel {...fee} />
         </div>
         <ResultTable
           rows={[
@@ -401,7 +437,7 @@ function AveragePriceCalculator() {
   );
 }
 
-function useProfitCostFeeSettings() {
+function useCalculatorFeeSettings() {
   const [templates, setTemplates] = useState<FeeTemplate[]>([]);
   const [assetType, setAssetType] = useState<AssetType>("stock");
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
@@ -492,7 +528,7 @@ function useProfitCostFeeSettings() {
   };
 }
 
-function ProfitCostFeePanel({
+function CalculatorFeePanel({
   assetType,
   customEnabled,
   customSettings,
@@ -501,7 +537,7 @@ function ProfitCostFeePanel({
   setCustomEnabled,
   setCustomSettings,
   templates,
-}: ReturnType<typeof useProfitCostFeeSettings>) {
+}: ReturnType<typeof useCalculatorFeeSettings>) {
   const [templateOpen, setTemplateOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const templateOptions = templates.filter((template) => template.assetType === assetType);

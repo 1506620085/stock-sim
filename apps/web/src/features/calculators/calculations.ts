@@ -76,7 +76,6 @@ export type AverageLine = {
   id: string;
   price: number;
   quantity: number;
-  fee: number;
 };
 
 export type AverageResult = {
@@ -195,13 +194,17 @@ export function calculateChange(input: ChangeInput): ChangeResult {
   };
 }
 
-export function calculateAverage(lines: AverageLine[]): AverageResult {
+export function calculateAverage(lines: AverageLine[], feeSettings: FeeSettings): AverageResult {
   const totals = lines.reduce(
-    (sum, line) => ({
-      totalQuantity: sum.totalQuantity + line.quantity,
-      totalAmount: sum.totalAmount + line.price * line.quantity,
-      totalFee: sum.totalFee + line.fee,
-    }),
+    (sum, line) => {
+      const amount = line.price * line.quantity;
+      const fee = line.quantity > 0 && line.price > 0 ? calculateTradeFee("buy", line.price, line.quantity, feeSettings) : 0;
+      return {
+        totalQuantity: sum.totalQuantity + line.quantity,
+        totalAmount: sum.totalAmount + amount,
+        totalFee: sum.totalFee + fee,
+      };
+    },
     { totalQuantity: 0, totalAmount: 0, totalFee: 0 },
   );
 

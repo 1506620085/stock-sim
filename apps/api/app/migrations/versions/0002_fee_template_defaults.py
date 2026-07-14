@@ -72,7 +72,7 @@ def upgrade() -> None:
             stamp_tax_rate, transfer_rate, config, is_default
         )
         SELECT
-            '默认ETF费率', 'etf', 0.02500000, 5.0000,
+            '默认ETF费率', 'etf', 0.03000000, 0.1000,
             0.00000000, 0.00000000,
             jsonb_build_object('commissionMode', 'rate', 'fixedCommission', 0),
             true
