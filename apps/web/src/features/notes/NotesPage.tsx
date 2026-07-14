@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { NotebookPen, Plus, Trash2 } from "lucide-react";
+import { AppDatePicker } from "../../components/AppDatePicker";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showSuccess } from "../../components/ToastProvider";
@@ -356,7 +357,11 @@ function JournalPanel() {
               <div className="notes-modal-meta">
                 <label>
                   日期
-                  <input type="date" value={form.entryDate} onChange={(event) => setForm((current) => ({ ...current, entryDate: event.target.value }))} />
+                  <AppDatePicker
+                    onChange={(date) => setForm((current) => ({ ...current, entryDate: date }))}
+                    placeholder="选择日期"
+                    value={form.entryDate}
+                  />
                 </label>
                 <label>
                   方向
@@ -678,11 +683,11 @@ function PeriodPanel() {
         <div className="notes-filters">
           <label>
             开始日期
-            <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            <AppDatePicker onChange={setStartDate} placeholder="开始日期" value={startDate} />
           </label>
           <label>
             结束日期
-            <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            <AppDatePicker onChange={setEndDate} placeholder="结束日期" value={endDate} />
           </label>
           <div className="notes-filter-action">
             <button className="primary-button" onClick={() => void handleQuery()} type="button">

@@ -503,8 +503,11 @@ textarea {
 }
 
 .notes-filters input,
-.notes-filters .app-select {
+.notes-filters .app-select,
+.notes-filters .app-date-picker {
   margin-top: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .notes-filter-action {
@@ -744,6 +747,7 @@ textarea {
 .settings-grid .app-number-stepper-field .trade-qty-stepper,
 .settings-grid select,
 .settings-grid .app-select,
+.settings-grid .app-date-picker,
 .settings-panel > label select,
 .settings-panel > label .app-select {
   margin-top: 6px;
@@ -1067,11 +1071,18 @@ textarea {
 .notes-modal-meta input:not(.trade-qty-input),
 .notes-modal-meta .app-select,
 .notes-modal-meta .app-select-trigger,
+.notes-modal-meta .app-date-picker,
 .notes-modal-meta .trade-qty-stepper,
 .notes-modal-meta .app-number-stepper-field .trade-qty-stepper {
   width: 100%;
   max-width: none;
   box-sizing: border-box;
+}
+
+.notes-modal-meta .app-date-picker,
+.notes-filters .app-date-picker {
+  margin-top: 6px;
+  display: block;
 }
 
 @media (max-width: 1100px) {
