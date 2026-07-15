@@ -306,27 +306,37 @@ export function KnowledgeBasePanel() {
             {saveState === "saving" ? "保存中…" : saveState === "saved" ? "已自动保存" : ""}
           </span>
         </div>
-        <label className="kb-search">
-          <Search size={15} aria-hidden="true" />
-          <input
-            aria-label="搜索笔记"
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜索"
-            value={query}
-          />
-        </label>
       </header>
 
       <div className="kb-layout">
         <aside className="kb-sidebar">
           <div className="kb-sidebar-actions">
-            <button className="kb-sidebar-action" onClick={() => void handleCreate("doc")} type="button">
-              <Plus size={14} />
-              新建笔记
+            <label className="kb-search">
+              <Search size={15} aria-hidden="true" />
+              <input
+                aria-label="搜索笔记"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜索"
+                value={query}
+              />
+            </label>
+            <button
+              aria-label="新建笔记"
+              className="kb-sidebar-icon-btn"
+              onClick={() => void handleCreate("doc")}
+              title="新建笔记"
+              type="button"
+            >
+              <Plus size={16} />
             </button>
-            <button className="kb-sidebar-action" onClick={() => void handleCreate("folder")} type="button">
-              <FolderPlus size={14} />
-              新建目录
+            <button
+              aria-label="新建目录"
+              className="kb-sidebar-icon-btn"
+              onClick={() => void handleCreate("folder")}
+              title="新建目录"
+              type="button"
+            >
+              <FolderPlus size={16} />
             </button>
           </div>
 

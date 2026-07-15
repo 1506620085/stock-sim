@@ -575,17 +575,19 @@ textarea {
 .kb-search {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-width: 200px;
-  padding: 6px 10px;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fafafa;
+  background: #fff;
   color: #8f959e;
 }
 
 .kb-search input {
   width: 100%;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
@@ -609,30 +611,31 @@ textarea {
 }
 
 .kb-sidebar-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
   border-bottom: 1px solid var(--line);
 }
 
-.kb-sidebar-action {
+.kb-sidebar-icon-btn {
   display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 7px 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
   color: #4e5969;
-  font-size: 12px;
   cursor: pointer;
 }
 
-.kb-sidebar-action:hover {
+.kb-sidebar-icon-btn:hover {
   border-color: #c9cdd4;
   color: #1f2329;
+  background: #f2f3f5;
 }
 
 .kb-tree {
