@@ -174,6 +174,7 @@ function JournalPanel() {
   const [tagFilter, setTagFilter] = useState("");
   const [symbolFilter, setSymbolFilter] = useState("");
   const [modal, setModal] = useState<null | { mode: "new" } | { mode: "edit"; id: number }>(null);
+  const [viewEntry, setViewEntry] = useState<JournalEntry | null>(null);
   const [form, setForm] = useState<JournalEntryInput>(emptyJournalForm());
   const [tagsDraft, setTagsDraft] = useState("");
   const [symbolNameError, setSymbolNameError] = useState("");
@@ -190,6 +191,8 @@ function JournalPanel() {
     () => [{ label: "全部标的", value: "", emphasis: true }, ...allSymbols.map((name) => ({ label: name, value: name }))],
     [allSymbols],
   );
+
+  const activeRules = useMemo(() => rules.filter((rule) => rule.status === "active"), [rules]);
 
   async function refreshSymbolCatalog() {
     const items = await loadJournalEntries();
@@ -208,7 +211,7 @@ function JournalPanel() {
           tag: tagFilter || undefined,
           symbol: symbolFilter || undefined,
         }),
-        loadTradingRules({ status: "active" }),
+        loadTradingRules(),
       ]);
       setEntries(nextEntries);
       setRules(nextRules);
@@ -226,13 +229,20 @@ function JournalPanel() {
   }, [sideFilter, tagFilter, symbolFilter]);
 
   function openNew() {
+    setViewEntry(null);
     setForm(emptyJournalForm());
     setTagsDraft("");
     setSymbolNameError("");
     setModal({ mode: "new" });
   }
 
+  function openView(entry: JournalEntry) {
+    setModal(null);
+    setViewEntry(entry);
+  }
+
   function openEdit(entry: JournalEntry) {
+    setViewEntry(null);
     setForm({
       entryDate: entry.entryDate,
       side: entry.side,
@@ -351,6 +361,9 @@ function JournalPanel() {
                   <span className="notes-card-meta">{entry.entryDate}</span>
                 </div>
                 <div className="notes-card-actions">
+                  <button className="text-button" onClick={() => openView(entry)} type="button">
+                    查看
+                  </button>
                   <button className="text-button" onClick={() => openEdit(entry)} type="button">
                     编辑
                   </button>
@@ -372,8 +385,116 @@ function JournalPanel() {
         </div>
       </div>
 
+      {viewEntry ? (
+        <div className="settings-modal-backdrop" role="presentation">
+          <div
+            aria-labelledby="journal-view-title"
+            aria-modal="true"
+            className="settings-modal notes-modal notes-view-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="section-header">
+              <h2 id="journal-view-title">查看实盘笔记</h2>
+              <button aria-label="关闭" className="text-button" onClick={() => setViewEntry(null)} type="button">
+                ×
+              </button>
+            </div>
+
+            <div className="notes-modal-body">
+              <div className="notes-view-meta">
+                <div>
+                  <span>日期</span>
+                  <strong>{viewEntry.entryDate}</strong>
+                </div>
+                <div>
+                  <span>方向</span>
+                  <strong>{sideLabel(viewEntry.side)}</strong>
+                </div>
+                <div>
+                  <span>标的名称</span>
+                  <strong>{viewEntry.symbolName || "—"}</strong>
+                </div>
+                <div>
+                  <span>价格</span>
+                  <strong>{viewEntry.price != null ? String(viewEntry.price) : "—"}</strong>
+                </div>
+                <div>
+                  <span>数量</span>
+                  <strong>{viewEntry.quantity != null ? String(viewEntry.quantity) : "—"}</strong>
+                </div>
+              </div>
+
+              <div className="notes-view-sections">
+                <section>
+                  <h3>为什么买/卖</h3>
+                  <p>{viewEntry.reason?.trim() ? viewEntry.reason : "未填写"}</p>
+                </section>
+                <div className="notes-view-split">
+                  <section>
+                    <h3>当时计划 / 失效条件</h3>
+                    <p>{viewEntry.planNote?.trim() ? viewEntry.planNote : "未填写"}</p>
+                  </section>
+                  <section>
+                    <h3>当时情绪</h3>
+                    <p>{viewEntry.emotionNote?.trim() ? viewEntry.emotionNote : "未填写"}</p>
+                  </section>
+                </div>
+                <section>
+                  <h3>结果复盘</h3>
+                  <p>{viewEntry.resultNote?.trim() ? viewEntry.resultNote : "未填写"}</p>
+                </section>
+                <section>
+                  <h3>标签</h3>
+                  {viewEntry.tags.length ? (
+                    <div className="notes-tag-row">
+                      {viewEntry.tags.map((tag) => (
+                        <em key={tag}>{tag}</em>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>未填写</p>
+                  )}
+                </section>
+                {viewEntry.ruleIds.length ? (
+                  <section>
+                    <h3>关联规则</h3>
+                    <ul className="notes-view-rules">
+                      {viewEntry.ruleIds.map((ruleId) => {
+                        const rule = rules.find((item) => item.id === ruleId);
+                        return (
+                          <li key={ruleId}>
+                            {rule ? (
+                              <>
+                                {rule.title}
+                                <em>{categoryLabel(rule.category)}</em>
+                              </>
+                            ) : (
+                              `规则 #${ruleId}`
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="settings-actions">
+              <button className="secondary-button" onClick={() => setViewEntry(null)} type="button">
+                关闭
+              </button>
+              <button className="primary-button" onClick={() => openEdit(viewEntry)} type="button">
+                去编辑
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {modal ? (
-        <div className="settings-modal-backdrop" onClick={() => setModal(null)} role="presentation">
+        <div className="settings-modal-backdrop" role="presentation">
           <div
             aria-labelledby="journal-modal-title"
             aria-modal="true"
@@ -465,11 +586,11 @@ function JournalPanel() {
                 </label>
               </div>
 
-              {rules.length ? (
+              {activeRules.length ? (
                 <div className="notes-rule-picker">
                   <h3>关联规则（可选）</h3>
                   <div className="notes-rule-picker-list">
-                    {rules.map((rule) => {
+                    {activeRules.map((rule) => {
                       const checked = (form.ruleIds ?? []).includes(rule.id);
                       return (
                         <label className="check-row" key={rule.id}>
@@ -633,7 +754,7 @@ function RulesPanel() {
       </div>
 
       {modal ? (
-        <div className="settings-modal-backdrop" onClick={() => setModal(null)} role="presentation">
+        <div className="settings-modal-backdrop" role="presentation">
           <div
             aria-labelledby="rule-modal-title"
             aria-modal="true"

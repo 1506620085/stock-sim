@@ -289,7 +289,7 @@ export function SettingsPage() {
       </div>
 
       {templateModal ? (
-        <div className="settings-modal-backdrop" onClick={closeTemplateModal} role="presentation">
+        <div className="settings-modal-backdrop" role="presentation">
           <div
             aria-labelledby="template-modal-title"
             aria-modal="true"
@@ -318,7 +318,7 @@ export function SettingsPage() {
       ) : null}
 
       {deleteConfirmTemplate ? (
-        <div className="settings-modal-backdrop" onClick={() => setDeleteConfirmTemplate(null)} role="presentation">
+        <div className="settings-modal-backdrop" role="presentation">
           <div
             aria-labelledby="delete-template-title"
             aria-modal="true"
