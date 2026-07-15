@@ -123,18 +123,20 @@ export function NotesPage() {
     <section className="notes-page">
       <div className="calculator-page-header">
         <header className="panel calculator-page-meta">
-          <div>
-            <p className="eyebrow">Journal</p>
+          <div className="calculator-page-meta-title">
             <h1>交易笔记</h1>
+            <p className="eyebrow calculator-page-meta-eyebrow">Journal</p>
           </div>
           <span className="stage-pill">实盘与规则</span>
         </header>
         <div className="panel calculator-page-heading">
           <NotebookPen aria-hidden="true" size={28} />
-          <div>
-            <p className="eyebrow">Notes</p>
-            <h2>{activeMeta.title}</h2>
-            <p>{activeMeta.description}</p>
+          <div className="calculator-page-heading-main">
+            <div className="calculator-page-heading-title">
+              <h2>{activeMeta.title}</h2>
+              <p className="eyebrow calculator-page-heading-eyebrow">Notes</p>
+            </div>
+            <p className="calculator-page-heading-desc">{activeMeta.description}</p>
           </div>
         </div>
       </div>

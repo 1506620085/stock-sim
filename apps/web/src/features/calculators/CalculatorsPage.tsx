@@ -60,18 +60,20 @@ export function CalculatorsPage() {
     <section className="calculators-page">
       <div className="calculator-page-header">
         <header className="panel calculator-page-meta">
-          <div>
-            <p className="eyebrow">Tools</p>
+          <div className="calculator-page-meta-title">
             <h1>交易计算器</h1>
+            <p className="eyebrow calculator-page-meta-eyebrow">Tools</p>
           </div>
           <span className="stage-pill">工具箱</span>
         </header>
         <div className="panel calculator-page-heading">
           <Calculator aria-hidden="true" size={28} />
-          <div>
-            <p className="eyebrow">Calculator</p>
-            <h2>{activeMeta.title}</h2>
-            <p>{activeMeta.description}</p>
+          <div className="calculator-page-heading-main">
+            <div className="calculator-page-heading-title">
+              <h2>{activeMeta.title}</h2>
+              <p className="eyebrow calculator-page-heading-eyebrow">Calculator</p>
+            </div>
+            <p className="calculator-page-heading-desc">{activeMeta.description}</p>
           </div>
         </div>
       </div>

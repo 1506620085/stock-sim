@@ -472,9 +472,22 @@ textarea {
   margin: 0;
 }
 
+.topbar-title-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
 .topbar h1 {
-  margin-top: 4px;
   font-size: 26px;
+  line-height: 1.25;
+}
+
+.topbar-eyebrow {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .eyebrow {
@@ -1597,9 +1610,24 @@ textarea {
   min-width: 0;
 }
 
+.calculator-page-meta-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
 .calculator-page-meta h1 {
-  margin-top: 4px;
+  margin: 0;
   font-size: 20px;
+  line-height: 1.25;
+}
+
+.calculator-page-meta-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .calculator-page-meta .stage-pill {
@@ -1610,7 +1638,7 @@ textarea {
 .calculator-page-heading {
   display: flex;
   flex: 2;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   min-width: 0;
 }
@@ -1618,18 +1646,50 @@ textarea {
 .calculator-page-heading svg {
   color: var(--accent);
   flex: 0 0 auto;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
+.calculator-page-heading-main {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 12px 28px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.calculator-page-heading-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 0 0 auto;
+  max-width: 100%;
+  padding-bottom: 0;
+}
+
+.calculator-page-heading-title h2,
 .calculator-page-heading h2 {
-  margin-top: 5px;
+  margin: 0;
   font-size: 22px;
+  line-height: 1.25;
 }
 
-.calculator-page-heading p:last-child {
+.calculator-page-heading-eyebrow {
+  position: static;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.calculator-page-heading-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding-top: 0;
   color: var(--muted);
-  line-height: 1.7;
-  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .calculator-form {
@@ -3386,9 +3446,23 @@ textarea {
   max-width: 560px;
 }
 
+.empty-state-title-row {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+}
+
 .empty-state h2 {
-  margin-top: 8px;
+  margin: 0;
   font-size: 32px;
+  line-height: 1.25;
+}
+
+.empty-state-eyebrow {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .empty-state p:last-child {
@@ -3503,6 +3577,15 @@ textarea {
   .calculator-page-heading {
     flex: 1 1 auto;
     width: 100%;
+  }
+
+  .calculator-page-heading-main {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+
+  .calculator-page-heading-title {
+    padding-bottom: 0;
   }
 
   .calculators-tabs button {

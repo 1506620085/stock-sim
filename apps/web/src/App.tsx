@@ -92,9 +92,9 @@ export default function App() {
       <section className="workspace">
         {activePage !== "replay" && activePage !== "calculators" && activePage !== "notes" ? (
           <header className="topbar">
-            <div>
-              <p className="eyebrow">{activeMeta.eyebrow}</p>
+            <div className="topbar-title-row">
               <h1>{activeMeta.title}</h1>
+              <p className="eyebrow topbar-eyebrow">{activeMeta.eyebrow}</p>
             </div>
             <span className="stage-pill">{activeMeta.badge}</span>
           </header>
