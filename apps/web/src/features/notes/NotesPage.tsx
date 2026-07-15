@@ -29,7 +29,7 @@ type NotesTab = "journal" | "rules" | "period";
 
 const tabs: Array<{ id: NotesTab; label: string }> = [
   { id: "journal", label: "实盘笔记" },
-  { id: "rules", label: "操作规则" },
+  { id: "rules", label: "操作规则/总结笔记" },
   { id: "period", label: "区间复盘" },
 ];
 
@@ -39,7 +39,7 @@ const tabMeta: Record<NotesTab, { title: string; description: string }> = {
     description: "记录真实买卖时的思考：为什么买、为什么卖，以及当时情绪与计划。",
   },
   rules: {
-    title: "操作规则",
+    title: "操作规则/总结笔记",
     description: "沉淀仓位、买卖条件与纪律，写笔记时可对照勾选。",
   },
   period: {
@@ -683,7 +683,7 @@ function RulesPanel() {
         </div>
 
         {loading ? <p className="empty-copy">加载中…</p> : null}
-        {!loading && !rules.length ? <p className="empty-copy">暂无操作规则，可以把仓位与买卖纪律写在这里。</p> : null}
+        {!loading && !rules.length ? <p className="empty-copy">暂无操作规则/总结笔记，可以把仓位与买卖纪律写在这里。</p> : null}
 
         <div className="notes-card-list">
           {rules.map((rule) => (
@@ -717,7 +717,7 @@ function RulesPanel() {
             role="dialog"
           >
             <div className="section-header">
-              <h2 id="rule-modal-title">{modal.mode === "new" ? "新建操作规则" : "编辑操作规则"}</h2>
+              <h2 id="rule-modal-title">{modal.mode === "new" ? "新建操作规则/总结笔记" : "编辑操作规则/总结笔记"}</h2>
             </div>
 
             <div className="settings-grid">
