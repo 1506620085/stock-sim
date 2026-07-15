@@ -3,7 +3,7 @@ import { NotebookPen, Plus, Trash2 } from "lucide-react";
 import { AppDatePicker } from "../../components/AppDatePicker";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
-import { showSuccess } from "../../components/ToastProvider";
+import { showError, showSuccess } from "../../components/ToastProvider";
 import {
   createJournalEntry,
   createTradingRule,
@@ -231,10 +231,16 @@ function JournalPanel() {
   }
 
   async function handleSave() {
+    const symbolName = (form.symbolName ?? "").trim();
+    if (!symbolName) {
+      showError("请填写标的名称");
+      return;
+    }
+
     const payload: JournalEntryInput = {
       ...form,
       symbolCode: null,
-      symbolName: form.symbolName || null,
+      symbolName,
       planNote: form.planNote || null,
       emotionScore: null,
       emotionNote: form.emotionNote || null,
@@ -369,7 +375,7 @@ function JournalPanel() {
                     <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
                   </label>
                   <label>
-                    标的名称（可选）
+                    标的名称
                     <input value={form.symbolName ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolName: event.target.value }))} />
                   </label>
                   <AppNumberStepper

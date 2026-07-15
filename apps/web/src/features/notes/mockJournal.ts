@@ -114,7 +114,7 @@ export async function mockCreateJournalEntry(input: JournalEntryInput): Promise<
     entryDate: input.entryDate,
     side: input.side,
     symbolCode: input.symbolCode ?? null,
-    symbolName: input.symbolName ?? null,
+    symbolName: (input.symbolName ?? "").trim() || null,
     price: input.price ?? null,
     quantity: input.quantity ?? null,
     reason: input.reason,
@@ -140,7 +140,8 @@ export async function mockUpdateJournalEntry(id: number, input: Partial<JournalE
     entryDate: input.entryDate ?? current.entryDate,
     side: input.side ?? current.side,
     symbolCode: input.symbolCode !== undefined ? input.symbolCode : current.symbolCode,
-    symbolName: input.symbolName !== undefined ? input.symbolName : current.symbolName,
+    symbolName:
+      input.symbolName !== undefined ? (input.symbolName ?? "").trim() || null : current.symbolName,
     price: input.price !== undefined ? input.price : current.price,
     quantity: input.quantity !== undefined ? input.quantity : current.quantity,
     reason: input.reason ?? current.reason,

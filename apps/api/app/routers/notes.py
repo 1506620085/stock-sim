@@ -37,9 +37,11 @@ def normalize_tags(tags: list[str] | None) -> list[str]:
     return cleaned
 
 
-def validate_journal_payload(side: str, reason: str, emotion_score: int | None) -> None:
+def validate_journal_payload(side: str, reason: str, emotion_score: int | None, symbol_name: str | None = None) -> None:
     if side not in JOURNAL_SIDES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的交易方向")
+    if not (symbol_name or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请填写标的名称")
     if emotion_score is not None and (emotion_score < 1 or emotion_score > 5):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="情绪分需在 1–5 之间")
 
@@ -104,12 +106,12 @@ def list_journal_entries(
 
 @router.post("/journal-entries", response_model=JournalEntryRead, status_code=status.HTTP_201_CREATED)
 def create_journal_entry(payload: JournalEntryCreate, session: Session = Depends(get_session)) -> JournalEntryRead:
-    validate_journal_payload(payload.side, payload.reason, payload.emotion_score)
+    validate_journal_payload(payload.side, payload.reason, payload.emotion_score, payload.symbol_name)
     entry = JournalEntry(
         entry_date=payload.entry_date,
         side=payload.side,
         symbol_code=(payload.symbol_code or "").strip() or None,
-        symbol_name=(payload.symbol_name or "").strip() or None,
+        symbol_name=(payload.symbol_name or "").strip(),
         price=payload.price,
         quantity=payload.quantity,
         reason=payload.reason.strip(),
@@ -140,12 +142,16 @@ def update_journal_entry(
     next_side = values.get("side", entry.side)
     next_reason = values.get("reason", entry.reason)
     next_emotion = values.get("emotion_score", entry.emotion_score)
-    validate_journal_payload(next_side, next_reason, next_emotion)
+    next_symbol_name = values.get("symbol_name", entry.symbol_name)
+    validate_journal_payload(next_side, next_reason, next_emotion, next_symbol_name)
 
     for key, value in values.items():
         if key in {"symbol_code", "symbol_name", "plan_note", "emotion_note", "result_note", "reason"} and isinstance(value, str):
             cleaned = value.strip()
-            setattr(entry, key, cleaned if cleaned or key == "reason" else None)
+            if key == "symbol_name":
+                setattr(entry, key, cleaned)
+            else:
+                setattr(entry, key, cleaned if cleaned or key == "reason" else None)
         elif key == "tags":
             entry.tags = normalize_tags(value)
         elif key == "rule_ids":
