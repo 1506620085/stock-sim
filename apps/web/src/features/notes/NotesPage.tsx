@@ -3,7 +3,7 @@ import { NotebookPen, Plus, Trash2 } from "lucide-react";
 import { AppDatePicker } from "../../components/AppDatePicker";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
-import { showError, showSuccess } from "../../components/ToastProvider";
+import { showSuccess } from "../../components/ToastProvider";
 import {
   createJournalEntry,
   createTradingRule,
@@ -176,6 +176,7 @@ function JournalPanel() {
   const [modal, setModal] = useState<null | { mode: "new" } | { mode: "edit"; id: number }>(null);
   const [form, setForm] = useState<JournalEntryInput>(emptyJournalForm());
   const [tagsDraft, setTagsDraft] = useState("");
+  const [symbolNameError, setSymbolNameError] = useState("");
   const [loading, setLoading] = useState(true);
 
   const allTags = useMemo(() => {
@@ -209,6 +210,7 @@ function JournalPanel() {
   function openNew() {
     setForm(emptyJournalForm());
     setTagsDraft("");
+    setSymbolNameError("");
     setModal({ mode: "new" });
   }
 
@@ -227,15 +229,17 @@ function JournalPanel() {
       ruleIds: entry.ruleIds,
     });
     setTagsDraft(entry.tags.join("，"));
+    setSymbolNameError("");
     setModal({ mode: "edit", id: entry.id });
   }
 
   async function handleSave() {
     const symbolName = (form.symbolName ?? "").trim();
     if (!symbolName) {
-      showError("请填写标的名称");
+      setSymbolNameError("请填写标的名称");
       return;
     }
+    setSymbolNameError("");
 
     const payload: JournalEntryInput = {
       ...form,
@@ -374,9 +378,16 @@ function JournalPanel() {
                     方向
                     <AppSelect onChange={(value) => setForm((current) => ({ ...current, side: value }))} options={sideOptions} value={form.side} />
                   </label>
-                  <label>
+                  <label className={symbolNameError ? "notes-field-invalid" : undefined}>
                     标的名称
-                    <input value={form.symbolName ?? ""} onChange={(event) => setForm((current) => ({ ...current, symbolName: event.target.value }))} />
+                    <input
+                      value={form.symbolName ?? ""}
+                      onChange={(event) => {
+                        setSymbolNameError("");
+                        setForm((current) => ({ ...current, symbolName: event.target.value }));
+                      }}
+                    />
+                    {symbolNameError ? <span className="notes-field-error">{symbolNameError}</span> : null}
                   </label>
                   <AppNumberStepper
                     label="价格（可选）"
