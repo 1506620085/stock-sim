@@ -21,7 +21,6 @@ import type {
   JournalPeriodSummary,
   JournalSide,
   RuleCategory,
-  RuleStatus,
   TradingRule,
   TradingRuleInput,
 } from "./types";
@@ -63,11 +62,6 @@ const categoryOptions: Array<{ label: string; value: RuleCategory }> = [
   { label: "做 T", value: "t_trade" },
   { label: "情绪管理", value: "emotion" },
   { label: "其他", value: "other" },
-];
-
-const statusOptions: Array<{ label: string; value: RuleStatus }> = [
-  { label: "生效中", value: "active" },
-  { label: "已废弃", value: "archived" },
 ];
 
 function todayIso() {
@@ -618,20 +612,14 @@ function JournalPanel() {
 
 function RulesPanel() {
   const [rules, setRules] = useState<TradingRule[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [modal, setModal] = useState<null | { mode: "new" } | { mode: "edit"; id: number }>(null);
   const [form, setForm] = useState<TradingRuleInput>(emptyRuleForm());
-  const [tagsDraft, setTagsDraft] = useState("");
   const [loading, setLoading] = useState(true);
 
   async function refresh() {
     setLoading(true);
     try {
-      const next = await loadTradingRules({
-        status: statusFilter === "all" ? undefined : statusFilter,
-        category: categoryFilter === "all" ? undefined : categoryFilter,
-      });
+      const next = await loadTradingRules();
       setRules(next);
     } finally {
       setLoading(false);
@@ -640,11 +628,10 @@ function RulesPanel() {
 
   useEffect(() => {
     void refresh();
-  }, [statusFilter, categoryFilter]);
+  }, []);
 
   function openNew() {
     setForm(emptyRuleForm());
-    setTagsDraft("");
     setModal({ mode: "new" });
   }
 
@@ -652,18 +639,20 @@ function RulesPanel() {
     setForm({
       title: rule.title,
       body: rule.body,
-      category: rule.category,
-      status: rule.status,
-      tags: rule.tags,
+      category: rule.category || "other",
+      status: rule.status || "active",
+      tags: rule.tags ?? [],
     });
-    setTagsDraft(rule.tags.join("，"));
     setModal({ mode: "edit", id: rule.id });
   }
 
   async function handleSave() {
     const payload: TradingRuleInput = {
-      ...form,
-      tags: parseTags(tagsDraft),
+      title: form.title,
+      body: form.body,
+      category: form.category || "other",
+      status: form.status || "active",
+      tags: form.tags ?? [],
     };
     if (modal?.mode === "edit") {
       await updateTradingRule(modal.id, payload);
@@ -693,25 +682,6 @@ function RulesPanel() {
           </button>
         </div>
 
-        <div className="notes-filters">
-          <label>
-            状态
-            <AppSelect
-              onChange={setStatusFilter}
-              options={[{ label: "全部", value: "all" }, ...statusOptions]}
-              value={statusFilter}
-            />
-          </label>
-          <label>
-            分类
-            <AppSelect
-              onChange={setCategoryFilter}
-              options={[{ label: "全部分类", value: "all" }, ...categoryOptions]}
-              value={categoryFilter}
-            />
-          </label>
-        </div>
-
         {loading ? <p className="empty-copy">加载中…</p> : null}
         {!loading && !rules.length ? <p className="empty-copy">暂无操作规则，可以把仓位与买卖纪律写在这里。</p> : null}
 
@@ -721,9 +691,6 @@ function RulesPanel() {
               <div className="notes-card-head">
                 <div>
                   <strong>{rule.title}</strong>
-                  <span className="notes-card-meta">
-                    {categoryLabel(rule.category)} · {rule.status === "active" ? "生效中" : "已废弃"}
-                  </span>
                 </div>
                 <div className="notes-card-actions">
                   <button className="text-button" onClick={() => openEdit(rule)} type="button">
@@ -735,13 +702,6 @@ function RulesPanel() {
                 </div>
               </div>
               <p className="notes-card-reason">{rule.body}</p>
-              {rule.tags.length ? (
-                <div className="notes-tag-row">
-                  {rule.tags.map((tag) => (
-                    <em key={tag}>{tag}</em>
-                  ))}
-                </div>
-              ) : null}
             </article>
           ))}
         </div>
@@ -765,29 +725,9 @@ function RulesPanel() {
                 标题
                 <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
               </label>
-              <label>
-                分类
-                <AppSelect
-                  onChange={(value) => setForm((current) => ({ ...current, category: value }))}
-                  options={categoryOptions}
-                  value={form.category}
-                />
-              </label>
-              <label>
-                状态
-                <AppSelect
-                  onChange={(value) => setForm((current) => ({ ...current, status: value }))}
-                  options={statusOptions}
-                  value={form.status}
-                />
-              </label>
               <label className="settings-wide">
                 细则
                 <textarea rows={5} value={form.body} onChange={(event) => setForm((current) => ({ ...current, body: event.target.value }))} />
-              </label>
-              <label className="settings-wide">
-                标签（逗号或空格分隔）
-                <input value={tagsDraft} onChange={(event) => setTagsDraft(event.target.value)} />
               </label>
             </div>
 
