@@ -300,12 +300,9 @@ export function KnowledgeBasePanel() {
   return (
     <section className="kb-shell">
       <header className="kb-topbar">
-        <div className="kb-topbar-title">
-          <h2>操作规则 / 总结笔记</h2>
-          <span className="kb-save-state">
-            {saveState === "saving" ? "保存中…" : saveState === "saved" ? "已自动保存" : ""}
-          </span>
-        </div>
+        <span className="kb-save-state">
+          {saveState === "saving" ? "保存中…" : saveState === "saved" ? "已自动保存" : ""}
+        </span>
       </header>
 
       <div className="kb-layout">
