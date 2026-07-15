@@ -396,7 +396,7 @@ function JournalPanel() {
           >
             <div className="section-header">
               <h2 id="journal-view-title">查看实盘笔记</h2>
-              <button aria-label="关闭" className="text-button" onClick={() => setViewEntry(null)} type="button">
+              <button aria-label="关闭" className="modal-close-button" onClick={() => setViewEntry(null)} type="button">
                 ×
               </button>
             </div>
@@ -504,7 +504,7 @@ function JournalPanel() {
           >
             <div className="section-header">
               <h2 id="journal-modal-title">{modal.mode === "new" ? "新建实盘笔记" : "编辑实盘笔记"}</h2>
-              <button aria-label="关闭" className="text-button" onClick={() => setModal(null)} type="button">
+              <button aria-label="关闭" className="modal-close-button" onClick={() => setModal(null)} type="button">
                 ×
               </button>
             </div>
@@ -764,7 +764,7 @@ function RulesPanel() {
           >
             <div className="section-header">
               <h2 id="rule-modal-title">{modal.mode === "new" ? "新建操作规则" : "编辑操作规则"}</h2>
-              <button aria-label="关闭" className="text-button" onClick={() => setModal(null)} type="button">
+              <button aria-label="关闭" className="modal-close-button" onClick={() => setModal(null)} type="button">
                 ×
               </button>
             </div>

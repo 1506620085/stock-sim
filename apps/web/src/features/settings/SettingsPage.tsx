@@ -299,7 +299,7 @@ export function SettingsPage() {
           >
             <div className="section-header">
               <h2 id="template-modal-title">{templateModal.mode === "new" ? "新建模板" : "编辑模板"}</h2>
-              <button aria-label="关闭" className="text-button" onClick={closeTemplateModal} type="button">
+              <button aria-label="关闭" className="modal-close-button" onClick={closeTemplateModal} type="button">
                 ×
               </button>
             </div>

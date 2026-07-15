@@ -2850,6 +2850,35 @@ textarea {
   padding: 0;
 }
 
+.modal-close-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #8b9590;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.modal-close-button:hover {
+  background: #e53935;
+  color: #ffffff;
+}
+
+.modal-close-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.28);
+}
+
 .input-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
