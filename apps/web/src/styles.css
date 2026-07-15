@@ -1187,6 +1187,11 @@ textarea {
   box-sizing: border-box;
 }
 
+.settings-modal.notes-modal .notes-modal-reason-field > textarea,
+.settings-modal.notes-modal .notes-modal-reason-row > label.notes-modal-grow > textarea {
+  min-height: 140px;
+}
+
 .notes-modal-tags {
   min-height: 0;
 }

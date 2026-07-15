@@ -537,7 +537,7 @@ function JournalPanel() {
                     value={form.quantity ?? null}
                   />
                 </div>
-                <label className="settings-wide notes-modal-grow">
+                <label className="settings-wide notes-modal-grow notes-modal-reason-field">
                   为什么买/卖（可选）
                   <textarea
                     value={form.reason}
