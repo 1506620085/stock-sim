@@ -299,12 +299,6 @@ export function KnowledgeBasePanel() {
 
   return (
     <section className="kb-shell">
-      <header className="kb-topbar">
-        <span className="kb-save-state">
-          {saveState === "saving" ? "保存中…" : saveState === "saved" ? "已自动保存" : ""}
-        </span>
-      </header>
-
       <div className="kb-layout">
         <aside className="kb-sidebar">
           <div className="kb-sidebar-actions">
@@ -475,12 +469,17 @@ export function KnowledgeBasePanel() {
             </div>
           ) : (
             <>
-              <input
-                className="kb-doc-title"
-                onChange={(event) => scheduleTitleSave(selected.id, event.target.value)}
-                placeholder="无标题笔记"
-                value={titleDraft}
-              />
+              <div className="kb-doc-header">
+                <input
+                  className="kb-doc-title"
+                  onChange={(event) => scheduleTitleSave(selected.id, event.target.value)}
+                  placeholder="无标题笔记"
+                  value={titleDraft}
+                />
+                <span className="kb-save-state" aria-live="polite">
+                  {saveState === "saving" ? "保存中…" : saveState === "saved" ? "已自动保存" : ""}
+                </span>
+              </div>
               <NoteEditor
                 content={selected.body}
                 key={selected.id}
