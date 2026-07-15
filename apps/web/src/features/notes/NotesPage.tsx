@@ -29,8 +29,8 @@ type NotesTab = "journal" | "rules" | "period";
 
 const tabs: Array<{ id: NotesTab; label: string }> = [
   { id: "journal", label: "实盘笔记" },
-  { id: "rules", label: "操作规则/总结笔记" },
   { id: "period", label: "区间复盘" },
+  { id: "rules", label: "操作规则/总结笔记" },
 ];
 
 const tabMeta: Record<NotesTab, { title: string; description: string }> = {
