@@ -555,6 +555,33 @@ textarea {
   padding: 0 16px;
 }
 
+.notes-period-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto minmax(120px, 0.7fr);
+  align-items: end;
+}
+
+.notes-period-count {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfdfc;
+  padding: 8px 12px;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.notes-period-count span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.notes-period-count strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
 .notes-card-list {
   display: flex;
   flex-direction: column;
@@ -3461,6 +3488,7 @@ textarea {
   .average-line,
   .notes-filters,
   .notes-filters-4,
+  .notes-period-filters,
   .notes-summary-grid {
     grid-template-columns: 1fr;
   }

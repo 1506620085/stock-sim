@@ -832,7 +832,7 @@ function PeriodPanel() {
         <div className="section-header">
           <h2>区间汇总</h2>
         </div>
-        <div className="notes-filters">
+        <div className="notes-filters notes-period-filters">
           <label>
             开始日期
             <AppDatePicker onChange={setStartDate} placeholder="开始日期" value={startDate} />
@@ -846,23 +846,16 @@ function PeriodPanel() {
               查询
             </button>
           </div>
+          <article className="notes-period-count">
+            <span>笔记条数</span>
+            <strong>{loading ? "…" : summary ? summary.entryCount : "—"}</strong>
+          </article>
         </div>
 
         {loading ? <p className="empty-copy">汇总中…</p> : null}
 
         {summary && !loading ? (
           <>
-            <div className="notes-summary-grid notes-summary-grid-2">
-              <article>
-                <span>笔记条数</span>
-                <strong>{summary.entryCount}</strong>
-              </article>
-              <article>
-                <span>规则引用次数</span>
-                <strong>{summary.ruleRefCount}</strong>
-              </article>
-            </div>
-
             <div className="notes-summary-block">
               <h3>方向分布</h3>
               {summary.sideStats.length ? (
