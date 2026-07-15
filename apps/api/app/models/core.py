@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -158,13 +158,19 @@ class JournalEntry(SQLModel, table=True):
 
 class TradingRule(SQLModel, table=True):
     __tablename__ = "trading_rules"
-    __table_args__ = (Index("ix_trading_rules_status_category", "status", "category"),)
+    __table_args__ = (
+        Index("ix_trading_rules_status_category", "status", "category"),
+        Index("ix_trading_rules_parent_sort", "parent_id", "sort_order"),
+    )
 
     id: int | None = Field(default=None, sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
     title: str = Field(sa_column=Column(String(128), nullable=False))
-    body: str = Field(sa_column=Column(Text, nullable=False))
-    category: str = Field(sa_column=Column(String(32), nullable=False))
+    body: str = Field(default="", sa_column=Column(Text, nullable=False))
+    category: str = Field(default="other", sa_column=Column(String(32), nullable=False))
     status: str = Field(default="active", sa_column=Column(String(16), nullable=False))
     tags: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    parent_id: int | None = Field(default=None, sa_column=Column(BigInteger, ForeignKey("trading_rules.id", ondelete="CASCADE"), nullable=True))
+    node_type: str = Field(default="doc", sa_column=Column(String(16), nullable=False))
+    sort_order: int = Field(default=0, sa_column=Column(Integer, nullable=False))
     created_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())
     updated_at: datetime = Field(default_factory=utc_now, sa_column=timestamp_column())

@@ -4,6 +4,8 @@ export type RuleCategory = "position" | "buy" | "sell" | "t_trade" | "emotion" |
 
 export type RuleStatus = "active" | "archived";
 
+export type RuleNodeType = "folder" | "doc";
+
 export type JournalEntry = {
   id: number;
   entryDate: string;
@@ -46,16 +48,28 @@ export type TradingRule = {
   category: RuleCategory;
   status: RuleStatus;
   tags: string[];
+  parentId: number | null;
+  nodeType: RuleNodeType;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TradingRuleInput = {
   title: string;
-  body: string;
-  category: RuleCategory;
-  status: RuleStatus;
+  body?: string;
+  category?: RuleCategory;
+  status?: RuleStatus;
   tags?: string[];
+  parentId?: number | null;
+  nodeType?: RuleNodeType;
+  sortOrder?: number;
+};
+
+export type TradingRuleReorderItem = {
+  id: number;
+  parentId: number | null;
+  sortOrder: number;
 };
 
 export type JournalPeriodSummary = {
@@ -68,4 +82,9 @@ export type JournalPeriodSummary = {
   emotionCount: number;
   ruleRefCount: number;
   entries: JournalEntry[];
+};
+
+export type KnowledgeTreeNode = TradingRule & {
+  children: KnowledgeTreeNode[];
+  depth: number;
 };

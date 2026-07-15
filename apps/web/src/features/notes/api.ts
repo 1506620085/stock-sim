@@ -7,6 +7,14 @@ import {
   mockUpdateJournalEntry,
   USE_JOURNAL_MOCK,
 } from "./mockJournal";
+import {
+  mockCreateTradingRule,
+  mockDeleteTradingRule,
+  mockLoadTradingRules,
+  mockReorderTradingRules,
+  mockUpdateTradingRule,
+  USE_RULES_MOCK,
+} from "./mockRules";
 import type {
   JournalEntry,
   JournalEntryInput,
@@ -14,6 +22,7 @@ import type {
   JournalSide,
   TradingRule,
   TradingRuleInput,
+  TradingRuleReorderItem,
 } from "./types";
 
 type JournalEntryItem = {
@@ -42,6 +51,9 @@ type TradingRuleItem = {
   category: TradingRule["category"];
   status: TradingRule["status"];
   tags: string[];
+  parent_id: number | null;
+  node_type: TradingRule["nodeType"];
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -83,10 +95,13 @@ function toTradingRule(item: TradingRuleItem): TradingRule {
   return {
     id: item.id,
     title: item.title,
-    body: item.body,
+    body: item.body ?? "",
     category: item.category,
     status: item.status,
     tags: item.tags ?? [],
+    parentId: item.parent_id ?? null,
+    nodeType: item.node_type ?? "doc",
+    sortOrder: item.sort_order ?? 0,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
   };
@@ -113,10 +128,13 @@ function toJournalPayload(input: JournalEntryInput) {
 function toRulePayload(input: TradingRuleInput) {
   return {
     title: input.title,
-    body: input.body,
-    category: input.category,
-    status: input.status,
+    body: input.body ?? "",
+    category: input.category ?? "other",
+    status: input.status ?? "active",
     tags: input.tags ?? [],
+    parent_id: input.parentId ?? null,
+    node_type: input.nodeType ?? "doc",
+    ...(input.sortOrder !== undefined ? { sort_order: input.sortOrder } : {}),
   };
 }
 
@@ -181,17 +199,26 @@ export async function deleteJournalEntry(id: number): Promise<void> {
   await apiFetch(`${API_BASE}/api/notes/journal-entries/${id}`, { method: "DELETE" });
 }
 
-export async function loadTradingRules(filters?: { status?: string; category?: string }): Promise<TradingRule[]> {
+export async function loadTradingRules(filters?: {
+  status?: string;
+  category?: string;
+  nodeType?: string;
+}): Promise<TradingRule[]> {
+  if (USE_RULES_MOCK) return mockLoadTradingRules(filters);
+
   const items = await apiJson<TradingRuleItem[]>(
     buildApiUrl("/api/notes/trading-rules", {
       status: filters?.status,
       category: filters?.category,
+      node_type: filters?.nodeType,
     }),
   );
   return items.map(toTradingRule);
 }
 
 export async function createTradingRule(input: TradingRuleInput): Promise<TradingRule> {
+  if (USE_RULES_MOCK) return mockCreateTradingRule(input);
+
   const item = await apiJson<TradingRuleItem>(`${API_BASE}/api/notes/trading-rules`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -201,21 +228,45 @@ export async function createTradingRule(input: TradingRuleInput): Promise<Tradin
 }
 
 export async function updateTradingRule(id: number, input: Partial<TradingRuleInput>): Promise<TradingRule> {
+  if (USE_RULES_MOCK) return mockUpdateTradingRule(id, input);
+
+  const body: Record<string, unknown> = {};
+  if (input.title !== undefined) body.title = input.title;
+  if (input.body !== undefined) body.body = input.body;
+  if (input.category !== undefined) body.category = input.category;
+  if (input.status !== undefined) body.status = input.status;
+  if (input.tags !== undefined) body.tags = input.tags;
+  if (input.parentId !== undefined) body.parent_id = input.parentId;
+  if (input.nodeType !== undefined) body.node_type = input.nodeType;
+  if (input.sortOrder !== undefined) body.sort_order = input.sortOrder;
+
   const item = await apiJson<TradingRuleItem>(`${API_BASE}/api/notes/trading-rules/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...(input.title !== undefined ? { title: input.title } : {}),
-      ...(input.body !== undefined ? { body: input.body } : {}),
-      ...(input.category !== undefined ? { category: input.category } : {}),
-      ...(input.status !== undefined ? { status: input.status } : {}),
-      ...(input.tags !== undefined ? { tags: input.tags } : {}),
-    }),
+    body: JSON.stringify(body),
   });
   return toTradingRule(item);
 }
 
+export async function reorderTradingRules(items: TradingRuleReorderItem[]): Promise<TradingRule[]> {
+  if (USE_RULES_MOCK) return mockReorderTradingRules(items);
+
+  const response = await apiJson<TradingRuleItem[]>(`${API_BASE}/api/notes/trading-rules/reorder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      items: items.map((item) => ({
+        id: item.id,
+        parent_id: item.parentId,
+        sort_order: item.sortOrder,
+      })),
+    }),
+  });
+  return response.map(toTradingRule);
+}
+
 export async function deleteTradingRule(id: number): Promise<void> {
+  if (USE_RULES_MOCK) return mockDeleteTradingRule(id);
   await apiFetch(`${API_BASE}/api/notes/trading-rules/${id}`, { method: "DELETE" });
 }
 

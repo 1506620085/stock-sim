@@ -6,23 +6,19 @@ import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showSuccess } from "../../components/ToastProvider";
 import {
   createJournalEntry,
-  createTradingRule,
   deleteJournalEntry,
-  deleteTradingRule,
   loadJournalEntries,
   loadJournalPeriodSummary,
   loadTradingRules,
   updateJournalEntry,
-  updateTradingRule,
 } from "./api";
+import { KnowledgeBasePanel } from "./KnowledgeBasePanel";
 import type {
   JournalEntry,
   JournalEntryInput,
   JournalPeriodSummary,
   JournalSide,
-  RuleCategory,
   TradingRule,
-  TradingRuleInput,
 } from "./types";
 
 type NotesTab = "journal" | "rules" | "period";
@@ -40,7 +36,7 @@ const tabMeta: Record<NotesTab, { title: string; description: string }> = {
   },
   rules: {
     title: "操作规则/总结笔记",
-    description: "沉淀仓位、买卖条件与纪律，写笔记时可对照勾选。",
+    description: "树形目录管理规则与总结，富文本编辑并自动保存。",
   },
   period: {
     title: "区间复盘",
@@ -52,15 +48,6 @@ const sideOptions: Array<{ label: string; value: JournalSide }> = [
   { label: "买入", value: "buy" },
   { label: "卖出", value: "sell" },
   { label: "观察", value: "watch" },
-  { label: "其他", value: "other" },
-];
-
-const categoryOptions: Array<{ label: string; value: RuleCategory }> = [
-  { label: "仓位", value: "position" },
-  { label: "买入条件", value: "buy" },
-  { label: "卖出条件", value: "sell" },
-  { label: "做 T", value: "t_trade" },
-  { label: "情绪管理", value: "emotion" },
   { label: "其他", value: "other" },
 ];
 
@@ -79,7 +66,15 @@ function sideLabel(side: string) {
 }
 
 function categoryLabel(category: string) {
-  return categoryOptions.find((item) => item.value === category)?.label ?? category;
+  const labels: Record<string, string> = {
+    position: "仓位",
+    buy: "买入条件",
+    sell: "卖出条件",
+    t_trade: "做 T",
+    emotion: "情绪管理",
+    other: "其他",
+  };
+  return labels[category] ?? category;
 }
 
 function parseTags(raw: string) {
@@ -102,16 +97,6 @@ function emptyJournalForm(): JournalEntryInput {
     resultNote: "",
     tags: [],
     ruleIds: [],
-  };
-}
-
-function emptyRuleForm(): TradingRuleInput {
-  return {
-    title: "",
-    body: "",
-    category: "other",
-    status: "active",
-    tags: [],
   };
 }
 
@@ -157,7 +142,7 @@ export function NotesPage() {
       </div>
 
       {activeTab === "journal" ? <JournalPanel /> : null}
-      {activeTab === "rules" ? <RulesPanel /> : null}
+      {activeTab === "rules" ? <KnowledgeBasePanel /> : null}
       {activeTab === "period" ? <PeriodPanel /> : null}
     </section>
   );
@@ -188,7 +173,10 @@ function JournalPanel() {
     [allSymbols],
   );
 
-  const activeRules = useMemo(() => rules.filter((rule) => rule.status === "active"), [rules]);
+  const activeRules = useMemo(
+    () => rules.filter((rule) => rule.nodeType === "doc" && rule.status === "active"),
+    [rules],
+  );
 
   async function refreshSymbolCatalog() {
     const items = await loadJournalEntries();
@@ -595,142 +583,6 @@ function JournalPanel() {
                   </div>
                 </div>
               ) : null}
-            </div>
-
-            <div className="settings-actions">
-              <button className="secondary-button" onClick={() => setModal(null)} type="button">
-                取消
-              </button>
-              <button className="primary-button" onClick={() => void handleSave()} type="button">
-                保存
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function RulesPanel() {
-  const [rules, setRules] = useState<TradingRule[]>([]);
-  const [modal, setModal] = useState<null | { mode: "new" } | { mode: "edit"; id: number }>(null);
-  const [form, setForm] = useState<TradingRuleInput>(emptyRuleForm());
-  const [loading, setLoading] = useState(true);
-
-  async function refresh() {
-    setLoading(true);
-    try {
-      const next = await loadTradingRules();
-      setRules(next);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  function openNew() {
-    setForm(emptyRuleForm());
-    setModal({ mode: "new" });
-  }
-
-  function openEdit(rule: TradingRule) {
-    setForm({
-      title: rule.title,
-      body: rule.body,
-      category: rule.category || "other",
-      status: rule.status || "active",
-      tags: rule.tags ?? [],
-    });
-    setModal({ mode: "edit", id: rule.id });
-  }
-
-  async function handleSave() {
-    const payload: TradingRuleInput = {
-      title: form.title,
-      body: form.body,
-      category: form.category || "other",
-      status: form.status || "active",
-      tags: form.tags ?? [],
-    };
-    if (modal?.mode === "edit") {
-      await updateTradingRule(modal.id, payload);
-      showSuccess("规则已更新");
-    } else {
-      await createTradingRule(payload);
-      showSuccess("规则已创建");
-    }
-    setModal(null);
-    await refresh();
-  }
-
-  async function handleDelete(id: number) {
-    await deleteTradingRule(id);
-    showSuccess("规则已删除");
-    await refresh();
-  }
-
-  return (
-    <section className="notes-panel">
-      <div className="panel">
-        <div className="section-header">
-          <h2>规则列表</h2>
-          <button className="text-button" onClick={openNew} type="button">
-            <Plus size={15} />
-            新建规则
-          </button>
-        </div>
-
-        {loading ? <p className="empty-copy">加载中…</p> : null}
-        {!loading && !rules.length ? <p className="empty-copy">暂无操作规则/总结笔记，可以把仓位与买卖纪律写在这里。</p> : null}
-
-        <div className="notes-card-list">
-          {rules.map((rule) => (
-            <article className="notes-card" key={rule.id}>
-              <div className="notes-card-head">
-                <div>
-                  <strong>{rule.title}</strong>
-                </div>
-                <div className="notes-card-actions">
-                  <button className="text-button" onClick={() => openEdit(rule)} type="button">
-                    编辑
-                  </button>
-                  <button aria-label="删除规则" className="icon-button danger-button" onClick={() => void handleDelete(rule.id)} type="button">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-              <p className="notes-card-reason">{rule.body}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-
-      {modal ? (
-        <div className="settings-modal-backdrop" role="presentation">
-          <div
-            aria-labelledby="rule-modal-title"
-            aria-modal="true"
-            className="settings-modal notes-modal"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <div className="section-header">
-              <h2 id="rule-modal-title">{modal.mode === "new" ? "新建操作规则/总结笔记" : "编辑操作规则/总结笔记"}</h2>
-            </div>
-
-            <div className="settings-grid">
-              <label className="settings-wide">
-                标题
-                <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} />
-              </label>
-              <label className="settings-wide">
-                细则
-                <textarea rows={5} value={form.body} onChange={(event) => setForm((current) => ({ ...current, body: event.target.value }))} />
-              </label>
             </div>
 
             <div className="settings-actions">

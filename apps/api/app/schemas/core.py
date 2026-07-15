@@ -277,10 +277,13 @@ class JournalEntryRead(SQLModel):
 
 class TradingRuleCreate(SQLModel):
     title: str
-    body: str
-    category: str
+    body: str = ""
+    category: str = "other"
     status: str = "active"
     tags: list[str] = Field(default_factory=list)
+    parent_id: int | None = None
+    node_type: str = "doc"
+    sort_order: int | None = None
 
 
 class TradingRuleUpdate(SQLModel):
@@ -289,6 +292,9 @@ class TradingRuleUpdate(SQLModel):
     category: str | None = None
     status: str | None = None
     tags: list[str] | None = None
+    parent_id: int | None = None
+    node_type: str | None = None
+    sort_order: int | None = None
 
 
 class TradingRuleRead(SQLModel):
@@ -298,8 +304,21 @@ class TradingRuleRead(SQLModel):
     category: str
     status: str
     tags: list[str]
+    parent_id: int | None = None
+    node_type: str = "doc"
+    sort_order: int = 0
     created_at: datetime
     updated_at: datetime
+
+
+class TradingRuleReorderItem(SQLModel):
+    id: int
+    parent_id: int | None = None
+    sort_order: int
+
+
+class TradingRuleReorderRequest(SQLModel):
+    items: list[TradingRuleReorderItem]
 
 
 class JournalPeriodSummaryRead(SQLModel):

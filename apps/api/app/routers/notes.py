@@ -2,7 +2,7 @@ from collections import Counter
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.database import get_session
 from app.models import JournalEntry, TradingRule
@@ -13,6 +13,7 @@ from app.schemas import (
     JournalPeriodSummaryRead,
     TradingRuleCreate,
     TradingRuleRead,
+    TradingRuleReorderRequest,
     TradingRuleUpdate,
 )
 
@@ -21,6 +22,8 @@ router = APIRouter(prefix="/api/notes", tags=["notes"])
 JOURNAL_SIDES = {"buy", "sell", "watch", "other"}
 RULE_CATEGORIES = {"position", "buy", "sell", "t_trade", "emotion", "other"}
 RULE_STATUSES = {"active", "archived"}
+RULE_NODE_TYPES = {"folder", "doc"}
+MAX_TREE_DEPTH = 3
 
 
 def normalize_tags(tags: list[str] | None) -> list[str]:
@@ -46,15 +49,93 @@ def validate_journal_payload(side: str, reason: str, emotion_score: int | None, 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="情绪分需在 1–5 之间")
 
 
-def validate_rule_payload(category: str, status_value: str, title: str, body: str) -> None:
+def node_depth(session: Session, parent_id: int | None) -> int:
+    depth = 1
+    current = parent_id
+    seen: set[int] = set()
+    while current is not None:
+        if current in seen:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="目录存在循环引用")
+        seen.add(current)
+        parent = session.get(TradingRule, current)
+        if not parent:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="父目录不存在")
+        depth += 1
+        if depth > MAX_TREE_DEPTH:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"目录最多支持 {MAX_TREE_DEPTH} 级")
+        current = parent.parent_id
+    return depth
+
+
+def validate_rule_payload(
+    *,
+    category: str,
+    status_value: str,
+    title: str,
+    body: str,
+    node_type: str,
+    parent_id: int | None,
+    session: Session,
+    self_id: int | None = None,
+) -> None:
     if category not in RULE_CATEGORIES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的规则分类")
     if status_value not in RULE_STATUSES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的规则状态")
+    if node_type not in RULE_NODE_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的节点类型")
     if not title.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请填写规则标题")
-    if not body.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请填写规则正文")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请填写标题")
+    if parent_id is not None:
+        if self_id is not None and parent_id == self_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能将节点移动到自身下")
+        parent = session.get(TradingRule, parent_id)
+        if not parent:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="父目录不存在")
+        if parent.node_type != "folder":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只能移动到目录下")
+    node_depth(session, parent_id)
+
+
+def next_sort_order(session: Session, parent_id: int | None) -> int:
+    statement = select(TradingRule).where(TradingRule.parent_id == parent_id)
+    siblings = list(session.exec(statement).all())
+    if not siblings:
+        return 0
+    return max(item.sort_order for item in siblings) + 1
+
+
+def to_rule_read(rule: TradingRule) -> TradingRuleRead:
+    return TradingRuleRead(
+        id=rule.id or 0,
+        title=rule.title,
+        body=rule.body,
+        category=rule.category,
+        status=rule.status,
+        tags=rule.tags or [],
+        parent_id=rule.parent_id,
+        node_type=rule.node_type,
+        sort_order=rule.sort_order,
+        created_at=rule.created_at,
+        updated_at=rule.updated_at,
+    )
+
+
+def collect_descendants(session: Session, root_id: int) -> list[TradingRule]:
+    nodes = list(session.exec(select(TradingRule)).all())
+    children_map: dict[int | None, list[TradingRule]] = {}
+    for node in nodes:
+        children_map.setdefault(node.parent_id, []).append(node)
+    result: list[TradingRule] = []
+
+    def walk(node_id: int) -> None:
+        for child in children_map.get(node_id, []):
+            result.append(child)
+            if child.id is not None:
+                walk(child.id)
+
+    walk(root_id)
+    return result
 
 
 def to_journal_read(entry: JournalEntry) -> JournalEntryRead:
@@ -179,31 +260,82 @@ def delete_journal_entry(entry_id: int, session: Session = Depends(get_session))
 def list_trading_rules(
     status_filter: str | None = Query(default=None, alias="status"),
     category: str | None = Query(default=None),
+    node_type: str | None = Query(default=None),
     session: Session = Depends(get_session),
-) -> list[TradingRule]:
-    statement = select(TradingRule).order_by(TradingRule.status, TradingRule.updated_at.desc())
+) -> list[TradingRuleRead]:
+    statement = select(TradingRule).order_by(
+        col(TradingRule.parent_id).asc().nullsfirst(),
+        TradingRule.sort_order.asc(),
+        TradingRule.id.asc(),
+    )
     rules = list(session.exec(statement).all())
     if status_filter:
         rules = [item for item in rules if item.status == status_filter]
     if category:
         rules = [item for item in rules if item.category == category]
-    return rules
+    if node_type:
+        rules = [item for item in rules if item.node_type == node_type]
+    return [to_rule_read(item) for item in rules]
 
 
 @router.post("/trading-rules", response_model=TradingRuleRead, status_code=status.HTTP_201_CREATED)
-def create_trading_rule(payload: TradingRuleCreate, session: Session = Depends(get_session)) -> TradingRule:
-    validate_rule_payload(payload.category, payload.status, payload.title, payload.body)
+def create_trading_rule(payload: TradingRuleCreate, session: Session = Depends(get_session)) -> TradingRuleRead:
+    validate_rule_payload(
+        category=payload.category,
+        status_value=payload.status,
+        title=payload.title,
+        body=payload.body,
+        node_type=payload.node_type,
+        parent_id=payload.parent_id,
+        session=session,
+    )
+    sort_order = payload.sort_order if payload.sort_order is not None else next_sort_order(session, payload.parent_id)
     rule = TradingRule(
         title=payload.title.strip(),
-        body=payload.body.strip(),
+        body=payload.body if payload.node_type == "doc" else "",
         category=payload.category,
         status=payload.status,
         tags=normalize_tags(payload.tags),
+        parent_id=payload.parent_id,
+        node_type=payload.node_type,
+        sort_order=sort_order,
     )
     session.add(rule)
     session.commit()
     session.refresh(rule)
-    return rule
+    return to_rule_read(rule)
+
+
+@router.post("/trading-rules/reorder", response_model=list[TradingRuleRead])
+def reorder_trading_rules(payload: TradingRuleReorderRequest, session: Session = Depends(get_session)) -> list[TradingRuleRead]:
+    if not payload.items:
+        return []
+
+    updated: list[TradingRule] = []
+    for item in payload.items:
+        rule = session.get(TradingRule, item.id)
+        if not rule:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"节点不存在: {item.id}")
+        if item.parent_id is not None:
+            parent = session.get(TradingRule, item.parent_id)
+            if not parent or parent.node_type != "folder":
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只能移动到目录下")
+            if item.parent_id == item.id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能将节点移动到自身下")
+            descendants = collect_descendants(session, item.id)
+            if any(child.id == item.parent_id for child in descendants):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能将节点移动到其子节点下")
+            node_depth(session, item.parent_id)
+        rule.parent_id = item.parent_id
+        rule.sort_order = item.sort_order
+        rule.updated_at = datetime.now(timezone.utc)
+        session.add(rule)
+        updated.append(rule)
+
+    session.commit()
+    for rule in updated:
+        session.refresh(rule)
+    return [to_rule_read(item) for item in updated]
 
 
 @router.patch("/trading-rules/{rule_id}", response_model=TradingRuleRead)
@@ -211,7 +343,7 @@ def update_trading_rule(
     rule_id: int,
     payload: TradingRuleUpdate,
     session: Session = Depends(get_session),
-) -> TradingRule:
+) -> TradingRuleRead:
     rule = session.get(TradingRule, rule_id)
     if not rule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="规则不存在")
@@ -221,11 +353,30 @@ def update_trading_rule(
     next_status = values.get("status", rule.status)
     next_title = values.get("title", rule.title)
     next_body = values.get("body", rule.body)
-    validate_rule_payload(next_category, next_status, next_title, next_body)
+    next_node_type = values.get("node_type", rule.node_type)
+    next_parent_id = values["parent_id"] if "parent_id" in values else rule.parent_id
+
+    if "parent_id" in values and next_parent_id is not None:
+        descendants = collect_descendants(session, rule_id)
+        if any(item.id == next_parent_id for item in descendants):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能将节点移动到其子节点下")
+
+    validate_rule_payload(
+        category=next_category,
+        status_value=next_status,
+        title=next_title,
+        body=next_body or "",
+        node_type=next_node_type,
+        parent_id=next_parent_id,
+        session=session,
+        self_id=rule_id,
+    )
 
     for key, value in values.items():
-        if key in {"title", "body"} and isinstance(value, str):
+        if key == "title" and isinstance(value, str):
             setattr(rule, key, value.strip())
+        elif key == "body" and isinstance(value, str):
+            setattr(rule, key, value)
         elif key == "tags":
             rule.tags = normalize_tags(value)
         else:
@@ -235,7 +386,7 @@ def update_trading_rule(
     session.add(rule)
     session.commit()
     session.refresh(rule)
-    return rule
+    return to_rule_read(rule)
 
 
 @router.delete("/trading-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -243,6 +394,8 @@ def delete_trading_rule(rule_id: int, session: Session = Depends(get_session)) -
     rule = session.get(TradingRule, rule_id)
     if not rule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="规则不存在")
+    for child in reversed(collect_descendants(session, rule_id)):
+        session.delete(child)
     session.delete(rule)
     session.commit()
 
