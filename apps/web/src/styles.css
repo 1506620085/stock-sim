@@ -1123,34 +1123,31 @@ textarea {
 /* Must come after .settings-modal — same element uses both classes */
 .settings-modal.notes-modal {
   width: 50%;
-  height: 80vh;
+  height: auto;
   min-width: min(520px, 95vw);
-  min-height: min(420px, 95vh);
+  min-height: 0;
   max-width: 95vw;
   max-height: 95vh;
   display: flex;
   flex-direction: column;
-  /* overflow:auto is required for resize:both to work */
   overflow: auto;
   resize: both;
 }
 
 .notes-modal-body {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .notes-modal-form.settings-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) auto;
-  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
   min-height: 0;
-  align-self: stretch;
   margin-top: 12px;
   gap: 12px;
 }
@@ -1159,7 +1156,7 @@ textarea {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
+  height: auto;
   color: var(--muted);
   font-size: 13px;
 }
@@ -1169,7 +1166,7 @@ textarea {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   min-height: 0;
-  height: 100%;
+  height: auto;
 }
 
 .settings-modal.notes-modal .notes-modal-reason-row > label.notes-modal-grow {
@@ -1177,17 +1174,16 @@ textarea {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
 }
 
-/* Textareas fill the modal; drag the modal corner to change size */
 .settings-modal.notes-modal .notes-modal-grow > textarea {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   width: 100%;
-  height: 0;
-  min-height: 72px;
+  height: auto;
+  min-height: 88px;
   margin-top: 6px;
-  resize: none;
+  resize: vertical;
   box-sizing: border-box;
 }
 
@@ -1253,7 +1249,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   margin-top: 4px;
 }
@@ -1267,7 +1263,7 @@ textarea {
 
 .notes-view-sections section p {
   margin: 0;
-  min-height: 72px;
+  min-height: 0;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1393,6 +1389,7 @@ textarea {
     width: min(100%, calc(100vw - 24px));
     max-width: 95vw;
     max-height: 95vh;
+    height: auto;
     resize: both;
   }
 
@@ -1402,10 +1399,6 @@ textarea {
 
   .settings-modal.notes-modal .notes-modal-reason-row.notes-modal-grow {
     grid-template-columns: 1fr;
-  }
-
-  .notes-modal-form.settings-grid {
-    grid-template-rows: auto minmax(120px, 1fr) minmax(120px, 1fr) minmax(120px, 1fr) auto;
   }
 }
 
