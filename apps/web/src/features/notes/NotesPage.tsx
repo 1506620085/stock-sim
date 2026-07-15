@@ -833,6 +833,10 @@ function PeriodPanel() {
           <h2>区间汇总</h2>
         </div>
         <div className="notes-filters notes-period-filters">
+          <article className="notes-period-count">
+            <span>笔记条数</span>
+            <strong>{loading ? "…" : summary ? summary.entryCount : "—"}</strong>
+          </article>
           <label>
             开始日期
             <AppDatePicker onChange={setStartDate} placeholder="开始日期" value={startDate} />
@@ -846,44 +850,42 @@ function PeriodPanel() {
               查询
             </button>
           </div>
-          <article className="notes-period-count">
-            <span>笔记条数</span>
-            <strong>{loading ? "…" : summary ? summary.entryCount : "—"}</strong>
-          </article>
         </div>
 
         {loading ? <p className="empty-copy">汇总中…</p> : null}
 
         {summary && !loading ? (
           <>
-            <div className="notes-summary-block">
-              <h3>方向分布</h3>
-              {summary.sideStats.length ? (
-                <div className="notes-tag-row">
-                  {summary.sideStats.map((item) => (
-                    <em key={item.side}>
-                      {sideLabel(item.side)} {item.count}
-                    </em>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-copy">该区间暂无笔记。</p>
-              )}
-            </div>
+            <div className="notes-period-stats-row">
+              <div className="notes-summary-block">
+                <h3>方向分布</h3>
+                {summary.sideStats.length ? (
+                  <div className="notes-tag-row">
+                    {summary.sideStats.map((item) => (
+                      <em key={item.side}>
+                        {sideLabel(item.side)} {item.count}
+                      </em>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-copy">该区间暂无笔记。</p>
+                )}
+              </div>
 
-            <div className="notes-summary-block">
-              <h3>标签分布</h3>
-              {summary.tagStats.length ? (
-                <div className="notes-tag-row">
-                  {summary.tagStats.map((item) => (
-                    <em key={item.tag}>
-                      {item.tag} {item.count}
-                    </em>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-copy">该区间暂无标签。</p>
-              )}
+              <div className="notes-summary-block">
+                <h3>标签分布</h3>
+                {summary.tagStats.length ? (
+                  <div className="notes-tag-row">
+                    {summary.tagStats.map((item) => (
+                      <em key={item.tag}>
+                        {item.tag} {item.count}
+                      </em>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-copy">该区间暂无标签。</p>
+                )}
+              </div>
             </div>
 
             <div className="notes-summary-block">

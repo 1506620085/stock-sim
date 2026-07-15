@@ -556,7 +556,7 @@ textarea {
 }
 
 .notes-period-filters {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) auto minmax(120px, 0.7fr);
+  grid-template-columns: minmax(120px, 0.7fr) repeat(2, minmax(0, 1fr)) auto;
   align-items: end;
 }
 
@@ -707,6 +707,34 @@ textarea {
 
 .notes-summary-block {
   margin-top: 18px;
+}
+
+.notes-period-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 0;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.notes-period-stats-row > .notes-summary-block {
+  margin-top: 0;
+  min-width: 0;
+  flex: 0 1 auto;
+  width: max-content;
+  max-width: 100%;
+}
+
+.notes-period-stats-row > .notes-summary-block + .notes-summary-block {
+  margin-left: 16px;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+}
+
+.notes-period-stats-row .notes-tag-row {
+  justify-content: flex-start;
+  align-content: flex-start;
+  max-width: min(100%, 36rem);
 }
 
 .stats-page {
@@ -3491,6 +3519,23 @@ textarea {
   .notes-period-filters,
   .notes-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .notes-period-stats-row > .notes-summary-block {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .notes-period-stats-row > .notes-summary-block + .notes-summary-block {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .notes-period-stats-row .notes-tag-row {
+    max-width: 100%;
   }
 
   .average-line > span {
