@@ -299,9 +299,6 @@ export function SettingsPage() {
           >
             <div className="section-header">
               <h2 id="template-modal-title">{templateModal.mode === "new" ? "新建模板" : "编辑模板"}</h2>
-              <button aria-label="关闭" className="modal-close-button" onClick={closeTemplateModal} type="button">
-                ×
-              </button>
             </div>
             <FeeTemplateFormFields form={modalFeeForm} onChange={setModalFeeForm} />
             <div className="settings-actions">
@@ -331,7 +328,7 @@ export function SettingsPage() {
               确定删除「{deleteConfirmTemplate.name}」吗？删除后无法恢复。
             </p>
             <div className="settings-actions">
-              <button className="text-button" onClick={() => setDeleteConfirmTemplate(null)} type="button">
+              <button className="secondary-button" onClick={() => setDeleteConfirmTemplate(null)} type="button">
                 取消
               </button>
               <button className="primary-button danger-confirm-button" onClick={() => void handleDeleteTemplate(deleteConfirmTemplate.id)} type="button">
