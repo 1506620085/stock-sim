@@ -14,12 +14,14 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 
 export type AppSelectOption<T extends string | number = string | number> = {
   value: T;
   label: ReactNode;
   disabled?: boolean;
+  /** Visually emphasize the option (e.g. "全部标的"). */
+  emphasis?: boolean;
 };
 
 type AppSelectProps<T extends string | number = string | number> = {
@@ -29,6 +31,8 @@ type AppSelectProps<T extends string | number = string | number> = {
   placeholder?: string;
   disabled?: boolean;
   searchable?: boolean;
+  /** Allow Enter to apply the typed search text as the value (useful for fuzzy filters). */
+  allowQueryValue?: boolean;
   className?: string;
   id?: string;
   "aria-label"?: string;
@@ -49,6 +53,7 @@ export function AppSelect<T extends string | number = string | number>({
   placeholder = "请选择",
   disabled = false,
   searchable,
+  allowQueryValue = false,
   className,
   id,
   "aria-label": ariaLabel,
@@ -214,7 +219,15 @@ export function AppSelect<T extends string | number = string | number>({
     if (event.key === "Enter") {
       event.preventDefault();
       const option = filteredOptions[highlightIndex];
-      if (option) selectOption(option);
+      if (option) {
+        selectOption(option);
+        return;
+      }
+      if (allowQueryValue && query.trim()) {
+        onChange(query.trim() as T);
+        close();
+        triggerRef.current?.focus();
+      }
       return;
     }
 
@@ -235,10 +248,22 @@ export function AppSelect<T extends string | number = string | number>({
         >
           {enableSearch ? (
             <div className="app-select-search">
+              <Search aria-hidden="true" className="app-select-search-icon" size={15} strokeWidth={2} />
               <input
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setHighlightIndex(0);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" || !allowQueryValue) return;
+                  const keyword = query.trim();
+                  if (!keyword) return;
+                  // Prefer highlighted option; otherwise apply free-text fuzzy filter.
+                  if (highlightIndex >= 0 && filteredOptions[highlightIndex]) return;
+                  event.preventDefault();
+                  onChange(keyword as T);
+                  close();
+                  triggerRef.current?.focus();
                 }}
                 placeholder="搜索选项"
                 ref={searchRef}
@@ -253,10 +278,21 @@ export function AppSelect<T extends string | number = string | number>({
                 const selected = isSameValue(option.value, value);
                 const highlighted = index === highlightIndex;
                 return (
-                  <li key={String(option.value)} role="presentation">
+                  <li
+                    className={option.emphasis ? "app-select-option-emphasis-wrap" : undefined}
+                    key={String(option.value)}
+                    role="presentation"
+                  >
                     <button
                       aria-selected={selected}
-                      className={`app-select-option${selected ? " selected" : ""}${highlighted ? " highlighted" : ""}`}
+                      className={[
+                        "app-select-option",
+                        selected ? "selected" : "",
+                        highlighted ? "highlighted" : "",
+                        option.emphasis ? "emphasis" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                       disabled={option.disabled}
                       onClick={() => selectOption(option)}
                       onMouseEnter={() => setHighlightIndex(index)}
@@ -294,8 +330,8 @@ export function AppSelect<T extends string | number = string | number>({
         ref={triggerRef}
         type="button"
       >
-        <span className={`app-select-value${selectedOption ? "" : " placeholder"}`}>
-          {selectedOption ? selectedOption.label : placeholder}
+        <span className={`app-select-value${selectedOption || (value != null && value !== "") ? "" : " placeholder"}`}>
+          {selectedOption ? selectedOption.label : value != null && value !== "" ? String(value) : placeholder}
         </span>
         <ChevronDown aria-hidden="true" className="app-select-arrow" size={16} strokeWidth={2} />
       </button>

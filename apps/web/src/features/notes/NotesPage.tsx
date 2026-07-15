@@ -177,6 +177,7 @@ function JournalPanel() {
   const [form, setForm] = useState<JournalEntryInput>(emptyJournalForm());
   const [tagsDraft, setTagsDraft] = useState("");
   const [symbolNameError, setSymbolNameError] = useState("");
+  const [allSymbols, setAllSymbols] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const allTags = useMemo(() => {
@@ -184,6 +185,19 @@ function JournalPanel() {
     entries.forEach((entry) => entry.tags.forEach((tag) => set.add(tag)));
     return Array.from(set).sort();
   }, [entries]);
+
+  const symbolOptions = useMemo(
+    () => [{ label: "全部标的", value: "", emphasis: true }, ...allSymbols.map((name) => ({ label: name, value: name }))],
+    [allSymbols],
+  );
+
+  async function refreshSymbolCatalog() {
+    const items = await loadJournalEntries();
+    const names = Array.from(
+      new Set(items.map((entry) => (entry.symbolName ?? "").trim()).filter(Boolean)),
+    ).sort((left, right) => left.localeCompare(right, "zh-CN"));
+    setAllSymbols(names);
+  }
 
   async function refresh() {
     setLoading(true);
@@ -202,6 +216,10 @@ function JournalPanel() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    void refreshSymbolCatalog();
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -260,13 +278,13 @@ function JournalPanel() {
       showSuccess("笔记已创建");
     }
     setModal(null);
-    await refresh();
+    await Promise.all([refresh(), refreshSymbolCatalog()]);
   }
 
   async function handleDelete(id: number) {
     await deleteJournalEntry(id);
     showSuccess("笔记已删除");
-    await refresh();
+    await Promise.all([refresh(), refreshSymbolCatalog()]);
   }
 
   function toggleRule(ruleId: number) {
@@ -301,13 +319,20 @@ function JournalPanel() {
             标签
             <AppSelect
               onChange={setTagFilter}
-              options={[{ label: "全部标签", value: "" }, ...allTags.map((tag) => ({ label: tag, value: tag }))]}
+              options={[{ label: "全部标签", value: "", emphasis: true }, ...allTags.map((tag) => ({ label: tag, value: tag }))]}
               value={tagFilter}
             />
           </label>
           <label>
             标的
-            <input placeholder="标的名称" value={symbolFilter} onChange={(event) => setSymbolFilter(event.target.value)} />
+            <AppSelect
+              allowQueryValue
+              onChange={setSymbolFilter}
+              options={symbolOptions}
+              placeholder="搜索或选择标的"
+              searchable
+              value={symbolFilter}
+            />
           </label>
         </div>
 
