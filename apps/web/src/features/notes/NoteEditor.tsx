@@ -11,7 +11,8 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import { TextStyle, FontSize } from "@tiptap/extension-text-style";
+import { TextStyle } from "@tiptap/extension-text-style";
+import FontSize from "@tiptap/extension-text-style/font-size";
 import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
@@ -282,7 +283,7 @@ function applyBlockStyle(editor: Editor, style: BlockStyle) {
 }
 
 function clearFormatting(editor: Editor) {
-  editor.chain().focus().clearNodes().unsetAllMarks().unsetFontSize().run();
+  editor.chain().focus().clearNodes().unsetAllMarks().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run();
 }
 
 function getCurrentFontSize(editor: Editor): number {
@@ -293,7 +294,7 @@ function getCurrentFontSize(editor: Editor): number {
 }
 
 function setFontSizePx(editor: Editor, size: number) {
-  editor.chain().focus().setFontSize(`${size}px`).run();
+  editor.chain().focus().setMark("textStyle", { fontSize: `${size}px` }).run();
 }
 
 function bumpFontSize(editor: Editor, direction: 1 | -1) {
