@@ -860,7 +860,7 @@ textarea {
 
 .kb-tip-bubble {
   position: absolute;
-  bottom: calc(100% + 10px);
+  top: calc(100% + 10px);
   left: 50%;
   z-index: 40;
   display: flex;
@@ -876,17 +876,17 @@ textarea {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
   color: #fff;
   pointer-events: none;
-  transform: translateX(-50%) translateY(2px);
+  transform: translateX(-50%);
   animation: kb-tip-in 0.08s ease-out both;
 }
 
 .kb-tip-bubble::after {
   content: "";
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 50%;
   border: 5px solid transparent;
-  border-top-color: #1f2329;
+  border-bottom-color: #1f2329;
   transform: translateX(-50%);
 }
 
@@ -915,7 +915,7 @@ textarea {
 @keyframes kb-tip-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(6px);
+    transform: translateX(-50%) translateY(-6px);
   }
   to {
     opacity: 1;
