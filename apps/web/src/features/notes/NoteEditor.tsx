@@ -421,16 +421,16 @@ function FontSizeSelect({ editor }: { editor: Editor }) {
 
   return (
     <div className="kb-fontsize-select" ref={rootRef}>
-      <KbTip label={`字号 ${currentSize}px（Alt+Ctrl++ / Alt+Ctrl+-）`}>
+      <KbTip label="字号调整（Alt+Ctrl++ / Alt+Ctrl+-）">
         <button
           aria-expanded={open}
           aria-haspopup="listbox"
-          aria-label="选择字号"
+          aria-label="字号调整"
           className={open ? "kb-fontsize-trigger active" : "kb-fontsize-trigger"}
           onClick={() => setOpen((value) => !value)}
           type="button"
         >
-          <span>{currentSize}</span>
+          <span>{currentSize} px</span>
           <ChevronDown size={12} />
         </button>
       </KbTip>
