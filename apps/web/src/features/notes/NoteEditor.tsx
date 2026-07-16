@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { getMarkRange } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { showError, showSuccess } from "../../components/ToastProvider";
 import { DocumentTitle, isInDocumentTitle } from "./DocumentTitle";
+import { uploadNoteImage } from "./api";
 import { displayTitle, extractTitleFromDoc, parseEditorContent } from "./treeUtils";
 
 type NoteEditorProps = {
@@ -292,17 +293,20 @@ function ToolbarButton({
   label,
   onClick,
   children,
+  disabled,
 }: {
   active?: boolean;
   label: string;
   onClick: () => void;
   children: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <KbTip label={label}>
       <button
         aria-label={label}
         className={active ? "kb-toolbar-btn active" : "kb-toolbar-btn"}
+        disabled={disabled}
         onClick={onClick}
         type="button"
       >
@@ -821,7 +825,9 @@ function AlignSelect({ editor }: { editor: Editor }) {
 export function NoteEditor({ noteId, content, documentTitle = "", saveState = "idle", onChange, onManualSave }: NoteEditorProps) {
   const [linkModal, setLinkModal] = useState<LinkModalState | null>(null);
   const [linkHover, setLinkHover] = useState<LinkHoverState | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const linkUrlRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const linkBubbleRef = useRef<HTMLDivElement | null>(null);
   const linkHoverTimerRef = useRef<number | null>(null);
   const hoveredAnchorRef = useRef<HTMLElement | null>(null);
@@ -1209,9 +1215,34 @@ export function NoteEditor({ noteId, content, documentTitle = "", saveState = "i
   if (!editor) return null;
 
   function addImage() {
-    const url = window.prompt("图片地址", "https://");
-    if (!url?.trim() || !editor) return;
-    editor.chain().focus().setImage({ src: url.trim() }).run();
+    if (uploadingImage) return;
+    imageInputRef.current?.click();
+  }
+
+  async function onImageFileSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !editor) return;
+
+    if (!file.type.startsWith("image/")) {
+      showError("请选择图片文件");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showError("图片大小不能超过 10MB");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const uploaded = await uploadNoteImage(file, `notes/${noteId}`);
+      editor.chain().focus().setImage({ src: uploaded.url, alt: file.name }).run();
+      showSuccess("图片已上传");
+    } catch {
+      // toast already shown by api layer
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   function confirmLinkModal() {
@@ -1344,9 +1375,16 @@ export function NoteEditor({ noteId, content, documentTitle = "", saveState = "i
         <ToolbarButton label="链接（Ctrl K）" onClick={openLinkModal}>
           <Link2 size={15} />
         </ToolbarButton>
-        <ToolbarButton label="图片" onClick={addImage}>
-          <ImageIcon size={15} />
+        <ToolbarButton disabled={uploadingImage} label={uploadingImage ? "图片上传中…" : "图片"} onClick={addImage}>
+          <ImageIcon className={uploadingImage ? "kb-toolbar-spin" : undefined} size={15} />
         </ToolbarButton>
+        <input
+          accept="image/*"
+          className="kb-hidden-file-input"
+          onChange={onImageFileSelected}
+          ref={imageInputRef}
+          type="file"
+        />
         <ToolbarButton label="表格" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
           <Table2 size={15} />
         </ToolbarButton>

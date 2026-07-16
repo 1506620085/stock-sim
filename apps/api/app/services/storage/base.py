@@ -29,3 +29,8 @@ class StorageProvider(ABC):
     @abstractmethod
     def exists(self, key: str) -> bool:
         raise NotImplementedError
+
+    @abstractmethod
+    def download(self, key: str) -> tuple[bytes, str | None]:
+        """下载对象，返回 (内容, content_type)。"""
+        raise NotImplementedError

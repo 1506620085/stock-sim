@@ -63,3 +63,11 @@ class TencentCosStorageProvider(StorageProvider):
             return True
         except CosServiceError:
             return False
+
+    def download(self, key: str) -> tuple[bytes, str | None]:
+        object_key = normalize_key(key)
+        response = self._client.get_object(Bucket=self._bucket, Key=object_key)
+        body = response["Body"]
+        data = body.get_raw_stream().read()
+        content_type = response.get("Content-Type")
+        return data, content_type

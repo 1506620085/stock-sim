@@ -331,3 +331,11 @@ class JournalPeriodSummaryRead(SQLModel):
     emotion_count: int
     rule_ref_count: int
     entries: list[JournalEntryRead]
+
+
+class StorageUploadRead(SQLModel):
+    key: str
+    url: str
+    bucket: str
+    content_type: str | None = None
+    size: int | None = None

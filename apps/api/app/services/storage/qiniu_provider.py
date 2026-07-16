@@ -90,3 +90,13 @@ class QiniuKodoStorageProvider(StorageProvider):
         object_key = normalize_key(key)
         ret, info = self._bucket_manager.stat(self._bucket, object_key)
         return info.status_code < 400
+
+    def download(self, key: str) -> tuple[bytes, str | None]:
+        import urllib.request
+
+        object_key = normalize_key(key)
+        url = self.get_url(object_key, expires_in=3600)
+        with urllib.request.urlopen(url) as response:
+            data = response.read()
+            content_type = response.headers.get("Content-Type")
+            return data, content_type

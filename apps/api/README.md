@@ -203,6 +203,25 @@ QINIU_DOMAIN=https://your-domain.com
 | `service.py` | 业务统一入口 `StorageService` |
 | `minio_provider.py` 等 | 各云厂商实现 |
 
+### HTTP 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/storage/upload?folder=&filename=` | 上传图片（请求体为原始二进制，`Content-Type` 为图片 MIME） |
+| `GET` | `/api/storage/files/{key}` | 读取已上传文件（编辑器内嵌图片使用此稳定地址） |
+
+上传成功示例响应：
+
+```json
+{
+  "key": "notes/1/20260716/abcd1234_cover.png",
+  "url": "/api/storage/files/notes/1/20260716/abcd1234_cover.png",
+  "bucket": "stock-review",
+  "content_type": "image/png",
+  "size": 12345
+}
+```
+
 业务代码示例（不要直接依赖某一家 SDK）：
 
 ```python

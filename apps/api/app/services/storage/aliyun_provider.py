@@ -54,3 +54,10 @@ class AliyunOssStorageProvider(StorageProvider):
             return self._bucket.object_exists(normalize_key(key))
         except OssError:
             return False
+
+    def download(self, key: str) -> tuple[bytes, str | None]:
+        object_key = normalize_key(key)
+        result = self._bucket.get_object(object_key)
+        data = result.read()
+        content_type = getattr(result, "content_type", None) or result.headers.get("Content-Type")
+        return data, content_type

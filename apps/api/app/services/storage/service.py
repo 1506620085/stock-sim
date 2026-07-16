@@ -37,3 +37,6 @@ class StorageService:
 
     def exists(self, key: str) -> bool:
         return self._provider.exists(key)
+
+    def download(self, key: str) -> tuple[bytes, str | None]:
+        return self._provider.download(key)

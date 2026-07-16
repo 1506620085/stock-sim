@@ -88,3 +88,16 @@ class MinioStorageProvider(StorageProvider):
             return True
         except S3Error:
             return False
+
+    def download(self, key: str) -> tuple[bytes, str | None]:
+        object_key = normalize_key(key)
+        response = None
+        try:
+            response = self._client.get_object(self._bucket, object_key)
+            data = response.read()
+            content_type = response.headers.get("Content-Type")
+            return data, content_type
+        finally:
+            if response is not None:
+                response.close()
+                response.release_conn()

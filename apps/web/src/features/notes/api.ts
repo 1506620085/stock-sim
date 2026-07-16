@@ -291,3 +291,43 @@ export async function loadJournalPeriodSummary(startDate: string, endDate: strin
     entries: (item.entries ?? []).map(toJournalEntry),
   };
 }
+
+export type StorageUploadResult = {
+  key: string;
+  url: string;
+  bucket: string;
+  contentType: string | null;
+  size: number | null;
+};
+
+type StorageUploadItem = {
+  key: string;
+  url: string;
+  bucket: string;
+  content_type: string | null;
+  size: number | null;
+};
+
+/** 上传图片到对象存储，返回可嵌入编辑器的访问地址。 */
+export async function uploadNoteImage(file: File, folder = "notes"): Promise<StorageUploadResult> {
+  const item = await apiJson<StorageUploadItem>(
+    buildApiUrl("/api/storage/upload", {
+      folder,
+      filename: file.name || "image.png",
+    }),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    },
+  );
+  return {
+    key: item.key,
+    url: item.url,
+    bucket: item.bucket,
+    contentType: item.content_type,
+    size: item.size,
+  };
+}
