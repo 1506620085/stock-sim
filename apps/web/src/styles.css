@@ -916,6 +916,14 @@ textarea {
   cursor: pointer;
 }
 
+.kb-toolbar-underline-icon {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .kb-toolbar-btn:hover,
 .kb-toolbar-btn.active {
   background: #eef0f3;

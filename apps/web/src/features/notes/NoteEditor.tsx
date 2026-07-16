@@ -227,6 +227,21 @@ function clearFormatting(editor: Editor) {
   editor.chain().focus().clearNodes().unsetAllMarks().run();
 }
 
+function promptLink(editor: Editor) {
+  const previous = editor.getAttributes("link").href as string | undefined;
+  const url = window.prompt("链接地址", previous ?? "https://");
+  if (url === null) return;
+  if (!url.trim()) {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    return;
+  }
+  editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
+}
+
+function isMod(event: KeyboardEvent) {
+  return event.ctrlKey || event.metaKey;
+}
+
 function BlockStyleSelect({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
@@ -352,7 +367,7 @@ function ColorPickerButton({
           aria-label={mode === "text" ? "应用字体颜色" : "应用背景颜色"}
           className="kb-toolbar-btn kb-color-apply"
           onClick={applyDefaultColor}
-          title={mode === "text" ? `字体颜色（默认红色）` : `背景颜色（默认黄色）`}
+          title={mode === "text" ? "字体颜色（Alt+Ctrl+C，默认红色）" : "背景颜色（Alt+Ctrl+H，默认黄色）"}
           type="button"
         >
           {mode === "text" ? <Palette size={15} /> : <Highlighter size={15} />}
@@ -451,21 +466,112 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
     if (!editor) return;
 
     function onKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key === "/") {
+      const mod = isMod(event);
+      const { altKey, shiftKey, code } = event;
+      if (!mod) return;
+
+      // Ctrl+/ 清除格式
+      if (!altKey && !shiftKey && (event.key === "/" || code === "Slash")) {
         event.preventDefault();
         clearFormatting(editor!);
         return;
       }
-      if (!(event.altKey && event.ctrlKey) || event.metaKey || event.shiftKey) return;
-      const key = event.key;
-      if (key === "0") {
+
+      // Ctrl+B 加粗
+      if (!altKey && !shiftKey && code === "KeyB") {
         event.preventDefault();
-        applyBlockStyle(editor!, "paragraph");
+        editor!.chain().focus().toggleBold().run();
         return;
       }
-      if (key >= "1" && key <= "6") {
+
+      // Ctrl+I 斜体
+      if (!altKey && !shiftKey && code === "KeyI") {
         event.preventDefault();
-        applyBlockStyle(editor!, Number(key) as 1 | 2 | 3 | 4 | 5 | 6);
+        editor!.chain().focus().toggleItalic().run();
+        return;
+      }
+
+      // Ctrl+U 下划线
+      if (!altKey && !shiftKey && code === "KeyU") {
+        event.preventDefault();
+        editor!.chain().focus().toggleUnderline().run();
+        return;
+      }
+
+      // Ctrl+K 插入链接
+      if (!altKey && !shiftKey && code === "KeyK") {
+        event.preventDefault();
+        promptLink(editor!);
+        return;
+      }
+
+      // Shift+Ctrl+X 删除线
+      if (!altKey && shiftKey && code === "KeyX") {
+        event.preventDefault();
+        editor!.chain().focus().toggleStrike().run();
+        return;
+      }
+
+      // Shift+Ctrl+8 无序列表
+      if (!altKey && shiftKey && code === "Digit8") {
+        event.preventDefault();
+        editor!.chain().focus().toggleBulletList().run();
+        return;
+      }
+
+      // Shift+Ctrl+7 有序列表
+      if (!altKey && shiftKey && code === "Digit7") {
+        event.preventDefault();
+        editor!.chain().focus().toggleOrderedList().run();
+        return;
+      }
+
+      // Shift+Ctrl+C 引用
+      if (!altKey && shiftKey && code === "KeyC") {
+        event.preventDefault();
+        editor!.chain().focus().toggleBlockquote().run();
+        return;
+      }
+
+      // Alt+Ctrl+C 字体颜色（默认红）
+      if (altKey && !shiftKey && code === "KeyC") {
+        event.preventDefault();
+        editor!.chain().focus().setColor(DEFAULT_TEXT_COLOR).run();
+        return;
+      }
+
+      // Alt+Ctrl+H 背景颜色（默认黄）
+      if (altKey && !shiftKey && code === "KeyH") {
+        event.preventDefault();
+        editor!.chain().focus().setHighlight({ color: DEFAULT_BG_COLOR }).run();
+        return;
+      }
+
+      // Alt+Ctrl+T 待办列表
+      if (altKey && !shiftKey && code === "KeyT") {
+        event.preventDefault();
+        editor!.chain().focus().toggleTaskList().run();
+        return;
+      }
+
+      // Alt+Ctrl+S 分割线
+      if (altKey && !shiftKey && code === "KeyS") {
+        event.preventDefault();
+        editor!.chain().focus().setHorizontalRule().run();
+        return;
+      }
+
+      // Alt+Ctrl+0~6 正文 / 标题
+      if (altKey && !shiftKey) {
+        if (event.key === "0" || code === "Digit0") {
+          event.preventDefault();
+          applyBlockStyle(editor!, "paragraph");
+          return;
+        }
+        if (event.key >= "1" && event.key <= "6") {
+          event.preventDefault();
+          applyBlockStyle(editor!, Number(event.key) as 1 | 2 | 3 | 4 | 5 | 6);
+        }
       }
     }
 
@@ -475,17 +581,6 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
   }, [editor]);
 
   if (!editor) return null;
-
-  function setLink() {
-    const previous = editor?.getAttributes("link").href as string | undefined;
-    const url = window.prompt("链接地址", previous ?? "https://");
-    if (url === null || !editor) return;
-    if (!url.trim()) {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
-  }
 
   function addImage() {
     const url = window.prompt("图片地址", "https://");
@@ -498,13 +593,16 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       <div className="kb-toolbar" role="toolbar" aria-label="编辑工具栏">
         <BlockStyleSelect editor={editor} />
         <span className="kb-toolbar-sep" />
-        <ToolbarButton active={editor.isActive("bold")} label="加粗" onClick={() => editor.chain().focus().toggleBold().run()}>
+        <ToolbarButton active={editor.isActive("bold")} label="加粗（Ctrl+B）" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("italic")} label="斜体" onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ToolbarButton active={editor.isActive("italic")} label="斜体（Ctrl+I）" onClick={() => editor.chain().focus().toggleItalic().run()}>
           <Italic size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("strike")} label="删除线" onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <ToolbarButton active={editor.isActive("underline")} label="下划线（Ctrl+U）" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+          <span className="kb-toolbar-underline-icon">U</span>
+        </ToolbarButton>
+        <ToolbarButton active={editor.isActive("strike")} label="删除线（Shift+Ctrl+X）" onClick={() => editor.chain().focus().toggleStrike().run()}>
           <Strikethrough size={15} />
         </ToolbarButton>
         <ToolbarButton active={editor.isActive("code")} label="行内代码" onClick={() => editor.chain().focus().toggleCode().run()}>
@@ -516,26 +614,26 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
           <RemoveFormatting size={15} />
         </ToolbarButton>
         <span className="kb-toolbar-sep" />
-        <ToolbarButton active={editor.isActive("bulletList")} label="无序列表" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <ToolbarButton active={editor.isActive("bulletList")} label="无序列表（Shift+Ctrl+8）" onClick={() => editor.chain().focus().toggleBulletList().run()}>
           <List size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("orderedList")} label="有序列表" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ToolbarButton active={editor.isActive("orderedList")} label="有序列表（Shift+Ctrl+7）" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           <ListOrdered size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("taskList")} label="待办列表" onClick={() => editor.chain().focus().toggleTaskList().run()}>
+        <ToolbarButton active={editor.isActive("taskList")} label="待办列表（Alt+Ctrl+T）" onClick={() => editor.chain().focus().toggleTaskList().run()}>
           <CheckSquare size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("blockquote")} label="引用" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <ToolbarButton active={editor.isActive("blockquote")} label="引用（Shift+Ctrl+C）" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
           <Quote size={15} />
         </ToolbarButton>
         <ToolbarButton active={editor.isActive("codeBlock")} label="代码块" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
           <Code2 size={15} />
         </ToolbarButton>
         <span className="kb-toolbar-sep" />
-        <ToolbarButton label="分割线" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+        <ToolbarButton label="分割线（Alt+Ctrl+S）" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
           <Minus size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("link")} label="链接" onClick={setLink}>
+        <ToolbarButton active={editor.isActive("link")} label="链接（Ctrl+K）" onClick={() => promptLink(editor)}>
           <Link2 size={15} />
         </ToolbarButton>
         <ToolbarButton label="图片" onClick={addImage}>
