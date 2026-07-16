@@ -853,6 +853,11 @@
   resolved "https://registry.npmjs.org/@tiptap/extension-task-list/-/extension-task-list-3.27.4.tgz"
   integrity sha512-nlFw+pOhnj9pF1wN0CyjqL0JppM6KNw05XtZWD5kt68tBUpBb7+aEy02tDXpZoRefiFhcIouKVJSeSzILZlCrA==
 
+"@tiptap/extension-text-align@^3.27.4":
+  version "3.27.4"
+  resolved "https://registry.npmjs.org/@tiptap/extension-text-align/-/extension-text-align-3.27.4.tgz"
+  integrity sha512-ArfL7GLOXCSmrmiBiaWwAf7RPHXDdxLGPru29qKDLQDthjXcNOdlwlPBbolRu7mXwlSmaYpqWGrG75/AEat3mw==
+
 "@tiptap/extension-text-style@^3.27.4", "@tiptap/extension-text-style@3.27.4":
   version "3.27.4"
   resolved "https://registry.npmjs.org/@tiptap/extension-text-style/-/extension-text-style-3.27.4.tgz"

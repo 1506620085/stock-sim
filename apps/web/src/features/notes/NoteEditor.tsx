@@ -14,7 +14,12 @@ import TaskItem from "@tiptap/extension-task-item";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
+import TextAlign from "@tiptap/extension-text-align";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
   ChevronDown,
   Code2,
@@ -42,6 +47,15 @@ type NoteEditorProps = {
 };
 
 type BlockStyle = "paragraph" | 1 | 2 | 3 | 4 | 5 | 6;
+
+type AlignValue = "left" | "center" | "right" | "justify";
+
+const ALIGN_OPTIONS: Array<{ value: AlignValue; label: string; shortcut: string; icon: typeof AlignLeft }> = [
+  { value: "left", label: "左对齐", shortcut: "Shift+Ctrl+L", icon: AlignLeft },
+  { value: "center", label: "居中对齐", shortcut: "Shift+Ctrl+C", icon: AlignCenter },
+  { value: "right", label: "右对齐", shortcut: "Shift+Ctrl+R", icon: AlignRight },
+  { value: "justify", label: "两端对齐", shortcut: "Shift+Ctrl+J", icon: AlignJustify },
+];
 
 const BLOCK_STYLE_OPTIONS: Array<{ value: BlockStyle; label: string; shortcut: string }> = [
   { value: "paragraph", label: "正文", shortcut: "Ctrl+Alt+0" },
@@ -184,6 +198,47 @@ const BG_COLORS = [
   "#2f54eb",
 ];
 
+function parseTipLabel(label: string): { tip: string; shortcut?: string } {
+  const match = label.match(/^(.*?)（(.+)）$/);
+  if (match) return { tip: match[1].trim(), shortcut: match[2].trim() };
+  return { tip: label };
+}
+
+function KbTip({ label, children }: { label: string; children: ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  const { tip, shortcut } = parseTipLabel(label);
+
+  function show() {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setVisible(true), 40);
+  }
+
+  function hide() {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+    setVisible(false);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return (
+    <span className="kb-tip" onBlur={hide} onFocus={show} onMouseDown={hide} onMouseEnter={show} onMouseLeave={hide}>
+      {children}
+      {visible ? (
+        <span className="kb-tip-bubble" role="tooltip">
+          <span className="kb-tip-title">{tip}</span>
+          {shortcut ? <span className="kb-tip-keys">{shortcut}</span> : null}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function ToolbarButton({
   active,
   label,
@@ -196,15 +251,16 @@ function ToolbarButton({
   children: ReactNode;
 }) {
   return (
-    <button
-      aria-label={label}
-      className={active ? "kb-toolbar-btn active" : "kb-toolbar-btn"}
-      onClick={onClick}
-      title={label}
-      type="button"
-    >
-      {children}
-    </button>
+    <KbTip label={label}>
+      <button
+        aria-label={label}
+        className={active ? "kb-toolbar-btn active" : "kb-toolbar-btn"}
+        onClick={onClick}
+        type="button"
+      >
+        {children}
+      </button>
+    </KbTip>
   );
 }
 
@@ -271,19 +327,20 @@ function BlockStyleSelect({ editor }: { editor: Editor }) {
 
   return (
     <div className="kb-block-select" ref={rootRef}>
-      <button
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-label="正文与标题"
-        className={open ? "kb-block-select-trigger active" : "kb-block-select-trigger"}
-        onClick={() => setOpen((value) => !value)}
-        title="正文 / 标题"
-        type="button"
-      >
-        <Type size={15} />
-        <span>{activeLabel}</span>
-        <ChevronDown size={12} />
-      </button>
+      <KbTip label="正文 / 标题">
+        <button
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-label="正文与标题"
+          className={open ? "kb-block-select-trigger active" : "kb-block-select-trigger"}
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+        >
+          <Type size={15} />
+          <span>{activeLabel}</span>
+          <ChevronDown size={12} />
+        </button>
+      </KbTip>
       {open ? (
         <div className="kb-block-menu" role="listbox">
           {BLOCK_STYLE_OPTIONS.map((item) => (
@@ -363,30 +420,32 @@ function ColorPickerButton({
   return (
     <div className="kb-color-picker" ref={rootRef}>
       <div className="kb-color-split">
-        <button
-          aria-label={mode === "text" ? "应用字体颜色" : "应用背景颜色"}
-          className="kb-toolbar-btn kb-color-apply"
-          onClick={applyDefaultColor}
-          title={mode === "text" ? "字体颜色（Alt+Ctrl+C，默认红色）" : "背景颜色（Alt+Ctrl+H，默认黄色）"}
-          type="button"
-        >
-          {mode === "text" ? <Palette size={15} /> : <Highlighter size={15} />}
-          <span
-            className={mode === "text" ? "kb-color-swatch text" : "kb-color-swatch bg"}
-            style={{ background: swatchColor }}
-          />
-        </button>
-        <button
-          aria-expanded={open}
-          aria-haspopup="true"
-          aria-label={mode === "text" ? "选择字体颜色" : "选择背景颜色"}
-          className={open ? "kb-toolbar-btn kb-color-caret active" : "kb-toolbar-btn kb-color-caret"}
-          onClick={() => setOpen((value) => !value)}
-          title="更多颜色"
-          type="button"
-        >
-          <ChevronDown size={12} />
-        </button>
+        <KbTip label={mode === "text" ? "字体颜色（Alt+Ctrl+C）" : "背景颜色（Alt+Ctrl+H）"}>
+          <button
+            aria-label={mode === "text" ? "应用字体颜色" : "应用背景颜色"}
+            className="kb-toolbar-btn kb-color-apply"
+            onClick={applyDefaultColor}
+            type="button"
+          >
+            {mode === "text" ? <Palette size={15} /> : <Highlighter size={15} />}
+            <span
+              className={mode === "text" ? "kb-color-swatch text" : "kb-color-swatch bg"}
+              style={{ background: swatchColor }}
+            />
+          </button>
+        </KbTip>
+        <KbTip label="更多颜色">
+          <button
+            aria-expanded={open}
+            aria-haspopup="true"
+            aria-label={mode === "text" ? "选择字体颜色" : "选择背景颜色"}
+            className={open ? "kb-toolbar-btn kb-color-caret active" : "kb-toolbar-btn kb-color-caret"}
+            onClick={() => setOpen((value) => !value)}
+            type="button"
+          >
+            <ChevronDown size={12} />
+          </button>
+        </KbTip>
       </div>
       {open ? (
         <div className="kb-color-menu" role="menu">
@@ -422,6 +481,95 @@ function ColorPickerButton({
   );
 }
 
+function getActiveAlign(editor: Editor): AlignValue {
+  for (const item of ALIGN_OPTIONS) {
+    if (editor.isActive({ textAlign: item.value })) return item.value;
+  }
+  return "left";
+}
+
+function AlignSelect({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const [, setTick] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const active = getActiveAlign(editor);
+  const activeOption = ALIGN_OPTIONS.find((item) => item.value === active);
+  const ActiveIcon = activeOption?.icon ?? AlignLeft;
+
+  useEffect(() => {
+    function onDocClick(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setTick((value) => value + 1);
+    editor.on("selectionUpdate", refresh);
+    editor.on("transaction", refresh);
+    return () => {
+      editor.off("selectionUpdate", refresh);
+      editor.off("transaction", refresh);
+    };
+  }, [editor]);
+
+  return (
+    <div className="kb-align-select" ref={rootRef}>
+      <div className="kb-align-split">
+        <KbTip label={`${activeOption?.label ?? "对齐"}（${activeOption?.shortcut ?? "Shift+Ctrl+L"}）`}>
+          <button
+            aria-label="应用对齐"
+            className="kb-toolbar-btn kb-align-apply"
+            onClick={() => editor.chain().focus().setTextAlign(active).run()}
+            type="button"
+          >
+            <ActiveIcon size={15} />
+          </button>
+        </KbTip>
+        <KbTip label="对齐方式">
+          <button
+            aria-expanded={open}
+            aria-haspopup="true"
+            aria-label="选择对齐方式"
+            className={open ? "kb-toolbar-btn kb-align-caret active" : "kb-toolbar-btn kb-align-caret"}
+            onClick={() => setOpen((value) => !value)}
+            type="button"
+          >
+            <ChevronDown size={12} />
+          </button>
+        </KbTip>
+      </div>
+      {open ? (
+        <div className="kb-align-menu" role="menu">
+          {ALIGN_OPTIONS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                className={active === item.value ? "kb-align-option active" : "kb-align-option"}
+                key={item.value}
+                onClick={() => {
+                  editor.chain().focus().setTextAlign(item.value).run();
+                  setOpen(false);
+                }}
+                type="button"
+              >
+                <span className="kb-align-option-main">
+                  <Icon size={15} />
+                  {item.label}
+                </span>
+                <span className="kb-align-option-shortcut">{item.shortcut}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -433,6 +581,11 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+        alignments: ["left", "center", "right", "justify"],
+        defaultAlignment: "left",
+      }),
       Link.configure({ openOnClick: false }),
       Image,
       Table.configure({ resizable: true }),
@@ -498,6 +651,13 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         return;
       }
 
+      // Ctrl+E 代码块
+      if (!altKey && !shiftKey && code === "KeyE") {
+        event.preventDefault();
+        editor!.chain().focus().toggleCodeBlock().run();
+        return;
+      }
+
       // Ctrl+K 插入链接
       if (!altKey && !shiftKey && code === "KeyK") {
         event.preventDefault();
@@ -509,6 +669,13 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       if (!altKey && shiftKey && code === "KeyX") {
         event.preventDefault();
         editor!.chain().focus().toggleStrike().run();
+        return;
+      }
+
+      // Shift+Ctrl+U 引用
+      if (!altKey && shiftKey && code === "KeyU") {
+        event.preventDefault();
+        editor!.chain().focus().toggleBlockquote().run();
         return;
       }
 
@@ -526,10 +693,31 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         return;
       }
 
-      // Shift+Ctrl+C 引用
+      // Shift+Ctrl+L 左对齐
+      if (!altKey && shiftKey && code === "KeyL") {
+        event.preventDefault();
+        editor!.chain().focus().setTextAlign("left").run();
+        return;
+      }
+
+      // Shift+Ctrl+C 居中对齐
       if (!altKey && shiftKey && code === "KeyC") {
         event.preventDefault();
-        editor!.chain().focus().toggleBlockquote().run();
+        editor!.chain().focus().setTextAlign("center").run();
+        return;
+      }
+
+      // Shift+Ctrl+R 右对齐
+      if (!altKey && shiftKey && code === "KeyR") {
+        event.preventDefault();
+        editor!.chain().focus().setTextAlign("right").run();
+        return;
+      }
+
+      // Shift+Ctrl+J 两端对齐
+      if (!altKey && shiftKey && code === "KeyJ") {
+        event.preventDefault();
+        editor!.chain().focus().setTextAlign("justify").run();
         return;
       }
 
@@ -610,6 +798,7 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         </ToolbarButton>
         <ColorPickerButton editor={editor} mode="text" />
         <ColorPickerButton editor={editor} mode="background" />
+        <AlignSelect editor={editor} />
         <ToolbarButton label="清除格式（Ctrl+/）" onClick={() => clearFormatting(editor)}>
           <RemoveFormatting size={15} />
         </ToolbarButton>
@@ -623,10 +812,10 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         <ToolbarButton active={editor.isActive("taskList")} label="待办列表（Alt+Ctrl+T）" onClick={() => editor.chain().focus().toggleTaskList().run()}>
           <CheckSquare size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("blockquote")} label="引用（Shift+Ctrl+C）" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <ToolbarButton active={editor.isActive("blockquote")} label="引用（Shift+Ctrl+U）" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
           <Quote size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("codeBlock")} label="代码块" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+        <ToolbarButton active={editor.isActive("codeBlock")} label="代码块（Ctrl+E）" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
           <Code2 size={15} />
         </ToolbarButton>
         <span className="kb-toolbar-sep" />
