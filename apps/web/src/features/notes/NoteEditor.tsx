@@ -54,20 +54,20 @@ const DEFAULT_FONT_SIZE = 15;
 const FONT_SIZES = [12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48];
 
 const ALIGN_OPTIONS: Array<{ value: AlignValue; label: string; shortcut: string; icon: typeof AlignLeft }> = [
-  { value: "left", label: "左对齐", shortcut: "Shift+Ctrl+L", icon: AlignLeft },
-  { value: "center", label: "居中对齐", shortcut: "Shift+Ctrl+C", icon: AlignCenter },
-  { value: "right", label: "右对齐", shortcut: "Shift+Ctrl+R", icon: AlignRight },
-  { value: "justify", label: "两端对齐", shortcut: "Shift+Ctrl+J", icon: AlignJustify },
+  { value: "left", label: "左对齐", shortcut: "Shift Ctrl L", icon: AlignLeft },
+  { value: "center", label: "居中对齐", shortcut: "Shift Ctrl C", icon: AlignCenter },
+  { value: "right", label: "右对齐", shortcut: "Shift Ctrl R", icon: AlignRight },
+  { value: "justify", label: "两端对齐", shortcut: "Shift Ctrl J", icon: AlignJustify },
 ];
 
 const BLOCK_STYLE_OPTIONS: Array<{ value: BlockStyle; label: string; shortcut: string }> = [
-  { value: "paragraph", label: "正文", shortcut: "Ctrl+Alt+0" },
-  { value: 1, label: "标题 1", shortcut: "Ctrl+Alt+1" },
-  { value: 2, label: "标题 2", shortcut: "Ctrl+Alt+2" },
-  { value: 3, label: "标题 3", shortcut: "Ctrl+Alt+3" },
-  { value: 4, label: "标题 4", shortcut: "Ctrl+Alt+4" },
-  { value: 5, label: "标题 5", shortcut: "Ctrl+Alt+5" },
-  { value: 6, label: "标题 6", shortcut: "Ctrl+Alt+6" },
+  { value: "paragraph", label: "正文", shortcut: "Ctrl Alt 0" },
+  { value: 1, label: "标题 1", shortcut: "Ctrl Alt 1" },
+  { value: 2, label: "标题 2", shortcut: "Ctrl Alt 2" },
+  { value: 3, label: "标题 3", shortcut: "Ctrl Alt 3" },
+  { value: 4, label: "标题 4", shortcut: "Ctrl Alt 4" },
+  { value: 5, label: "标题 5", shortcut: "Ctrl Alt 5" },
+  { value: 6, label: "标题 6", shortcut: "Ctrl Alt 6" },
 ];
 
 /** 工具栏默认色：字体红、背景黄 */
@@ -201,9 +201,22 @@ const BG_COLORS = [
   "#2f54eb",
 ];
 
+function formatShortcut(shortcut: string): string {
+  return shortcut
+    .split(" / ")
+    .map((part) => {
+      const trimmed = part.trim();
+      if (trimmed.endsWith("++")) {
+        return `${trimmed.slice(0, -2).split("+").join(" ")} +`;
+      }
+      return trimmed.split("+").join(" ");
+    })
+    .join(" / ");
+}
+
 function parseTipLabel(label: string): { tip: string; shortcut?: string } {
   const match = label.match(/^(.*?)（(.+)）$/);
-  if (match) return { tip: match[1].trim(), shortcut: match[2].trim() };
+  if (match) return { tip: match[1].trim(), shortcut: formatShortcut(match[2].trim()) };
   return { tip: label };
 }
 
@@ -421,7 +434,7 @@ function FontSizeSelect({ editor }: { editor: Editor }) {
 
   return (
     <div className="kb-fontsize-select" ref={rootRef}>
-      <KbTip label="字号调整（Alt+Ctrl++ / Alt+Ctrl+-）">
+      <KbTip label="字号调整（Alt Ctrl + / Alt Ctrl -）">
         <button
           aria-expanded={open}
           aria-haspopup="listbox"
@@ -510,7 +523,7 @@ function ColorPickerButton({
   return (
     <div className="kb-color-picker" ref={rootRef}>
       <div className="kb-color-split">
-        <KbTip label={mode === "text" ? "字体颜色（Alt+Ctrl+C）" : "背景颜色（Alt+Ctrl+H）"}>
+        <KbTip label={mode === "text" ? "字体颜色（Alt Ctrl C）" : "背景颜色（Alt Ctrl H）"}>
           <button
             aria-label={mode === "text" ? "应用字体颜色" : "应用背景颜色"}
             className="kb-toolbar-btn kb-color-apply"
@@ -609,7 +622,7 @@ function AlignSelect({ editor }: { editor: Editor }) {
   return (
     <div className="kb-align-select" ref={rootRef}>
       <div className="kb-align-split">
-        <KbTip label={`${activeOption?.label ?? "对齐"}（${activeOption?.shortcut ?? "Shift+Ctrl+L"}）`}>
+        <KbTip label={`${activeOption?.label ?? "对齐"}（${activeOption?.shortcut ?? "Shift Ctrl L"}）`}>
           <button
             aria-label="应用对齐"
             className="kb-toolbar-btn kb-align-apply"
@@ -892,16 +905,16 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         <BlockStyleSelect editor={editor} />
         <FontSizeSelect editor={editor} />
         <span className="kb-toolbar-sep" />
-        <ToolbarButton active={editor.isActive("bold")} label="加粗（Ctrl+B）" onClick={() => editor.chain().focus().toggleBold().run()}>
+        <ToolbarButton active={editor.isActive("bold")} label="加粗（Ctrl B）" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("italic")} label="斜体（Ctrl+I）" onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ToolbarButton active={editor.isActive("italic")} label="斜体（Ctrl I）" onClick={() => editor.chain().focus().toggleItalic().run()}>
           <Italic size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("underline")} label="下划线（Ctrl+U）" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <ToolbarButton active={editor.isActive("underline")} label="下划线（Ctrl U）" onClick={() => editor.chain().focus().toggleUnderline().run()}>
           <span className="kb-toolbar-underline-icon">U</span>
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("strike")} label="删除线（Shift+Ctrl+X）" onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <ToolbarButton active={editor.isActive("strike")} label="删除线（Shift Ctrl X）" onClick={() => editor.chain().focus().toggleStrike().run()}>
           <Strikethrough size={15} />
         </ToolbarButton>
         <ToolbarButton active={editor.isActive("code")} label="行内代码" onClick={() => editor.chain().focus().toggleCode().run()}>
@@ -910,30 +923,30 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         <ColorPickerButton editor={editor} mode="text" />
         <ColorPickerButton editor={editor} mode="background" />
         <AlignSelect editor={editor} />
-        <ToolbarButton label="清除格式（Ctrl+/）" onClick={() => clearFormatting(editor)}>
+        <ToolbarButton label="清除格式（Ctrl /）" onClick={() => clearFormatting(editor)}>
           <RemoveFormatting size={15} />
         </ToolbarButton>
         <span className="kb-toolbar-sep" />
-        <ToolbarButton active={editor.isActive("bulletList")} label="无序列表（Shift+Ctrl+8）" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <ToolbarButton active={editor.isActive("bulletList")} label="无序列表（Shift Ctrl 8）" onClick={() => editor.chain().focus().toggleBulletList().run()}>
           <List size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("orderedList")} label="有序列表（Shift+Ctrl+7）" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ToolbarButton active={editor.isActive("orderedList")} label="有序列表（Shift Ctrl 7）" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           <ListOrdered size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("taskList")} label="待办列表（Alt+Ctrl+T）" onClick={() => editor.chain().focus().toggleTaskList().run()}>
+        <ToolbarButton active={editor.isActive("taskList")} label="待办列表（Alt Ctrl T）" onClick={() => editor.chain().focus().toggleTaskList().run()}>
           <CheckSquare size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("blockquote")} label="引用（Shift+Ctrl+U）" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <ToolbarButton active={editor.isActive("blockquote")} label="引用（Shift Ctrl U）" onClick={() => editor.chain().focus().toggleBlockquote().run()}>
           <Quote size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("codeBlock")} label="代码块（Ctrl+E）" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+        <ToolbarButton active={editor.isActive("codeBlock")} label="代码块（Ctrl E）" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
           <Code2 size={15} />
         </ToolbarButton>
         <span className="kb-toolbar-sep" />
-        <ToolbarButton label="分割线（Alt+Ctrl+S）" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+        <ToolbarButton label="分割线（Alt Ctrl S）" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
           <Minus size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("link")} label="链接（Ctrl+K）" onClick={() => promptLink(editor)}>
+        <ToolbarButton active={editor.isActive("link")} label="链接（Ctrl K）" onClick={() => promptLink(editor)}>
           <Link2 size={15} />
         </ToolbarButton>
         <ToolbarButton label="图片" onClick={addImage}>
