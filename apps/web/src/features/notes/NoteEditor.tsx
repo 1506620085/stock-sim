@@ -420,41 +420,19 @@ function FontSizeSelect({ editor }: { editor: Editor }) {
 
   return (
     <div className="kb-fontsize-select" ref={rootRef}>
-      <div className="kb-fontsize-split">
-        <KbTip label="减小字号（Alt+Ctrl+-）">
-          <button
-            aria-label="减小字号"
-            className="kb-toolbar-btn kb-fontsize-btn"
-            onClick={() => bumpFontSize(editor, -1)}
-            type="button"
-          >
-            <span className="kb-fontsize-icon shrink">A</span>
-          </button>
-        </KbTip>
-        <KbTip label={`字号 ${currentSize}px`}>
-          <button
-            aria-expanded={open}
-            aria-haspopup="listbox"
-            aria-label="选择字号"
-            className={open ? "kb-fontsize-trigger active" : "kb-fontsize-trigger"}
-            onClick={() => setOpen((value) => !value)}
-            type="button"
-          >
-            <span>{currentSize}</span>
-            <ChevronDown size={12} />
-          </button>
-        </KbTip>
-        <KbTip label="增大字号（Alt+Ctrl++）">
-          <button
-            aria-label="增大字号"
-            className="kb-toolbar-btn kb-fontsize-btn"
-            onClick={() => bumpFontSize(editor, 1)}
-            type="button"
-          >
-            <span className="kb-fontsize-icon grow">A</span>
-          </button>
-        </KbTip>
-      </div>
+      <KbTip label={`字号 ${currentSize}px（Alt+Ctrl++ / Alt+Ctrl+-）`}>
+        <button
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-label="选择字号"
+          className={open ? "kb-fontsize-trigger active" : "kb-fontsize-trigger"}
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+        >
+          <span>{currentSize}</span>
+          <ChevronDown size={12} />
+        </button>
+      </KbTip>
       {open ? (
         <div className="kb-fontsize-menu" role="listbox">
           {FONT_SIZES.map((size) => (

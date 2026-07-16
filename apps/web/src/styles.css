@@ -977,29 +977,6 @@ textarea {
   position: relative;
 }
 
-.kb-fontsize-split {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-}
-
-.kb-fontsize-btn {
-  width: 28px;
-}
-
-.kb-fontsize-icon {
-  font-weight: 700;
-  line-height: 1;
-}
-
-.kb-fontsize-icon.shrink {
-  font-size: 11px;
-}
-
-.kb-fontsize-icon.grow {
-  font-size: 16px;
-}
-
 .kb-fontsize-trigger {
   display: inline-flex;
   align-items: center;
