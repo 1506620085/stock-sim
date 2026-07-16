@@ -36,7 +36,6 @@ import {
   Strikethrough,
   Table2,
   CheckSquare,
-  Type,
 } from "lucide-react";
 import { parseEditorContent } from "./treeUtils";
 
@@ -336,7 +335,6 @@ function BlockStyleSelect({ editor }: { editor: Editor }) {
           onClick={() => setOpen((value) => !value)}
           type="button"
         >
-          <Type size={15} />
           <span>{activeLabel}</span>
           <ChevronDown size={12} />
         </button>
