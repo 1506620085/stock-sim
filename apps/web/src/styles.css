@@ -1414,18 +1414,25 @@ textarea {
   line-height: 1.75;
 }
 
+.kb-editor .tiptap p.is-empty::before,
 .kb-editor .tiptap p.is-editor-empty::before,
+.kb-editor .tiptap h1.is-empty::before,
 .kb-editor .tiptap h1.is-editor-empty::before {
   float: left;
   height: 0;
   color: #c9cdd4;
   content: attr(data-placeholder);
   pointer-events: none;
+  user-select: none;
 }
 
+.kb-editor .tiptap > h1:first-child.is-empty::before,
 .kb-editor .tiptap > h1:first-child.is-editor-empty::before {
   color: #c9cdd4;
+  font-size: 44px;
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .kb-editor .tiptap h1,
@@ -1441,6 +1448,7 @@ textarea {
 /* 文档标题：首行 H1，语雀/Notion 风格 */
 .kb-editor .tiptap > h1:first-child {
   margin: 0 0 28px;
+  min-height: calc(44px * 1.2);
   color: #1f2329;
   font-size: 44px;
   font-weight: 700;

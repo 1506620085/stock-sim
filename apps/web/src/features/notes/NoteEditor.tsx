@@ -839,6 +839,8 @@ export function NoteEditor({ noteId, content, documentTitle = "", saveState = "i
       Placeholder.configure({
         showOnlyWhenEditable: true,
         showOnlyCurrent: false,
+        emptyNodeClass: "is-empty",
+        emptyEditorClass: "is-editor-empty",
         placeholder: ({ node, pos, editor }) => {
           if (node.type.name === "heading" && Number(node.attrs.level) === 1 && pos === 0) {
             return "请输入标题";
