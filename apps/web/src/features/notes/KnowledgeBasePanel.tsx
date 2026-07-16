@@ -21,9 +21,11 @@ import {
 import { NoteEditor } from "./NoteEditor";
 import {
   buildKnowledgeTree,
+  displayTitle,
   emptyDocContent,
   findNodeDepth,
   flattenVisibleTree,
+  setDocTitleInBody,
 } from "./treeUtils";
 import type { KnowledgeTreeNode, TradingRule } from "./types";
 
@@ -39,11 +41,9 @@ export function KnowledgeBasePanel() {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [menuId, setMenuId] = useState<number | null>(null);
-  const [titleDraft, setTitleDraft] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [dragId, setDragId] = useState<number | null>(null);
-  const titleTimer = useRef<number | null>(null);
-  const bodyTimer = useRef<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const tree = useMemo(() => buildKnowledgeTree(nodes), [nodes]);
@@ -98,10 +98,6 @@ export function KnowledgeBasePanel() {
   }, []);
 
   useEffect(() => {
-    setTitleDraft(selected?.title ?? "");
-  }, [selected?.id, selected?.title]);
-
-  useEffect(() => {
     function onDocClick(event: MouseEvent) {
       if (!menuRef.current?.contains(event.target as Node)) {
         setMenuId(null);
@@ -113,8 +109,7 @@ export function KnowledgeBasePanel() {
 
   useEffect(() => {
     return () => {
-      if (titleTimer.current) window.clearTimeout(titleTimer.current);
-      if (bodyTimer.current) window.clearTimeout(bodyTimer.current);
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
     };
   }, []);
 
@@ -171,11 +166,22 @@ export function KnowledgeBasePanel() {
   }
 
   async function commitRename(id: number) {
-    const title = renameDraft.trim() || "未命名";
-    setRenamingId(null);
     const current = nodes.find((item) => item.id === id);
-    if (!current || current.title === title) return;
-    const updated = await updateTradingRule(id, { title });
+    if (!current) {
+      setRenamingId(null);
+      return;
+    }
+    const title =
+      renameDraft.trim() || (current.nodeType === "folder" ? "未命名" : "无标题笔记");
+    setRenamingId(null);
+    if (current.title === title) return;
+
+    const patch: { title: string; body?: string } = { title };
+    if (current.nodeType === "doc") {
+      patch.body = setDocTitleInBody(current.body, title === "无标题笔记" ? "" : title);
+    }
+
+    const updated = await updateTradingRule(id, patch);
     setNodes((items) => items.map((item) => (item.id === id ? updated : item)));
   }
 
@@ -190,33 +196,18 @@ export function KnowledgeBasePanel() {
     await refresh(selectedId === id ? null : selectedId);
   }
 
-  function scheduleTitleSave(id: number, title: string) {
-    setTitleDraft(title);
-    setNodes((items) => items.map((item) => (item.id === id ? { ...item, title } : item)));
-    if (titleTimer.current) window.clearTimeout(titleTimer.current);
-    titleTimer.current = window.setTimeout(() => {
+  function scheduleDocSave(id: number, body: string, title: string) {
+    const nextTitle = displayTitle(title);
+    setNodes((items) => items.map((item) => (item.id === id ? { ...item, body, title: nextTitle } : item)));
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
       void (async () => {
         setSaveState("saving");
         try {
-          const updated = await updateTradingRule(id, { title: title.trim() || "无标题笔记" });
-          setNodes((items) => items.map((item) => (item.id === id ? updated : item)));
-          setSaveState("saved");
-        } catch {
-          setSaveState("idle");
-        }
-      })();
-    }, SAVE_DEBOUNCE_MS);
-  }
-
-  function scheduleBodySave(id: number, body: string) {
-    setNodes((items) => items.map((item) => (item.id === id ? { ...item, body } : item)));
-    if (bodyTimer.current) window.clearTimeout(bodyTimer.current);
-    bodyTimer.current = window.setTimeout(() => {
-      void (async () => {
-        setSaveState("saving");
-        try {
-          const updated = await updateTradingRule(id, { body });
-          setNodes((items) => items.map((item) => (item.id === id ? { ...item, updatedAt: updated.updatedAt } : item)));
+          const updated = await updateTradingRule(id, { body, title: nextTitle });
+          setNodes((items) =>
+            items.map((item) => (item.id === id ? { ...item, title: updated.title, updatedAt: updated.updatedAt } : item)),
+          );
           setSaveState("saved");
         } catch {
           setSaveState("idle");
@@ -468,25 +459,14 @@ export function KnowledgeBasePanel() {
               <p>选择一篇笔记开始编辑，或新建笔记。</p>
             </div>
           ) : (
-            <>
-              <div className="kb-doc-header">
-                <input
-                  className="kb-doc-title"
-                  onChange={(event) => scheduleTitleSave(selected.id, event.target.value)}
-                  placeholder="无标题笔记"
-                  value={titleDraft}
-                />
-                <span className="kb-save-state" aria-live="polite">
-                  {saveState === "saving" ? "保存中…" : saveState === "saved" ? "已自动保存" : ""}
-                </span>
-              </div>
-              <NoteEditor
-                content={selected.body}
-                key={selected.id}
-                noteId={selected.id}
-                onChange={(json) => scheduleBodySave(selected.id, json)}
-              />
-            </>
+            <NoteEditor
+              content={selected.body}
+              documentTitle={selected.title}
+              key={selected.id}
+              noteId={selected.id}
+              onChange={(json, title) => scheduleDocSave(selected.id, json, title)}
+              saveState={saveState}
+            />
           )}
         </div>
       </div>

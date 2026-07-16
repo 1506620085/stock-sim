@@ -44,12 +44,16 @@ import {
   Unlink,
 } from "lucide-react";
 import { showError, showSuccess } from "../../components/ToastProvider";
-import { parseEditorContent } from "./treeUtils";
+import { DocumentTitle, isInDocumentTitle } from "./DocumentTitle";
+import { displayTitle, extractTitleFromDoc, parseEditorContent } from "./treeUtils";
 
 type NoteEditorProps = {
   noteId: number;
   content: string;
-  onChange: (json: string) => void;
+  /** 侧栏标题，用于无 H1 旧数据回填，以及侧栏重命名同步 */
+  documentTitle?: string;
+  saveState?: "idle" | "saving" | "saved";
+  onChange: (json: string, title: string) => void;
 };
 
 type BlockStyle = "paragraph" | 1 | 2 | 3 | 4 | 5 | 6;
@@ -314,6 +318,11 @@ function getActiveBlockStyle(editor: Editor): BlockStyle {
 }
 
 function applyBlockStyle(editor: Editor, style: BlockStyle) {
+  // 首行标题固定为 H1，禁止降级或改成正文
+  if (isInDocumentTitle(editor.state)) {
+    if (style === 1) return;
+    return;
+  }
   if (style === "paragraph") {
     editor.chain().focus().setParagraph().run();
     return;
@@ -322,7 +331,30 @@ function applyBlockStyle(editor: Editor, style: BlockStyle) {
 }
 
 function clearFormatting(editor: Editor) {
+  if (isInDocumentTitle(editor.state)) {
+    editor.chain().focus().unsetAllMarks().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run();
+    return;
+  }
   editor.chain().focus().clearNodes().unsetAllMarks().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run();
+}
+
+function syncTitleNode(editor: Editor, title: string) {
+  const { state } = editor;
+  const first = state.doc.firstChild;
+  if (!first || first.type.name !== "heading") return;
+  const next = title.trim();
+  const current = first.textContent;
+  if (current === next) return;
+
+  const from = 1;
+  const to = first.nodeSize - 1;
+  const tr = state.tr;
+  if (next) {
+    tr.replaceWith(from, to, state.schema.text(next));
+  } else if (to > from) {
+    tr.delete(from, to);
+  }
+  editor.view.dispatch(tr);
 }
 
 function getCurrentFontSize(editor: Editor): number {
@@ -784,7 +816,7 @@ function AlignSelect({ editor }: { editor: Editor }) {
   );
 }
 
-export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
+export function NoteEditor({ noteId, content, documentTitle = "", saveState = "idle", onChange }: NoteEditorProps) {
   const [linkModal, setLinkModal] = useState<LinkModalState | null>(null);
   const [linkHover, setLinkHover] = useState<LinkHoverState | null>(null);
   const linkUrlRef = useRef<HTMLInputElement | null>(null);
@@ -793,6 +825,8 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
   const hoveredAnchorRef = useRef<HTMLElement | null>(null);
   const linkModalRef = useRef<LinkModalState | null>(null);
   const openLinkModalRef = useRef<() => void>(() => undefined);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   linkModalRef.current = linkModal;
 
@@ -801,7 +835,21 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
       }),
-      Placeholder.configure({ placeholder: "开始写作，支持 Markdown 快捷输入…" }),
+      DocumentTitle,
+      Placeholder.configure({
+        showOnlyWhenEditable: true,
+        showOnlyCurrent: false,
+        placeholder: ({ node, pos, editor }) => {
+          if (node.type.name === "heading" && Number(node.attrs.level) === 1 && pos === 0) {
+            return "请输入标题";
+          }
+          const title = editor.state.doc.firstChild;
+          if (node.type.name === "paragraph" && title && pos === title.nodeSize) {
+            return "开始写作，支持 Markdown 快捷输入…";
+          }
+          return "";
+        },
+      }),
       Underline,
       TextStyle,
       FontSize,
@@ -827,14 +875,15 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       TaskList,
       TaskItem.configure({ nested: true }),
     ],
-    content: parseEditorContent(content),
+    content: parseEditorContent(content, documentTitle),
     editorProps: {
       attributes: {
         class: "kb-editor-content",
       },
     },
     onUpdate: ({ editor: current }) => {
-      onChange(JSON.stringify(current.getJSON()));
+      const json = current.getJSON() as Record<string, unknown>;
+      onChangeRef.current(JSON.stringify(json), displayTitle(extractTitleFromDoc(json)));
     },
   });
 
@@ -849,12 +898,22 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
 
   useEffect(() => {
     if (!editor) return;
-    const next = parseEditorContent(content);
+    const next = parseEditorContent(content, documentTitle);
     const current = JSON.stringify(editor.getJSON());
     if (current !== JSON.stringify(next)) {
       editor.commands.setContent(next, { emitUpdate: false });
     }
   }, [noteId]);
+
+  // 侧栏重命名时同步首行 H1（避免与输入过程互相抢写）
+  useEffect(() => {
+    if (!editor) return;
+    const fromEditor = extractTitleFromDoc(editor.getJSON() as Record<string, unknown>);
+    const next = documentTitle.trim();
+    if (displayTitle(fromEditor) === displayTitle(next) || fromEditor === next) return;
+    if (editor.view.hasFocus() && isInDocumentTitle(editor.state)) return;
+    syncTitleNode(editor, next === "无标题笔记" ? "" : next);
+  }, [documentTitle, editor]);
 
   useEffect(() => {
     if (!linkModal) return;
@@ -1270,6 +1329,10 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         <ToolbarButton label="表格" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
           <Table2 size={15} />
         </ToolbarButton>
+        <span className="kb-toolbar-spacer" />
+        <span className="kb-save-state" aria-live="polite">
+          {saveState === "saving" ? "保存中…" : saveState === "saved" ? "已自动保存" : ""}
+        </span>
       </div>
       <div className="kb-editor-body">
         <EditorContent editor={editor} />

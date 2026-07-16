@@ -6,13 +6,20 @@ export const USE_RULES_MOCK = true;
 
 const now = () => new Date().toISOString();
 
-function docBody(paragraphs: string[]): string {
+function docBody(title: string, paragraphs: string[]): string {
   return JSON.stringify({
     type: "doc",
-    content: paragraphs.map((text) => ({
-      type: "paragraph",
-      content: text ? [{ type: "text", text }] : undefined,
-    })),
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        content: title ? [{ type: "text", text: title }] : undefined,
+      },
+      ...paragraphs.map((text) => ({
+        type: "paragraph",
+        content: text ? [{ type: "text", text }] : undefined,
+      })),
+    ],
   });
 }
 
@@ -91,7 +98,7 @@ const seedRules: TradingRule[] = [
         {
           type: "heading",
           attrs: { level: 1 },
-          content: [{ type: "text", text: "MACD 金叉" }],
+          content: [{ type: "text", text: "MACD 金叉买入策略" }],
         },
         {
           type: "paragraph",
@@ -134,7 +141,7 @@ const seedRules: TradingRule[] = [
   {
     id: 7,
     title: "跌破均线减仓",
-    body: docBody([
+    body: docBody("跌破均线减仓", [
       "收盘跌破 20 日均线且放量时，先减掉一半仓位。",
       "若次日无法收回均线，继续清到底仓。",
     ]),
@@ -150,7 +157,7 @@ const seedRules: TradingRule[] = [
   {
     id: 8,
     title: "单票仓位上限",
-    body: docBody(["单票仓位不超过总资金 20%。", "同一板块合计不超过 40%。"]),
+    body: docBody("单票仓位上限", ["单票仓位不超过总资金 20%。", "同一板块合计不超过 40%。"]),
     category: "position",
     status: "active",
     tags: ["仓位"],
@@ -163,7 +170,7 @@ const seedRules: TradingRule[] = [
   {
     id: 9,
     title: "2026-07-01",
-    body: docBody(["复盘：今日纪律执行较好，未追涨。", "下次关注量能是否配合。"]),
+    body: docBody("2026-07-01", ["复盘：今日纪律执行较好，未追涨。", "下次关注量能是否配合。"]),
     category: "other",
     status: "active",
     tags: ["复盘"],
@@ -176,7 +183,7 @@ const seedRules: TradingRule[] = [
   {
     id: 10,
     title: "2026-07-02",
-    body: docBody(["情绪偏急，差点提前入场。", "等确认后再动手。"]),
+    body: docBody("2026-07-02", ["情绪偏急，差点提前入场。", "等确认后再动手。"]),
     category: "other",
     status: "active",
     tags: ["情绪"],
