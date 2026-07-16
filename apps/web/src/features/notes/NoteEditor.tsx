@@ -27,6 +27,7 @@ import {
   Minus,
   Palette,
   Quote,
+  RemoveFormatting,
   Strikethrough,
   Table2,
   CheckSquare,
@@ -220,6 +221,10 @@ function applyBlockStyle(editor: Editor, style: BlockStyle) {
     return;
   }
   editor.chain().focus().setHeading({ level: style }).run();
+}
+
+function clearFormatting(editor: Editor) {
+  editor.chain().focus().clearNodes().unsetAllMarks().run();
 }
 
 function BlockStyleSelect({ editor }: { editor: Editor }) {
@@ -446,6 +451,11 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
     if (!editor) return;
 
     function onKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key === "/") {
+        event.preventDefault();
+        clearFormatting(editor!);
+        return;
+      }
       if (!(event.altKey && event.ctrlKey) || event.metaKey || event.shiftKey) return;
       const key = event.key;
       if (key === "0") {
@@ -502,6 +512,9 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         </ToolbarButton>
         <ColorPickerButton editor={editor} mode="text" />
         <ColorPickerButton editor={editor} mode="background" />
+        <ToolbarButton label="清除格式（Ctrl+/）" onClick={() => clearFormatting(editor)}>
+          <RemoveFormatting size={15} />
+        </ToolbarButton>
         <span className="kb-toolbar-sep" />
         <ToolbarButton active={editor.isActive("bulletList")} label="无序列表" onClick={() => editor.chain().focus().toggleBulletList().run()}>
           <List size={15} />
