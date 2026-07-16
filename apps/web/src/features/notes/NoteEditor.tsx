@@ -18,9 +18,6 @@ import {
   Bold,
   ChevronDown,
   Code2,
-  Heading1,
-  Heading2,
-  Heading3,
   Highlighter,
   ImageIcon,
   Italic,
@@ -33,6 +30,7 @@ import {
   Strikethrough,
   Table2,
   CheckSquare,
+  Type,
 } from "lucide-react";
 import { parseEditorContent } from "./treeUtils";
 
@@ -41,6 +39,18 @@ type NoteEditorProps = {
   content: string;
   onChange: (json: string) => void;
 };
+
+type BlockStyle = "paragraph" | 1 | 2 | 3 | 4 | 5 | 6;
+
+const BLOCK_STYLE_OPTIONS: Array<{ value: BlockStyle; label: string; shortcut: string }> = [
+  { value: "paragraph", label: "正文", shortcut: "Ctrl+Alt+0" },
+  { value: 1, label: "标题 1", shortcut: "Ctrl+Alt+1" },
+  { value: 2, label: "标题 2", shortcut: "Ctrl+Alt+2" },
+  { value: 3, label: "标题 3", shortcut: "Ctrl+Alt+3" },
+  { value: 4, label: "标题 4", shortcut: "Ctrl+Alt+4" },
+  { value: 5, label: "标题 5", shortcut: "Ctrl+Alt+5" },
+  { value: 6, label: "标题 6", shortcut: "Ctrl+Alt+6" },
+];
 
 /** 工具栏默认色：字体红、背景黄 */
 const DEFAULT_TEXT_COLOR = "#f53f3f";
@@ -197,6 +207,89 @@ function ToolbarButton({
   );
 }
 
+function getActiveBlockStyle(editor: Editor): BlockStyle {
+  for (const level of [1, 2, 3, 4, 5, 6] as const) {
+    if (editor.isActive("heading", { level })) return level;
+  }
+  return "paragraph";
+}
+
+function applyBlockStyle(editor: Editor, style: BlockStyle) {
+  if (style === "paragraph") {
+    editor.chain().focus().setParagraph().run();
+    return;
+  }
+  editor.chain().focus().setHeading({ level: style }).run();
+}
+
+function BlockStyleSelect({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const [, setTick] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const active = getActiveBlockStyle(editor);
+  const activeLabel = BLOCK_STYLE_OPTIONS.find((item) => item.value === active)?.label ?? "正文";
+
+  useEffect(() => {
+    function onDocClick(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setTick((value) => value + 1);
+    editor.on("selectionUpdate", refresh);
+    editor.on("transaction", refresh);
+    return () => {
+      editor.off("selectionUpdate", refresh);
+      editor.off("transaction", refresh);
+    };
+  }, [editor]);
+
+  return (
+    <div className="kb-block-select" ref={rootRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label="正文与标题"
+        className={open ? "kb-block-select-trigger active" : "kb-block-select-trigger"}
+        onClick={() => setOpen((value) => !value)}
+        title="正文 / 标题"
+        type="button"
+      >
+        <Type size={15} />
+        <span>{activeLabel}</span>
+        <ChevronDown size={12} />
+      </button>
+      {open ? (
+        <div className="kb-block-menu" role="listbox">
+          {BLOCK_STYLE_OPTIONS.map((item) => (
+            <button
+              aria-selected={active === item.value}
+              className={active === item.value ? "kb-block-option active" : "kb-block-option"}
+              key={String(item.value)}
+              onClick={() => {
+                applyBlockStyle(editor, item.value);
+                setOpen(false);
+              }}
+              role="option"
+              type="button"
+            >
+              <span className={`kb-block-option-label level-${item.value === "paragraph" ? "p" : item.value}`}>
+                {item.label}
+              </span>
+              <span className="kb-block-option-shortcut">{item.shortcut}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ColorPickerButton({
   editor,
   mode,
@@ -349,6 +442,28 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
     }
   }, [noteId]);
 
+  useEffect(() => {
+    if (!editor) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.altKey && event.ctrlKey) || event.metaKey || event.shiftKey) return;
+      const key = event.key;
+      if (key === "0") {
+        event.preventDefault();
+        applyBlockStyle(editor!, "paragraph");
+        return;
+      }
+      if (key >= "1" && key <= "6") {
+        event.preventDefault();
+        applyBlockStyle(editor!, Number(key) as 1 | 2 | 3 | 4 | 5 | 6);
+      }
+    }
+
+    const dom = editor.view.dom;
+    dom.addEventListener("keydown", onKeyDown);
+    return () => dom.removeEventListener("keydown", onKeyDown);
+  }, [editor]);
+
   if (!editor) return null;
 
   function setLink() {
@@ -371,15 +486,7 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
   return (
     <div className="kb-editor">
       <div className="kb-toolbar" role="toolbar" aria-label="编辑工具栏">
-        <ToolbarButton active={editor.isActive("heading", { level: 1 })} label="标题 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-          <Heading1 size={15} />
-        </ToolbarButton>
-        <ToolbarButton active={editor.isActive("heading", { level: 2 })} label="标题 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-          <Heading2 size={15} />
-        </ToolbarButton>
-        <ToolbarButton active={editor.isActive("heading", { level: 3 })} label="标题 3" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-          <Heading3 size={15} />
-        </ToolbarButton>
+        <BlockStyleSelect editor={editor} />
         <span className="kb-toolbar-sep" />
         <ToolbarButton active={editor.isActive("bold")} label="加粗" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={15} />
