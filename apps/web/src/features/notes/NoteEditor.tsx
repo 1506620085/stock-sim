@@ -11,7 +11,7 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import { TextStyle } from "@tiptap/extension-text-style";
+import { TextStyle, FontSize } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
@@ -48,6 +48,9 @@ type NoteEditorProps = {
 type BlockStyle = "paragraph" | 1 | 2 | 3 | 4 | 5 | 6;
 
 type AlignValue = "left" | "center" | "right" | "justify";
+
+const DEFAULT_FONT_SIZE = 15;
+const FONT_SIZES = [12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48];
 
 const ALIGN_OPTIONS: Array<{ value: AlignValue; label: string; shortcut: string; icon: typeof AlignLeft }> = [
   { value: "left", label: "左对齐", shortcut: "Shift+Ctrl+L", icon: AlignLeft },
@@ -279,7 +282,31 @@ function applyBlockStyle(editor: Editor, style: BlockStyle) {
 }
 
 function clearFormatting(editor: Editor) {
-  editor.chain().focus().clearNodes().unsetAllMarks().run();
+  editor.chain().focus().clearNodes().unsetAllMarks().unsetFontSize().run();
+}
+
+function getCurrentFontSize(editor: Editor): number {
+  const raw = editor.getAttributes("textStyle").fontSize as string | undefined;
+  if (!raw) return DEFAULT_FONT_SIZE;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_FONT_SIZE;
+}
+
+function setFontSizePx(editor: Editor, size: number) {
+  editor.chain().focus().setFontSize(`${size}px`).run();
+}
+
+function bumpFontSize(editor: Editor, direction: 1 | -1) {
+  const current = getCurrentFontSize(editor);
+  let index = FONT_SIZES.findIndex((size) => size === current);
+  if (index < 0) {
+    index = FONT_SIZES.findIndex((size) => size > current);
+    if (index < 0) index = FONT_SIZES.length - 1;
+    else if (direction < 0) index = Math.max(0, index - 1);
+  } else {
+    index = Math.min(FONT_SIZES.length - 1, Math.max(0, index + direction));
+  }
+  setFontSizePx(editor, FONT_SIZES[index]);
 }
 
 function promptLink(editor: Editor) {
@@ -357,6 +384,92 @@ function BlockStyleSelect({ editor }: { editor: Editor }) {
                 {item.label}
               </span>
               <span className="kb-block-option-shortcut">{item.shortcut}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FontSizeSelect({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const [, setTick] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const currentSize = getCurrentFontSize(editor);
+
+  useEffect(() => {
+    function onDocClick(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setTick((value) => value + 1);
+    editor.on("selectionUpdate", refresh);
+    editor.on("transaction", refresh);
+    return () => {
+      editor.off("selectionUpdate", refresh);
+      editor.off("transaction", refresh);
+    };
+  }, [editor]);
+
+  return (
+    <div className="kb-fontsize-select" ref={rootRef}>
+      <div className="kb-fontsize-split">
+        <KbTip label="减小字号（Alt+Ctrl+-）">
+          <button
+            aria-label="减小字号"
+            className="kb-toolbar-btn kb-fontsize-btn"
+            onClick={() => bumpFontSize(editor, -1)}
+            type="button"
+          >
+            <span className="kb-fontsize-icon shrink">A</span>
+          </button>
+        </KbTip>
+        <KbTip label={`字号 ${currentSize}px`}>
+          <button
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            aria-label="选择字号"
+            className={open ? "kb-fontsize-trigger active" : "kb-fontsize-trigger"}
+            onClick={() => setOpen((value) => !value)}
+            type="button"
+          >
+            <span>{currentSize}</span>
+            <ChevronDown size={12} />
+          </button>
+        </KbTip>
+        <KbTip label="增大字号（Alt+Ctrl++）">
+          <button
+            aria-label="增大字号"
+            className="kb-toolbar-btn kb-fontsize-btn"
+            onClick={() => bumpFontSize(editor, 1)}
+            type="button"
+          >
+            <span className="kb-fontsize-icon grow">A</span>
+          </button>
+        </KbTip>
+      </div>
+      {open ? (
+        <div className="kb-fontsize-menu" role="listbox">
+          {FONT_SIZES.map((size) => (
+            <button
+              aria-selected={currentSize === size}
+              className={currentSize === size ? "kb-fontsize-option active" : "kb-fontsize-option"}
+              key={size}
+              onClick={() => {
+                setFontSizePx(editor, size);
+                setOpen(false);
+              }}
+              role="option"
+              type="button"
+            >
+              <span style={{ fontSize: Math.min(size, 22) }}>{size}px</span>
             </button>
           ))}
         </div>
@@ -577,6 +690,7 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       Placeholder.configure({ placeholder: "开始写作，支持 Markdown 快捷输入…" }),
       Underline,
       TextStyle,
+      FontSize,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({
@@ -719,6 +833,25 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         return;
       }
 
+      // Alt+Ctrl++ 增大字号 / Alt+Ctrl+- 减小字号
+      if (
+        altKey &&
+        (code === "Equal" || code === "NumpadAdd" || event.key === "+" || event.key === "=")
+      ) {
+        event.preventDefault();
+        bumpFontSize(editor!, 1);
+        return;
+      }
+      if (
+        altKey &&
+        !shiftKey &&
+        (code === "Minus" || code === "NumpadSubtract" || event.key === "-" || event.key === "_")
+      ) {
+        event.preventDefault();
+        bumpFontSize(editor!, -1);
+        return;
+      }
+
       // Alt+Ctrl+C 字体颜色（默认红）
       if (altKey && !shiftKey && code === "KeyC") {
         event.preventDefault();
@@ -778,6 +911,7 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
     <div className="kb-editor">
       <div className="kb-toolbar" role="toolbar" aria-label="编辑工具栏">
         <BlockStyleSelect editor={editor} />
+        <FontSizeSelect editor={editor} />
         <span className="kb-toolbar-sep" />
         <ToolbarButton active={editor.isActive("bold")} label="加粗（Ctrl+B）" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={15} />

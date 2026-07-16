@@ -973,6 +973,86 @@ textarea {
   white-space: nowrap;
 }
 
+.kb-fontsize-select {
+  position: relative;
+}
+
+.kb-fontsize-split {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.kb-fontsize-btn {
+  width: 28px;
+}
+
+.kb-fontsize-icon {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.kb-fontsize-icon.shrink {
+  font-size: 11px;
+}
+
+.kb-fontsize-icon.grow {
+  font-size: 16px;
+}
+
+.kb-fontsize-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  min-width: 48px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #4e5969;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kb-fontsize-trigger:hover,
+.kb-fontsize-trigger.active {
+  background: #eef0f3;
+  color: #1f2329;
+}
+
+.kb-fontsize-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  max-height: 260px;
+  min-width: 96px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.kb-fontsize-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #1f2329;
+  cursor: pointer;
+  text-align: left;
+}
+
+.kb-fontsize-option:hover,
+.kb-fontsize-option.active {
+  background: #eef0f3;
+}
+
 .kb-toolbar-btn {
   position: relative;
   display: inline-flex;
