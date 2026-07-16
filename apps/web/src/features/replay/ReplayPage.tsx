@@ -4,6 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Lo
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
+import { AppSwitch } from "../../components/AppSwitch";
 import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { QuoteSummary } from "./QuoteSummary";
@@ -552,10 +553,16 @@ export function ReplayPage() {
                 </button>
               </TooltipWrap>
               <TooltipWrap tip="仅显示复盘日及之前的 K 线，隐藏未来数据">
-                <label className="switch">
-                  <input checked={hideFuture} onChange={(event) => updateHideFuture(event.target.checked)} type="checkbox" />
+                <div className="switch">
                   <span>隐藏未来</span>
-                </label>
+                  <AppSwitch
+                    aria-label="隐藏未来"
+                    checked={hideFuture}
+                    checkedChildren="开启"
+                    onChange={updateHideFuture}
+                    unCheckedChildren="关闭"
+                  />
+                </div>
               </TooltipWrap>
             </div>
           </div>
