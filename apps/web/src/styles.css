@@ -444,12 +444,23 @@ textarea {
   transform: translateX(0);
 }
 
+.app-shell:has(.kb-shell) {
+  height: 100vh;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
 .workspace {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 16px;
   padding: 18px;
+}
+
+.workspace:has(.kb-shell) {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .topbar,
@@ -524,6 +535,12 @@ textarea {
   gap: 16px;
 }
 
+.notes-page:has(.kb-shell) {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
 .notes-panel {
   display: flex;
   min-width: 0;
@@ -535,7 +552,8 @@ textarea {
 .kb-shell {
   display: flex;
   min-width: 0;
-  min-height: min(72vh, 820px);
+  min-height: 0;
+  flex: 1;
   flex-direction: column;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -553,6 +571,7 @@ textarea {
 .kb-sidebar {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
   border-right: 1px solid var(--line);
   background: #fafbfc;
@@ -761,7 +780,9 @@ textarea {
   position: relative;
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
+  overflow: hidden;
   background: #fff;
 }
 
@@ -808,6 +829,22 @@ textarea {
 }
 
 .kb-editor {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kb-editor-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.kb-editor-body > div {
   display: flex;
   min-height: 0;
   flex: 1;
@@ -1377,13 +1414,12 @@ textarea {
 .kb-editor .tiptap,
 .kb-editor-content {
   flex: 1;
-  min-height: 360px;
+  min-height: 100%;
   padding: 18px 28px 40px;
   outline: 0;
   color: #1f2329;
   font-size: 15px;
   line-height: 1.75;
-  overflow: auto;
 }
 
 .kb-editor .tiptap p.is-editor-empty:first-child::before {

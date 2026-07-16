@@ -1271,7 +1271,9 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
           <Table2 size={15} />
         </ToolbarButton>
       </div>
-      <EditorContent editor={editor} />
+      <div className="kb-editor-body">
+        <EditorContent editor={editor} />
+      </div>
 
       {linkHover && !linkModal ? (
         <div
