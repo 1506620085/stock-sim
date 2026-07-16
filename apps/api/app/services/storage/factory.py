@@ -1,9 +1,5 @@
 from app.core.config import Settings
-from app.services.storage.aliyun_provider import AliyunOssStorageProvider
 from app.services.storage.base import StorageProvider
-from app.services.storage.minio_provider import MinioStorageProvider
-from app.services.storage.qiniu_provider import QiniuKodoStorageProvider
-from app.services.storage.tencent_provider import TencentCosStorageProvider
 
 SUPPORTED_STORAGE_TYPES = ("minio", "tencent", "aliyun", "qiniu")
 
@@ -18,6 +14,8 @@ def create_storage_provider(settings: Settings) -> StorageProvider:
     storage_type = settings.storage_type.lower().strip()
 
     if storage_type == "minio":
+        from app.services.storage.minio_provider import MinioStorageProvider
+
         return MinioStorageProvider(
             endpoint=settings.minio_endpoint,
             access_key=settings.minio_access_key,
@@ -28,6 +26,8 @@ def create_storage_provider(settings: Settings) -> StorageProvider:
         )
 
     if storage_type == "tencent":
+        from app.services.storage.tencent_provider import TencentCosStorageProvider
+
         return TencentCosStorageProvider(
             secret_id=_require(settings.tencent_secret_id, "TENCENT_SECRET_ID", storage_type),
             secret_key=_require(settings.tencent_secret_key, "TENCENT_SECRET_KEY", storage_type),
@@ -36,6 +36,8 @@ def create_storage_provider(settings: Settings) -> StorageProvider:
         )
 
     if storage_type == "aliyun":
+        from app.services.storage.aliyun_provider import AliyunOssStorageProvider
+
         return AliyunOssStorageProvider(
             endpoint=_require(settings.aliyun_endpoint, "ALIYUN_ENDPOINT", storage_type),
             access_key_id=_require(settings.aliyun_access_key_id, "ALIYUN_ACCESS_KEY_ID", storage_type),
@@ -44,6 +46,8 @@ def create_storage_provider(settings: Settings) -> StorageProvider:
         )
 
     if storage_type == "qiniu":
+        from app.services.storage.qiniu_provider import QiniuKodoStorageProvider
+
         return QiniuKodoStorageProvider(
             access_key=_require(settings.qiniu_access_key, "QINIU_ACCESS_KEY", storage_type),
             secret_key=_require(settings.qiniu_secret_key, "QINIU_SECRET_KEY", storage_type),
