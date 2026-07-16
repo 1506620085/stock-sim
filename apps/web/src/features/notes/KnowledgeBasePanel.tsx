@@ -196,24 +196,34 @@ export function KnowledgeBasePanel() {
     await refresh(selectedId === id ? null : selectedId);
   }
 
+  async function persistDocSave(id: number, body: string, title: string) {
+    const nextTitle = displayTitle(title);
+    setSaveState("saving");
+    setNodes((items) => items.map((item) => (item.id === id ? { ...item, body, title: nextTitle } : item)));
+    try {
+      const updated = await updateTradingRule(id, { body, title: nextTitle });
+      setNodes((items) =>
+        items.map((item) => (item.id === id ? { ...item, title: updated.title, updatedAt: updated.updatedAt } : item)),
+      );
+      setSaveState("saved");
+    } catch {
+      setSaveState("idle");
+    }
+  }
+
   function scheduleDocSave(id: number, body: string, title: string) {
     const nextTitle = displayTitle(title);
     setNodes((items) => items.map((item) => (item.id === id ? { ...item, body, title: nextTitle } : item)));
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      void (async () => {
-        setSaveState("saving");
-        try {
-          const updated = await updateTradingRule(id, { body, title: nextTitle });
-          setNodes((items) =>
-            items.map((item) => (item.id === id ? { ...item, title: updated.title, updatedAt: updated.updatedAt } : item)),
-          );
-          setSaveState("saved");
-        } catch {
-          setSaveState("idle");
-        }
-      })();
+      void persistDocSave(id, body, title);
     }, SAVE_DEBOUNCE_MS);
+  }
+
+  function manualDocSave(id: number, body: string, title: string) {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    void persistDocSave(id, body, title);
   }
 
   async function handleDrop(target: KnowledgeTreeNode) {
@@ -465,6 +475,7 @@ export function KnowledgeBasePanel() {
               key={selected.id}
               noteId={selected.id}
               onChange={(json, title) => scheduleDocSave(selected.id, json, title)}
+              onManualSave={(json, title) => manualDocSave(selected.id, json, title)}
               saveState={saveState}
             />
           )}

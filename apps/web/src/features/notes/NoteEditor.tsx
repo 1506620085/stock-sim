@@ -37,6 +37,7 @@ import {
   Palette,
   Pencil,
   Quote,
+  RefreshCw,
   RemoveFormatting,
   Strikethrough,
   Table2,
@@ -54,6 +55,7 @@ type NoteEditorProps = {
   documentTitle?: string;
   saveState?: "idle" | "saving" | "saved";
   onChange: (json: string, title: string) => void;
+  onManualSave?: (json: string, title: string) => void;
 };
 
 type BlockStyle = "paragraph" | 1 | 2 | 3 | 4 | 5 | 6;
@@ -816,7 +818,7 @@ function AlignSelect({ editor }: { editor: Editor }) {
   );
 }
 
-export function NoteEditor({ noteId, content, documentTitle = "", saveState = "idle", onChange }: NoteEditorProps) {
+export function NoteEditor({ noteId, content, documentTitle = "", saveState = "idle", onChange, onManualSave }: NoteEditorProps) {
   const [linkModal, setLinkModal] = useState<LinkModalState | null>(null);
   const [linkHover, setLinkHover] = useState<LinkHoverState | null>(null);
   const linkUrlRef = useRef<HTMLInputElement | null>(null);
@@ -1218,6 +1220,12 @@ export function NoteEditor({ noteId, content, documentTitle = "", saveState = "i
     setLinkModal(null);
   }
 
+  function handleManualSave() {
+    if (!editor || !onManualSave || saveState === "saving") return;
+    const json = editor.getJSON() as Record<string, unknown>;
+    onManualSave(JSON.stringify(json), displayTitle(extractTitleFromDoc(json)));
+  }
+
   function clearLinkHoverTimer() {
     if (linkHoverTimerRef.current) {
       window.clearTimeout(linkHoverTimerRef.current);
@@ -1278,6 +1286,17 @@ export function NoteEditor({ noteId, content, documentTitle = "", saveState = "i
   return (
     <div className="kb-editor">
       <div className="kb-toolbar" role="toolbar" aria-label="编辑工具栏">
+        <KbTip label="更新">
+          <button
+            aria-label="更新"
+            className={`kb-toolbar-btn${saveState === "saving" ? " active" : ""}`}
+            disabled={saveState === "saving"}
+            onClick={handleManualSave}
+            type="button"
+          >
+            <RefreshCw className={saveState === "saving" ? "kb-toolbar-spin" : undefined} size={15} />
+          </button>
+        </KbTip>
         <BlockStyleSelect editor={editor} />
         <FontSizeSelect editor={editor} />
         <span className="kb-toolbar-sep" />

@@ -1092,6 +1092,24 @@ textarea {
   color: #1664ff;
 }
 
+.kb-toolbar-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kb-toolbar-spin {
+  animation: kb-toolbar-spin 0.8s linear infinite;
+}
+
+@keyframes kb-toolbar-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .kb-toolbar-sep {
   width: 1px;
   height: 18px;
