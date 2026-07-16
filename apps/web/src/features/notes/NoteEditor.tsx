@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { getMarkRange } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
@@ -24,6 +25,8 @@ import {
   Bold,
   ChevronDown,
   Code2,
+  Copy,
+  ExternalLink,
   Highlighter,
   ImageIcon,
   Italic,
@@ -32,12 +35,15 @@ import {
   ListOrdered,
   Minus,
   Palette,
+  Pencil,
   Quote,
   RemoveFormatting,
   Strikethrough,
   Table2,
   CheckSquare,
+  Unlink,
 } from "lucide-react";
+import { showError, showSuccess } from "../../components/ToastProvider";
 import { parseEditorContent } from "./treeUtils";
 
 type NoteEditorProps = {
@@ -52,6 +58,26 @@ type AlignValue = "left" | "center" | "right" | "justify";
 
 const DEFAULT_FONT_SIZE = 15;
 const FONT_SIZES = [12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48];
+const LINK_COLOR = "#3C78E9";
+const DEFAULT_LINK_TEXT = "链接";
+
+type LinkModalState = {
+  text: string;
+  href: string;
+  from: number;
+  to: number;
+  top: number;
+  left: number;
+};
+
+type LinkHoverState = {
+  text: string;
+  href: string;
+  from: number;
+  to: number;
+  top: number;
+  left: number;
+};
 
 const ALIGN_OPTIONS: Array<{ value: AlignValue; label: string; shortcut: string; icon: typeof AlignLeft }> = [
   { value: "left", label: "左对齐", shortcut: "Shift Ctrl L", icon: AlignLeft },
@@ -323,15 +349,100 @@ function bumpFontSize(editor: Editor, direction: 1 | -1) {
   setFontSizePx(editor, FONT_SIZES[index]);
 }
 
-function promptLink(editor: Editor) {
-  const previous = editor.getAttributes("link").href as string | undefined;
-  const url = window.prompt("链接地址", previous ?? "https://");
-  if (url === null) return;
-  if (!url.trim()) {
-    editor.chain().focus().extendMarkRange("link").unsetLink().run();
-    return;
+function getLinkModalPosition(editor: Editor, from: number, to: number) {
+  const start = editor.view.coordsAtPos(from);
+  const end = editor.view.coordsAtPos(to);
+  return {
+    top: Math.max(start.bottom, end.bottom) + 10,
+    left: (start.left + end.left) / 2,
+  };
+}
+
+function getLinkRangeAt(editor: Editor, pos: number): { from: number; to: number; href: string } | null {
+  const linkType = editor.schema.marks.link;
+  if (!linkType) return null;
+
+  const { doc } = editor.state;
+  const candidates = [pos, Math.min(pos + 1, doc.content.size), Math.max(pos - 1, 0)];
+
+  for (const candidate of candidates) {
+    const $pos = doc.resolve(candidate);
+    const range = getMarkRange($pos, linkType);
+    if (!range) continue;
+
+    const mark = $pos.marks().find((item) => item.type === linkType)
+      ?? doc.resolve(range.from).marks().find((item) => item.type === linkType);
+    if (!mark) continue;
+
+    return {
+      from: range.from,
+      to: range.to,
+      href: (mark.attrs.href as string) || "",
+    };
   }
-  editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
+
+  return null;
+}
+
+function buildLinkModalAt(editor: Editor, from: number, to: number): LinkModalState {
+  const range = getLinkRangeAt(editor, from) ?? { from, to, href: "" };
+  const text = editor.state.doc.textBetween(range.from, range.to, "\n");
+  return {
+    text,
+    href: range.href,
+    from: range.from,
+    to: range.to,
+    ...getLinkModalPosition(editor, range.from, range.to),
+  };
+}
+
+function prepareLinkSelection(editor: Editor): Omit<LinkModalState, "top" | "left"> {
+  const { from, to, empty } = editor.state.selection;
+  const existingHref = (editor.getAttributes("link").href as string | undefined) || "";
+
+  if (empty) {
+    editor.chain().focus().insertContent(DEFAULT_LINK_TEXT).run();
+    const end = editor.state.selection.from;
+    const start = end - DEFAULT_LINK_TEXT.length;
+    editor.chain().focus().setTextSelection({ from: start, to: end }).setColor(LINK_COLOR).run();
+    return {
+      text: DEFAULT_LINK_TEXT,
+      href: existingHref,
+      from: start,
+      to: end,
+    };
+  }
+
+  const selectedText = editor.state.doc.textBetween(from, to, "\n");
+  editor.chain().focus().setTextSelection({ from, to }).setColor(LINK_COLOR).run();
+  return {
+    text: selectedText || DEFAULT_LINK_TEXT,
+    href: existingHref,
+    from,
+    to,
+  };
+}
+
+function applyLinkFromModal(editor: Editor, modal: LinkModalState) {
+  const nextText = modal.text.trim() || DEFAULT_LINK_TEXT;
+  const nextHref = modal.href.trim();
+  const marks: Array<{ type: string; attrs?: Record<string, string> }> = [
+    { type: "textStyle", attrs: { color: LINK_COLOR } },
+  ];
+  if (nextHref) {
+    marks.push({ type: "link", attrs: { href: nextHref } });
+  }
+
+  editor
+    .chain()
+    .focus()
+    .setTextSelection({ from: modal.from, to: modal.to })
+    .insertContent({
+      type: "text",
+      text: nextText,
+      marks,
+    })
+    .run();
 }
 
 function isMod(event: KeyboardEvent) {
@@ -674,6 +785,17 @@ function AlignSelect({ editor }: { editor: Editor }) {
 }
 
 export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
+  const [linkModal, setLinkModal] = useState<LinkModalState | null>(null);
+  const [linkHover, setLinkHover] = useState<LinkHoverState | null>(null);
+  const linkUrlRef = useRef<HTMLInputElement | null>(null);
+  const linkBubbleRef = useRef<HTMLDivElement | null>(null);
+  const linkHoverTimerRef = useRef<number | null>(null);
+  const hoveredAnchorRef = useRef<HTMLElement | null>(null);
+  const linkModalRef = useRef<LinkModalState | null>(null);
+  const openLinkModalRef = useRef<() => void>(() => undefined);
+
+  linkModalRef.current = linkModal;
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -690,7 +812,13 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         alignments: ["left", "center", "right", "justify"],
         defaultAlignment: "left",
       }),
-      Link.configure({ openOnClick: false }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: "kb-editor-link",
+          style: "color: #3C78E9; text-decoration: none;",
+        },
+      }),
       Image,
       Table.configure({ resizable: true }),
       TableRow,
@@ -710,6 +838,15 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
     },
   });
 
+  function openLinkModal() {
+    if (!editor) return;
+    const prepared = prepareLinkSelection(editor);
+    const position = getLinkModalPosition(editor, prepared.from, prepared.to);
+    setLinkModal({ ...prepared, ...position });
+  }
+
+  openLinkModalRef.current = openLinkModal;
+
   useEffect(() => {
     if (!editor) return;
     const next = parseEditorContent(content);
@@ -718,6 +855,121 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       editor.commands.setContent(next, { emitUpdate: false });
     }
   }, [noteId]);
+
+  useEffect(() => {
+    if (!linkModal) return;
+    hoveredAnchorRef.current?.classList.remove("kb-link-hover");
+    hoveredAnchorRef.current = null;
+    setLinkHover(null);
+  }, [linkModal]);
+
+  useEffect(() => {
+    if (!linkModal) return;
+    const timer = window.setTimeout(() => linkUrlRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [linkModal ? `${linkModal.from}-${linkModal.to}-${linkModal.top}-${linkModal.left}` : ""]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    function clearHoverTimer() {
+      if (linkHoverTimerRef.current) {
+        window.clearTimeout(linkHoverTimerRef.current);
+        linkHoverTimerRef.current = null;
+      }
+    }
+
+    function setHoveredAnchor(anchor: HTMLElement | null) {
+      if (hoveredAnchorRef.current && hoveredAnchorRef.current !== anchor) {
+        hoveredAnchorRef.current.classList.remove("kb-link-hover");
+      }
+      hoveredAnchorRef.current = anchor;
+      if (anchor) anchor.classList.add("kb-link-hover");
+    }
+
+    function hideLinkHover() {
+      clearHoverTimer();
+      setHoveredAnchor(null);
+      setLinkHover(null);
+    }
+
+    function scheduleHideLinkHover() {
+      clearHoverTimer();
+      linkHoverTimerRef.current = window.setTimeout(() => {
+        setHoveredAnchor(null);
+        setLinkHover(null);
+      }, 120);
+    }
+
+    function showLinkHover(event: MouseEvent) {
+      if (linkModalRef.current) return;
+
+      const target = event.target as HTMLElement;
+      const anchor = target.closest("a.kb-editor-link");
+      if (!anchor || !dom.contains(anchor)) return;
+
+      const coords = editor.view.posAtCoords({ left: event.clientX, top: event.clientY });
+      if (!coords) return;
+
+      const range = getLinkRangeAt(editor, coords.pos);
+      if (!range) return;
+
+      clearHoverTimer();
+      setHoveredAnchor(anchor as HTMLElement);
+
+      const text = editor.state.doc.textBetween(range.from, range.to, "\n");
+      const position = getLinkModalPosition(editor, range.from, range.to);
+
+      setLinkHover((current) => {
+        if (
+          current &&
+          current.from === range.from &&
+          current.to === range.to &&
+          current.href === range.href &&
+          current.text === text
+        ) {
+          return current;
+        }
+        return {
+          from: range.from,
+          to: range.to,
+          href: range.href,
+          text,
+          ...position,
+        };
+      });
+    }
+
+    function onMouseOver(event: MouseEvent) {
+      showLinkHover(event);
+    }
+
+    function onMouseOut(event: MouseEvent) {
+      const related = event.relatedTarget as Node | null;
+      const target = event.target as HTMLElement;
+      const anchor = target.closest("a.kb-editor-link");
+      if (!anchor) return;
+
+      if (related && (anchor.contains(related) || linkBubbleRef.current?.contains(related))) {
+        return;
+      }
+
+      scheduleHideLinkHover();
+    }
+
+    const dom = editor.view.dom;
+    dom.addEventListener("mouseover", onMouseOver);
+    dom.addEventListener("mouseout", onMouseOut);
+    dom.addEventListener("scroll", hideLinkHover, true);
+
+    return () => {
+      dom.removeEventListener("mouseover", onMouseOver);
+      dom.removeEventListener("mouseout", onMouseOut);
+      dom.removeEventListener("scroll", hideLinkHover, true);
+      clearHoverTimer();
+      setHoveredAnchor(null);
+    };
+  }, [editor]);
 
   useEffect(() => {
     if (!editor) return;
@@ -765,7 +1017,7 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
       // Ctrl+K 插入链接
       if (!altKey && !shiftKey && code === "KeyK") {
         event.preventDefault();
-        promptLink(editor!);
+        openLinkModalRef.current();
         return;
       }
 
@@ -899,6 +1151,69 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
     editor.chain().focus().setImage({ src: url.trim() }).run();
   }
 
+  function confirmLinkModal() {
+    if (!linkModal) return;
+    applyLinkFromModal(editor, linkModal);
+    setLinkModal(null);
+  }
+
+  function clearLinkHoverTimer() {
+    if (linkHoverTimerRef.current) {
+      window.clearTimeout(linkHoverTimerRef.current);
+      linkHoverTimerRef.current = null;
+    }
+  }
+
+  function scheduleHideLinkHover() {
+    clearLinkHoverTimer();
+    linkHoverTimerRef.current = window.setTimeout(() => {
+      hoveredAnchorRef.current?.classList.remove("kb-link-hover");
+      hoveredAnchorRef.current = null;
+      setLinkHover(null);
+    }, 120);
+  }
+
+  function visitHoveredLink() {
+    if (!linkHover?.href) return;
+    window.open(linkHover.href, "_blank", "noopener,noreferrer");
+  }
+
+  function editHoveredLink() {
+    if (!editor || !linkHover) return;
+    const modal = buildLinkModalAt(editor, linkHover.from, linkHover.to);
+    hoveredAnchorRef.current?.classList.remove("kb-link-hover");
+    hoveredAnchorRef.current = null;
+    setLinkHover(null);
+    setLinkModal(modal);
+    editor.chain().focus().setTextSelection({ from: modal.from, to: modal.to }).run();
+  }
+
+  async function copyHoveredLinkText() {
+    if (!linkHover?.text) return;
+    try {
+      await navigator.clipboard.writeText(linkHover.text);
+      showSuccess("已复制链接文字");
+    } catch {
+      showError("复制失败");
+    }
+  }
+
+  function unlinkHoveredLink() {
+    if (!editor || !linkHover) return;
+    const range = getLinkRangeAt(editor, linkHover.from) ?? linkHover;
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({ from: range.from, to: range.to })
+      .extendMarkRange("link")
+      .unsetLink()
+      .unsetColor()
+      .run();
+    hoveredAnchorRef.current?.classList.remove("kb-link-hover");
+    hoveredAnchorRef.current = null;
+    setLinkHover(null);
+  }
+
   return (
     <div className="kb-editor">
       <div className="kb-toolbar" role="toolbar" aria-label="编辑工具栏">
@@ -946,7 +1261,7 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         <ToolbarButton label="分割线（Alt Ctrl S）" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
           <Minus size={15} />
         </ToolbarButton>
-        <ToolbarButton active={editor.isActive("link")} label="链接（Ctrl K）" onClick={() => promptLink(editor)}>
+        <ToolbarButton label="链接（Ctrl K）" onClick={openLinkModal}>
           <Link2 size={15} />
         </ToolbarButton>
         <ToolbarButton label="图片" onClick={addImage}>
@@ -957,6 +1272,92 @@ export function NoteEditor({ noteId, content, onChange }: NoteEditorProps) {
         </ToolbarButton>
       </div>
       <EditorContent editor={editor} />
+
+      {linkHover && !linkModal ? (
+        <div
+          className="kb-link-bubble"
+          onMouseEnter={clearLinkHoverTimer}
+          onMouseLeave={scheduleHideLinkHover}
+          ref={linkBubbleRef}
+          role="toolbar"
+          aria-label="链接操作"
+          style={{ top: linkHover.top, left: linkHover.left }}
+        >
+          <KbTip label="访问链接">
+            <button
+              aria-label="访问链接"
+              className="kb-link-bubble-btn"
+              disabled={!linkHover.href}
+              onClick={visitHoveredLink}
+              type="button"
+            >
+              <ExternalLink size={15} />
+            </button>
+          </KbTip>
+          <KbTip label="编辑">
+            <button aria-label="编辑链接" className="kb-link-bubble-btn" onClick={editHoveredLink} type="button">
+              <Pencil size={15} />
+            </button>
+          </KbTip>
+          <KbTip label="复制">
+            <button aria-label="复制链接文字" className="kb-link-bubble-btn" onClick={copyHoveredLinkText} type="button">
+              <Copy size={15} />
+            </button>
+          </KbTip>
+          <KbTip label="取消链接">
+            <button aria-label="取消链接" className="kb-link-bubble-btn" onClick={unlinkHoveredLink} type="button">
+              <Unlink size={15} />
+            </button>
+          </KbTip>
+        </div>
+      ) : null}
+
+      {linkModal ? (
+        <>
+          <button aria-label="关闭链接编辑" className="kb-link-backdrop" onClick={() => setLinkModal(null)} type="button" />
+          <div
+            className="kb-link-modal"
+            role="dialog"
+            style={{ top: linkModal.top, left: linkModal.left }}
+          >
+            <label className="kb-link-field">
+              <span>文本</span>
+              <input
+                onChange={(event) => setLinkModal((current) => (current ? { ...current, text: event.target.value } : current))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    confirmLinkModal();
+                  }
+                  if (event.key === "Escape") setLinkModal(null);
+                }}
+                value={linkModal.text}
+              />
+            </label>
+            <label className="kb-link-field">
+              <span>链接</span>
+              <input
+                onChange={(event) => setLinkModal((current) => (current ? { ...current, href: event.target.value } : current))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    confirmLinkModal();
+                  }
+                  if (event.key === "Escape") setLinkModal(null);
+                }}
+                placeholder="请输入链接"
+                ref={linkUrlRef}
+                value={linkModal.href}
+              />
+            </label>
+            <div className="kb-link-actions">
+              <button className="kb-link-confirm" onClick={confirmLinkModal} type="button">
+                确定
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -1244,6 +1244,131 @@ textarea {
   outline: 1px solid #1664ff;
 }
 
+.kb-editor .tiptap a,
+.kb-editor .tiptap a.kb-editor-link {
+  color: #3c78e9;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.kb-editor .tiptap a.kb-editor-link:hover,
+.kb-editor .tiptap a.kb-editor-link.kb-link-hover {
+  background: #eef0f3;
+  border-radius: 2px;
+  color: #3c78e9;
+}
+
+.kb-link-bubble {
+  position: fixed;
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+  transform: translateX(-50%);
+}
+
+.kb-link-bubble-btn {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #4e5969;
+  cursor: pointer;
+}
+
+.kb-link-bubble-btn:hover:not(:disabled) {
+  background: #eef0f3;
+  color: #1f2329;
+}
+
+.kb-link-bubble-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.kb-link-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.kb-link-modal {
+  position: fixed;
+  z-index: 51;
+  display: flex;
+  width: 280px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  transform: translateX(-50%);
+}
+
+.kb-link-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4e5969;
+  font-size: 12px;
+}
+
+.kb-link-field input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2329;
+  font-size: 13px;
+  outline: 0;
+  box-sizing: border-box;
+}
+
+.kb-link-field input:focus {
+  border-color: #3c78e9;
+  box-shadow: 0 0 0 2px rgba(60, 120, 233, 0.18);
+}
+
+.kb-link-field input::placeholder {
+  color: #c0c4cc;
+}
+
+.kb-link-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.kb-link-confirm {
+  height: 32px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: #3c78e9;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kb-link-confirm:hover {
+  background: #2f63c8;
+}
+
 .kb-editor .tiptap mark {
   border-radius: 2px;
   padding: 0 2px;
