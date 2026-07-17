@@ -10,6 +10,49 @@ from app.services.replay.pnl import calculate_fifo_position
 
 router = APIRouter(tags=["trades"])
 
+PRICE_BASIS_OPTIONS = frozenset({"high", "low", "open", "close", "mid"})
+
+
+def resolve_trade_price(bar: KlineDaily, basis: str) -> Decimal:
+    if basis == "high":
+        return Decimal(bar.high)
+    if basis == "low":
+        return Decimal(bar.low)
+    if basis == "open":
+        return Decimal(bar.open)
+    if basis == "close":
+        return Decimal(bar.close)
+    if basis == "mid":
+        return (Decimal(bar.high) + Decimal(bar.low)) / Decimal("2")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"unsupported price basis: {basis}")
+
+
+def normalize_price_rule(side: str, price_rule: str | None) -> tuple[str, str]:
+    """返回 (price_rule, basis)。缺省：买入最高价、卖出最低价。"""
+    default_basis = "high" if side == "buy" else "low"
+    if not price_rule:
+        basis = default_basis
+        return f"{side}_{basis}", basis
+
+    rule = price_rule.strip().lower()
+    prefix = f"{side}_"
+    if rule.startswith(prefix):
+        basis = rule[len(prefix) :]
+    elif rule in PRICE_BASIS_OPTIONS:
+        basis = rule
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"price_rule must be {side}_<high|low|open|close|mid> or a basis name",
+        )
+
+    if basis not in PRICE_BASIS_OPTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="price_rule basis must be one of high, low, open, close, mid",
+        )
+    return f"{side}_{basis}", basis
+
 
 @router.get("/api/replay-sessions/{session_id}/trades", response_model=list[TradeRead])
 def list_trades(session_id: int, session: Session = Depends(get_session)) -> list[Trade]:
@@ -30,8 +73,8 @@ def create_trade(session_id: int, payload: TradeCreate, session: Session = Depen
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="fee must not be negative")
 
     current_bar = get_current_bar(replay_session, session)
-    price = current_bar.high if side == "buy" else current_bar.low
-    price_rule = "buy_high" if side == "buy" else "sell_low"
+    price_rule, basis = normalize_price_rule(side, payload.price_rule)
+    price = resolve_trade_price(current_bar, basis)
 
     if side == "sell":
         existing_trades = list_session_trades_until(session_id, replay_session.current_date, session)

@@ -107,6 +107,8 @@ class TradeCreate(SQLModel):
     fee: Decimal = Decimal("0")
     note: str | None = None
     emotion_score: int | None = None
+    # 可选：buy_high / buy_mid / sell_low 等；缺省则买高卖低
+    price_rule: str | None = None
 
 
 class TradeUpdate(SQLModel):

@@ -1904,6 +1904,13 @@ textarea {
   margin-top: 14px;
 }
 
+.settings-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .settings-summary span,
 .quality-dates em {
   border: 1px solid var(--line);

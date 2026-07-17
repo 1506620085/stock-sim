@@ -12,7 +12,7 @@ import { aggregateKlines, findBarIndexByDate, resolveChartReplayDate } from "./a
 import { ChartToolbar } from "./ChartToolbar";
 import { defaultChartDisplaySettings } from "./chartDisplay";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
-import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, type FeeTemplate } from "../settings/api";
+import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, resolveBarPrice, replayPriceBasisLabel, toTradePriceRule, type FeeTemplate, type ReplayPriceBasis } from "../settings/api";
 import { calculateTradeFee } from "../calculators/calculations";
 import {
   calculateAvailableCash,
@@ -71,6 +71,9 @@ export function ReplayPage() {
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
   const [chartDisplay, setChartDisplay] = useState<ChartDisplaySettings>(defaultChartDisplaySettings);
   const [preferences] = useState(() => loadPreferences());
+  const buyPriceBasis: ReplayPriceBasis = preferences.replayBuyPriceBasis;
+  const sellPriceBasis: ReplayPriceBasis = preferences.replaySellPriceBasis;
+  const activePriceBasis = tradeSide === "buy" ? buyPriceBasis : sellPriceBasis;
   const activeCode = activeInstrument?.code ?? "";
   const activeAdjustType = replaySession?.adjustType ?? preferences.adjustType;
   const activeAssetType = activeInstrument?.assetType ?? (activeInstrument?.type === "ETF" ? "etf" : "stock");
@@ -263,7 +266,7 @@ export function ReplayPage() {
 
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
-  const tradePrice = selectedBar ? (tradeSide === "buy" ? selectedBar.high : selectedBar.low) : 0;
+  const tradePrice = selectedBar ? resolveBarPrice(selectedBar, activePriceBasis) : 0;
   const visibleDailyBars = hideFuture ? bars.slice(0, normalizedIndex + 1) : bars;
   const chartBars = useMemo(() => aggregateKlines(visibleDailyBars, klinePeriod), [visibleDailyBars, klinePeriod]);
   const availableReplayDates = useMemo(() => bars.map((bar) => bar.date), [bars]);
@@ -473,6 +476,7 @@ export function ReplayPage() {
         quantity: normalizedQuantity,
         fee,
         note,
+        priceRule: toTradePriceRule(tradeSide, activePriceBasis),
       });
       setTrades((items) => [
         ...items,
@@ -643,6 +647,7 @@ export function ReplayPage() {
           feeTemplates={availableFeeTemplates}
           maxTradeQuantity={maxTradeQuantity}
           note={note}
+          priceBasis={activePriceBasis}
           quantity={quantity}
           selectedBar={selectedBar}
           selectedFeeTemplate={selectedFeeTemplate}
@@ -680,6 +685,7 @@ function TradePanel({
   feeTemplates,
   maxTradeQuantity,
   note,
+  priceBasis,
   quantity,
   selectedBar,
   selectedFeeTemplate,
@@ -694,6 +700,7 @@ function TradePanel({
   feeTemplates: FeeTemplate[];
   maxTradeQuantity: number;
   note: string;
+  priceBasis: ReplayPriceBasis;
   quantity: number;
   selectedBar?: KLineBar;
   selectedFeeTemplate: FeeTemplate | null;
@@ -705,7 +712,8 @@ function TradePanel({
   onSubmit: (quantity: number) => void;
 }) {
   const [quantityDraft, setQuantityDraft] = useState(String(quantity));
-  const price = selectedBar ? (side === "buy" ? selectedBar.high : selectedBar.low) : 0;
+  const price = selectedBar ? resolveBarPrice(selectedBar, priceBasis) : 0;
+  const priceLabel = replayPriceBasisLabel(priceBasis);
   const draftNumber = Number(quantityDraft);
   const previewQuantity = Number.isFinite(draftNumber) ? normalizeTradeQuantity(draftNumber) : quantity;
   const cappedPreviewQuantity = Math.min(previewQuantity, maxTradeQuantity);
@@ -753,7 +761,7 @@ function TradePanel({
         </button>
       </div>
       <div className="quote-box">
-        {side === "buy" ? "买入按当日最高价" : "卖出按当日最低价"}：<strong>{formatNumber(price)}</strong>
+        {side === "buy" ? "买入" : "卖出"}按当日{priceLabel}：<strong>{formatNumber(price)}</strong>
       </div>
       <div className="input-grid two-cols trade-qty-fund-grid">
         <div className="trade-qty-field">

@@ -186,6 +186,7 @@ export async function createSessionTrade(
     fee: number;
     note: string;
     emotionScore?: number | null;
+    priceRule?: string;
   },
 ): Promise<TradeRecord> {
   const item = await apiJson<TradeItem>(`${API_BASE}/api/replay-sessions/${sessionId}/trades`, {
@@ -197,6 +198,7 @@ export async function createSessionTrade(
       fee: payload.fee,
       note: payload.note,
       emotion_score: payload.emotionScore ?? null,
+      price_rule: payload.priceRule ?? null,
     }),
   });
   return toTradeRecord(item, code);

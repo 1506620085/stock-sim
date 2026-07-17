@@ -4,11 +4,17 @@ import type { Instrument } from "../replay/types";
 
 export type AdjustType = "none" | "qfq" | "hfq";
 export type DataSource = "akshare" | "tushare";
+/** 复盘成交价取值：当日 K 线 OHLC 或中间价 (high+low)/2 */
+export type ReplayPriceBasis = "high" | "low" | "open" | "close" | "mid";
 
 export type AppPreferences = {
   adjustType: AdjustType;
   dataSource: DataSource;
   tushareToken: string;
+  /** 买入成交价规则，默认最高价（保守训练） */
+  replayBuyPriceBasis: ReplayPriceBasis;
+  /** 卖出成交价规则，默认最低价（保守训练） */
+  replaySellPriceBasis: ReplayPriceBasis;
 };
 
 export type FeeTemplate = {
@@ -47,12 +53,63 @@ export const defaultPreferences: AppPreferences = {
   adjustType: "qfq",
   dataSource: "akshare",
   tushareToken: "",
+  replayBuyPriceBasis: "high",
+  replaySellPriceBasis: "low",
 };
+
+export const REPLAY_PRICE_BASIS_OPTIONS: { label: string; value: ReplayPriceBasis }[] = [
+  { label: "最高价", value: "high" },
+  { label: "最低价", value: "low" },
+  { label: "开盘价", value: "open" },
+  { label: "收盘价", value: "close" },
+  { label: "中间价", value: "mid" },
+];
+
+const VALID_REPLAY_PRICE_BASIS = new Set<ReplayPriceBasis>(["high", "low", "open", "close", "mid"]);
+
+function normalizeReplayPriceBasis(value: unknown, fallback: ReplayPriceBasis): ReplayPriceBasis {
+  return typeof value === "string" && VALID_REPLAY_PRICE_BASIS.has(value as ReplayPriceBasis)
+    ? (value as ReplayPriceBasis)
+    : fallback;
+}
+
+export function replayPriceBasisLabel(basis: ReplayPriceBasis): string {
+  return REPLAY_PRICE_BASIS_OPTIONS.find((item) => item.value === basis)?.label ?? basis;
+}
+
+export function resolveBarPrice(
+  bar: { open: number; high: number; low: number; close: number },
+  basis: ReplayPriceBasis,
+): number {
+  switch (basis) {
+    case "high":
+      return bar.high;
+    case "low":
+      return bar.low;
+    case "open":
+      return bar.open;
+    case "close":
+      return bar.close;
+    case "mid":
+      return (bar.high + bar.low) / 2;
+  }
+}
+
+export function toTradePriceRule(side: "buy" | "sell", basis: ReplayPriceBasis): string {
+  return `${side}_${basis}`;
+}
 
 export function loadPreferences(): AppPreferences {
   try {
     const raw = localStorage.getItem("stock-sim.preferences");
-    return raw ? { ...defaultPreferences, ...JSON.parse(raw) } : defaultPreferences;
+    if (!raw) return defaultPreferences;
+    const parsed = JSON.parse(raw) as Partial<AppPreferences>;
+    return {
+      ...defaultPreferences,
+      ...parsed,
+      replayBuyPriceBasis: normalizeReplayPriceBasis(parsed.replayBuyPriceBasis, defaultPreferences.replayBuyPriceBasis),
+      replaySellPriceBasis: normalizeReplayPriceBasis(parsed.replaySellPriceBasis, defaultPreferences.replaySellPriceBasis),
+    };
   } catch {
     return defaultPreferences;
   }

@@ -18,6 +18,8 @@ import {
   sortFeeTemplates,
   syncInstrument,
   updateFeeTemplate,
+  REPLAY_PRICE_BASIS_OPTIONS,
+  replayPriceBasisLabel,
   type AdjustType,
   type AppPreferences,
   type DataQuality,
@@ -225,6 +227,35 @@ export function SettingsPage() {
           <div className="settings-summary">
             <span>当前行情源：{preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro"}</span>
             <span>当前复权：{adjustLabel(preferences.adjustType)}</span>
+          </div>
+        </section>
+
+        <section className="panel settings-panel">
+          <div className="section-header">
+            <h2>复盘成交价</h2>
+          </div>
+          <p className="settings-hint">模拟买卖时按当日 K 线取价；中间价为当日最高与最低的均值。默认买最高、卖最低，便于保守训练。</p>
+          <div className="settings-grid">
+            <label>
+              买入成交价
+              <AppSelect
+                onChange={(value) => updatePreferences({ replayBuyPriceBasis: value })}
+                options={REPLAY_PRICE_BASIS_OPTIONS}
+                value={preferences.replayBuyPriceBasis}
+              />
+            </label>
+            <label>
+              卖出成交价
+              <AppSelect
+                onChange={(value) => updatePreferences({ replaySellPriceBasis: value })}
+                options={REPLAY_PRICE_BASIS_OPTIONS}
+                value={preferences.replaySellPriceBasis}
+              />
+            </label>
+          </div>
+          <div className="settings-summary">
+            <span>买入：{replayPriceBasisLabel(preferences.replayBuyPriceBasis)}</span>
+            <span>卖出：{replayPriceBasisLabel(preferences.replaySellPriceBasis)}</span>
           </div>
         </section>
 
