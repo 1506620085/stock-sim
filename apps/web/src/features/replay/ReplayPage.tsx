@@ -522,37 +522,37 @@ export function ReplayPage() {
               </h2>
             </div>
             <div className="day-controls">
-              <TooltipWrap tip="从 AKShare 同步 K 线到数据库">
+              <TooltipWrap placement="bottom" tip="从 AKShare 同步 K 线到数据库">
                 <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步 K 线">
                   <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip="将图表视口移到最早 K 线（不改变复盘日）">
+              <TooltipWrap placement="bottom" tip="将图表视口移到最早 K 线（不改变复盘日）">
                 <button type="button" disabled={!chartBars.length} onClick={jumpToFirstDay} aria-label="最早一天">
                   <ChevronsLeft size={18} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip="复盘日向前一天">
+              <TooltipWrap placement="bottom" tip="复盘日向前一天">
                 <button type="button" disabled={!bars.length || normalizedIndex === 0} onClick={() => moveReplayDate(-1)} aria-label="上一天">
                   <ChevronLeft size={18} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip="将图表视口定位到当前复盘日">
+              <TooltipWrap placement="bottom" tip="将图表视口定位到当前复盘日">
                 <button type="button" onClick={focusReplayDate} aria-label="回到复盘日">
                   <LocateFixed size={18} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip="复盘日向后一天">
+              <TooltipWrap placement="bottom" tip="复盘日向后一天">
                 <button type="button" disabled={!bars.length || normalizedIndex >= bars.length - 1} onClick={() => moveReplayDate(1)} aria-label="下一天">
                   <ChevronRight size={18} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip={hideFuture ? "将图表视口移到当前可见范围内最新 K 线（不改变复盘日）" : "将图表视口移到最新 K 线（不改变复盘日）"}>
+              <TooltipWrap placement="bottom" tip={hideFuture ? "将图表视口移到当前可见范围内最新 K 线（不改变复盘日）" : "将图表视口移到最新 K 线（不改变复盘日）"}>
                 <button type="button" disabled={!chartBars.length} onClick={jumpToLastDay} aria-label="最新一天">
                   <ChevronsRight size={18} />
                 </button>
               </TooltipWrap>
-              <TooltipWrap tip="仅显示复盘日及之前的 K 线，隐藏未来数据">
+              <TooltipWrap placement="bottom" tip="仅显示复盘日及之前的 K 线，隐藏未来数据">
                 <div className="switch">
                   <span>隐藏未来</span>
                   <AppSwitch
@@ -659,9 +659,17 @@ export function ReplayPage() {
   );
 }
 
-function TooltipWrap({ tip, children }: { tip: string; children: ReactNode }) {
+function TooltipWrap({
+  tip,
+  children,
+  placement = "top",
+}: {
+  tip: string;
+  children: ReactNode;
+  placement?: "top" | "bottom";
+}) {
   return (
-    <span className="tooltip-wrap" data-tooltip={tip}>
+    <span className={["tooltip-wrap", placement === "bottom" ? "tooltip-wrap--bottom" : ""].filter(Boolean).join(" ")} data-tooltip={tip}>
       {children}
     </span>
   );

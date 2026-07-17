@@ -3255,6 +3255,17 @@ textarea {
   transform: translateX(-50%) translateY(0);
 }
 
+.tooltip-wrap--bottom::after {
+  top: calc(100% + 8px);
+  bottom: auto;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.tooltip-wrap--bottom:hover::after,
+.tooltip-wrap--bottom:focus-within::after {
+  transform: translateX(-50%) translateY(0);
+}
+
 .field-label-with-tip {
   display: inline-flex;
   align-items: center;
