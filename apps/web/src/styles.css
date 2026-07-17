@@ -3302,6 +3302,13 @@ textarea {
   font-size: 13px;
 }
 
+.hide-future-switch {
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
 .switch input,
 .check-row input {
   width: auto;

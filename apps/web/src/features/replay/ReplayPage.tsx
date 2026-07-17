@@ -553,8 +553,7 @@ export function ReplayPage() {
                 </button>
               </TooltipWrap>
               <TooltipWrap placement="bottom" tip="仅显示复盘日及之前的 K 线，隐藏未来数据">
-                <div className="switch">
-                  <span>隐藏未来</span>
+                <div className="switch hide-future-switch">
                   <AppSwitch
                     aria-label="隐藏未来"
                     checked={hideFuture}
@@ -562,6 +561,7 @@ export function ReplayPage() {
                     onChange={updateHideFuture}
                     unCheckedChildren="关闭"
                   />
+                  <span>隐藏未来</span>
                 </div>
               </TooltipWrap>
             </div>
