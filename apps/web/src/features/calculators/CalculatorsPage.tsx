@@ -1,19 +1,23 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Calculator, ChevronDown, ChevronRight, Copy, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Calculator, ChevronDown, ChevronRight, Copy, Download, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppSwitch } from "../../components/AppSwitch";
 import { FieldLabelWithTip } from "../../components/FieldHelpTip";
+import { showInfo, showSuccess } from "../../components/ToastProvider";
 import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
+  buildTLedger,
   calculateAverage,
   calculateChange,
   calculateProfitCost,
-  calculateTTrade,
   defaultFeeSettings,
   type AssetType,
   type AverageLine,
   type FeeSettings,
+  type TLedgerEntryInput,
+  type TLedgerRow,
+  type TLedgerSide,
 } from "./calculations";
 
 type CalculatorTab = "profit" | "t" | "change" | "average";
@@ -32,7 +36,7 @@ const calculatorTabMeta: Record<CalculatorTab, { title: string; description: str
   },
   t: {
     title: "做 T 计算器",
-    description: "根据底仓、当日买入和当日卖出计算做 T 后成本、现金流和当日 T 盈亏。",
+    description: "初始化底仓后逐笔记录买入卖出，按移动加权平均自动重算持仓成本、现金流与做 T 收益。",
   },
   change: {
     title: "涨跌幅计算器",
@@ -90,82 +94,6 @@ export function CalculatorsPage() {
       {activeTab === "t" && <TCalculator />}
       {activeTab === "change" && <ChangeCalculator />}
       {activeTab === "average" && <AveragePriceCalculator />}
-    </section>
-  );
-}
-
-function FeeTemplateSelector({
-  assetType,
-  selectedTemplateId,
-  templates,
-  onSelect,
-}: {
-  assetType: AssetType;
-  selectedTemplateId: number | null;
-  templates: FeeTemplate[];
-  onSelect: (templateId: number) => void;
-}) {
-  const options = templates.filter((template) => template.assetType === assetType);
-  if (!options.length) return null;
-
-  return (
-    <label className="fee-template-select">
-      费率模板
-      <AppSelect
-        onChange={onSelect}
-        options={options.map((template) => ({
-          label: feeTemplateLabel(template),
-          value: template.id,
-        }))}
-        value={selectedTemplateId ?? options[0]?.id ?? null}
-      />
-    </label>
-  );
-}
-
-function FeeFields({ settings, onChange }: { settings: FeeSettings; onChange: (settings: FeeSettings) => void }) {
-  function update<K extends keyof FeeSettings>(key: K, value: FeeSettings[K]) {
-    const next = { ...settings, [key]: value };
-    if (key === "assetType") {
-      next.stampTaxRate = value === "stock" ? 0.05 : 0;
-    }
-    onChange(next);
-  }
-
-  return (
-    <section className="fee-fields">
-      <label>
-        成本类型
-        <AppSelect
-          onChange={(value) => update("assetType", value)}
-          options={[
-            { label: "股票", value: "stock" },
-            { label: "ETF", value: "etf" },
-          ]}
-          value={settings.assetType}
-        />
-      </label>
-      <label>
-        佣金模式
-        <AppSelect
-          onChange={(value) => update("commissionMode", value)}
-          options={[
-            { label: "按比例", value: "rate" },
-            { label: "固定手续费", value: "fixed" },
-          ]}
-          value={settings.commissionMode}
-        />
-      </label>
-      {settings.commissionMode === "fixed" ? (
-        <NumberField label="固定手续费" onChange={(value) => update("fixedCommission", value)} step={0.01} stepper value={settings.fixedCommission} />
-      ) : (
-        <>
-          <NumberField label="佣金费率(%)" value={settings.commissionRate} onChange={(value) => update("commissionRate", value)} step={0.001} />
-          <NumberField label="最低佣金" value={settings.minCommission} onChange={(value) => update("minCommission", value)} step={0.01} />
-        </>
-      )}
-      <NumberField label="印花税率(%)" value={settings.stampTaxRate} onChange={(value) => update("stampTaxRate", value)} step={0.001} />
-      <NumberField label="过户费率(%)" value={settings.transferRate} onChange={(value) => update("transferRate", value)} step={0.001} />
     </section>
   );
 }
@@ -243,68 +171,356 @@ function ProfitCostCalculator() {
 }
 
 function TCalculator() {
-  const { settings, setSettings, selectedTemplateId, setSelectedTemplateId, templates } = useTemplateFeeSettings();
-  const [baseQuantity, setBaseQuantity] = useState(1000);
-  const [baseAvgCost, setBaseAvgCost] = useState(10);
-  const [sequence, setSequence] = useState<"buyFirst" | "sellFirst">("buyFirst");
-  const [buyPrice, setBuyPrice] = useState(9.8);
-  const [buyQuantity, setBuyQuantity] = useState(500);
-  const [sellPrice, setSellPrice] = useState(10.3);
-  const [sellQuantity, setSellQuantity] = useState(500);
-  const result = useMemo(
-    () => calculateTTrade({ ...settings, baseQuantity, baseAvgCost, sequence, buyPrice, buyQuantity, sellPrice, sellQuantity }),
-    [baseAvgCost, baseQuantity, buyPrice, buyQuantity, sellPrice, sellQuantity, sequence, settings],
+  const fee = useCalculatorFeeSettings();
+  const [baseAvgCost, setBaseAvgCost] = useState<number | null>(10);
+  const [baseQuantity, setBaseQuantity] = useState<number | null>(1000);
+  const [tradeSide, setTradeSide] = useState<"buy" | "sell">("buy");
+  const [tradePrice, setTradePrice] = useState<number | null>(null);
+  const [tradeQuantity, setTradeQuantity] = useState<number | null>(null);
+  const [finalPrice, setFinalPrice] = useState<number | null>(null);
+  const [entries, setEntries] = useState<TLedgerEntryInput[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showRetention, setShowRetention] = useState(false);
+
+  const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
+  const { rows, summary } = useMemo(
+    () => buildTLedger(entries, fee.effectiveSettings, { finalPrice }),
+    [entries, fee.effectiveSettings, finalPrice],
   );
+
+  useEffect(() => {
+    const decimals = fee.assetType === "etf" ? 3 : 2;
+    setBaseAvgCost((current) => (current == null ? current : Number(current.toFixed(decimals))));
+    setTradePrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
+    setFinalPrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
+  }, [fee.assetType]);
+
+  function initBasePosition() {
+    const cost = baseAvgCost ?? 0;
+    const quantity = baseQuantity ?? 0;
+    if (cost <= 0 || quantity <= 0) {
+      showInfo("请先填写有效的底仓成本价与底仓数量。");
+      return;
+    }
+    setEntries([{ id: crypto.randomUUID(), side: "init", price: cost, quantity }]);
+    setSelectedIds([]);
+    setShowRetention(false);
+    showSuccess("底仓已初始化");
+  }
+
+  function addOperation() {
+    if (!entries.some((entry) => entry.side === "init")) {
+      showInfo("请先点击「底仓初始化」生成初始持仓。");
+      return;
+    }
+    const price = tradePrice ?? 0;
+    const quantity = tradeQuantity ?? 0;
+    if (price <= 0 || quantity <= 0) {
+      showInfo("请填写有效的交易价格与交易数量。");
+      return;
+    }
+    if (tradeSide === "sell" && quantity > summary.positionQuantity) {
+      showInfo(`持仓不足，当前可卖 ${summary.positionQuantity.toLocaleString("zh-CN")} 股。`);
+      return;
+    }
+    setEntries((items) => [...items, { id: crypto.randomUUID(), side: tradeSide, price, quantity }]);
+    setTradePrice(null);
+    setTradeQuantity(null);
+    setShowRetention(false);
+  }
+
+  function handleAddSubmit(event: FormEvent) {
+    event.preventDefault();
+    addOperation();
+  }
+
+  function deleteSelected() {
+    if (!selectedIds.length) {
+      showInfo("请先勾选要删除的记录。");
+      return;
+    }
+    setEntries((items) => {
+      const next = items.filter((item) => !selectedIds.includes(item.id));
+      const hasInit = next.some((item) => item.side === "init");
+      return hasInit ? next : [];
+    });
+    setSelectedIds([]);
+    setShowRetention(false);
+    showSuccess("已删除并重新计算");
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]));
+  }
+
+  function toggleSelectAll() {
+    if (!rows.length) return;
+    setSelectedIds((ids) => (ids.length === rows.length ? [] : rows.map((row) => row.id)));
+  }
+
+  function analyzeRetention() {
+    if (!rows.length) {
+      showInfo("请先初始化底仓并添加操作。");
+      return;
+    }
+    setShowRetention(true);
+    showSuccess("已按当前做 T 收益更新利润留存分析");
+  }
+
+  function downloadExcel() {
+    if (!rows.length) {
+      showInfo("暂无交易记录可导出。");
+      return;
+    }
+    const header = ["序号", "操作方向", "买入价格", "买入数量", "卖出价格", "卖出数量", "成交费用", "资金流向", "持仓数量", "持仓成本"];
+    const body = rows.map((row) => [
+      row.index,
+      tSideLabel(row.side),
+      formatOptional(row.buyPrice),
+      formatOptionalQty(row.buyQuantity),
+      formatOptional(row.sellPrice),
+      formatOptionalQty(row.sellQuantity),
+      currency(row.fee),
+      currency(row.cashFlow),
+      row.positionQuantity.toLocaleString("zh-CN"),
+      currency(row.positionAvgCost),
+    ]);
+    const summaryRows = [
+      [],
+      ["最终状态"],
+      ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
+      ["当前平均成本", currency(summary.positionAvgCost)],
+      ["当前持仓市值", currency(summary.positionMarketValue)],
+      ["已实现盈亏", currency(summary.realizedPnl)],
+      ["未实现盈亏", currency(summary.unrealizedPnl)],
+      ["总盈亏", currency(summary.totalPnl)],
+      ["累计手续费", currency(summary.totalFees)],
+    ];
+    const csv = [header, ...body, ...summaryRows]
+      .map((line) => line.map(csvEscape).join(","))
+      .join("\r\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `做T表_${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    showSuccess("做 T 表已导出");
+  }
 
   return (
     <CalculatorShell>
-      <div className="calculator-form">
-        <div className="panel">
-          <h2>输入参数</h2>
-          <div className="calculator-input-grid">
-            <NumberField label="原持仓数量" value={baseQuantity} onChange={setBaseQuantity} step={100} />
-            <NumberField label="原平均成本" value={baseAvgCost} onChange={setBaseAvgCost} step={0.01} />
-            <label>
-              操作顺序
-              <AppSelect
-                onChange={setSequence}
-                options={[
-                  { label: "先买后卖", value: "buyFirst" },
-                  { label: "先卖后买", value: "sellFirst" },
-                ]}
-                value={sequence}
-              />
-            </label>
-            <NumberField label="当日买入价格" value={buyPrice} onChange={setBuyPrice} step={0.01} />
-            <NumberField label="当日买入数量" value={buyQuantity} onChange={setBuyQuantity} step={100} />
-            <NumberField label="当日卖出价格" value={sellPrice} onChange={setSellPrice} step={0.01} />
-            <NumberField label="当日卖出数量" value={sellQuantity} onChange={setSellQuantity} step={100} />
+      <div className="calculator-form t-calculator-form">
+        <div className="t-calculator-top">
+          <div className="panel t-calculator-panel">
+            <div className="t-input-main">
+              <form className="t-input-section" onSubmit={handleAddSubmit}>
+                <div className="t-input-align">
+                  <div className="calculator-input-grid t-input-grid t-input-grid--base">
+                    <AppNumberStepper label="底仓成本价" onChange={setBaseAvgCost} step={priceStep} value={baseAvgCost} />
+                    <AppNumberStepper label="底仓数量" normalizeToStep onChange={setBaseQuantity} step={100} value={baseQuantity} />
+                    <AppNumberStepper
+                      label={
+                        <FieldLabelWithTip
+                          tip="当前持仓若到达该价时的情景价。留空则总盈亏仍按最后成交价估算；填写后按该价与当前成本、股数重算未实现盈亏与总盈亏。"
+                          tipAriaLabel="最终价格说明"
+                        >
+                          最终价格
+                        </FieldLabelWithTip>
+                      }
+                      onChange={setFinalPrice}
+                      step={priceStep}
+                      value={finalPrice}
+                    />
+                    <div className="calculator-asset-type-field">
+                      <FieldLabelWithTip htmlFor="t-asset-type" tip="成本类型决定印花税等费率规则；费率模板按此类型筛选。" tipAriaLabel="成本类型说明">
+                        成本类型
+                      </FieldLabelWithTip>
+                      <AppSelect
+                        id="t-asset-type"
+                        onChange={fee.changeAssetType}
+                        options={[
+                          { label: "股票", value: "stock" },
+                          { label: "ETF", value: "etf" },
+                        ]}
+                        value={fee.assetType}
+                      />
+                    </div>
+                    <CalculatorFeePanel
+                      {...fee}
+                      compact
+                      trailing={
+                        <div className="t-peer-action">
+                          <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
+                            底仓初始化
+                          </button>
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div className="calculator-input-grid t-input-grid t-input-grid--trade">
+                    <label>
+                      交易方向
+                      <AppSelect
+                        onChange={setTradeSide}
+                        options={[
+                          { label: "买入", value: "buy" },
+                          { label: "卖出", value: "sell" },
+                        ]}
+                        value={tradeSide}
+                      />
+                    </label>
+                    <AppNumberStepper label="交易价格" onChange={setTradePrice} step={priceStep} value={tradePrice} />
+                    <AppNumberStepper label="交易数量" normalizeToStep onChange={setTradeQuantity} step={100} value={tradeQuantity} />
+                    <div className="t-action-bar t-action-bar--inline">
+                      <button className="primary-button" onClick={addOperation} type="button">
+                        <Plus size={15} />
+                        添加操作
+                      </button>
+                      <button className="secondary-button" onClick={deleteSelected} type="button">
+                        <Trash2 size={15} />
+                        删除操作
+                      </button>
+                      <button className="secondary-button" onClick={analyzeRetention} type="button">
+                        利润留存
+                      </button>
+                      <button className="secondary-button" onClick={downloadExcel} type="button">
+                        <Download size={15} />
+                        下载做T表
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button className="sr-only" type="submit" tabIndex={-1} aria-hidden="true">
+                  添加操作
+                </button>
+              </form>
+            </div>
           </div>
-          <FeeTemplateSelector
-            assetType={settings.assetType}
-            selectedTemplateId={selectedTemplateId}
-            templates={templates}
-            onSelect={setSelectedTemplateId}
-          />
-          <FeeFields settings={settings} onChange={setSettings} />
+
+          <div className="t-status-column">
+            <ResultTable
+              columns={2}
+              rows={[
+                ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
+                ["当前平均成本", currency(summary.positionAvgCost)],
+                ["当前持仓市值", currency(summary.positionMarketValue)],
+                ["已实现盈亏", currency(summary.realizedPnl), summary.realizedPnl],
+                ["未实现盈亏", currency(summary.unrealizedPnl), summary.unrealizedPnl],
+                ["总盈亏", currency(summary.totalPnl), summary.totalPnl],
+                ["累计手续费", currency(summary.totalFees)],
+                ...(showRetention
+                  ? ([
+                      ["已实现利润", currency(summary.realizedPnl), summary.realizedPnl],
+                      ["可提取利润", currency(summary.extractableProfit), summary.extractableProfit],
+                      ["剩余持仓成本", currency(summary.positionCost)],
+                    ] as Array<[string, string, number?]>)
+                  : []),
+              ]}
+              title="最终状态"
+            />
+            {showRetention ? (
+              <p className="t-retention-hint">
+                {summary.extractableProfit > 0
+                  ? summary.extractableProfit >= summary.positionCost
+                    ? "可提取利润已覆盖剩余持仓成本。"
+                    : "可提取利润尚未完全覆盖剩余持仓成本。"
+                  : "当前暂无可提取利润。"}
+              </p>
+            ) : null}
+          </div>
         </div>
-        <ResultTable
-          rows={[
-            ["当日买入金额", currency(result.buyAmount)],
-            ["当日买入费用", currency(result.buyFees)],
-            ["当日卖出金额", currency(result.sellAmount)],
-            ["当日卖出费用", currency(result.sellFees)],
-            ["做 T 净现金流", currency(result.cashFlow), result.cashFlow],
-            ["做 T 已实现盈亏", currency(result.realizedProfit), result.realizedProfit],
-            ["做 T 后剩余持仓", result.finalQuantity.toLocaleString("zh-CN")],
-            ["做 T 后持仓成本", currency(result.finalCost)],
-            ["做 T 后平均成本", currency(result.finalAvgCost)],
-          ]}
-          title="计算结果"
-        />
+
+        <section className="panel t-ledger-panel">
+          <div className="section-header">
+            <h2>做 T 记录</h2>
+          </div>
+          <div className="t-table-wrap">
+            <table className="result-table t-ledger-table">
+              <thead>
+                <tr>
+                  <th className="t-check-col">
+                    <input
+                      aria-label="全选"
+                      checked={rows.length > 0 && selectedIds.length === rows.length}
+                      onChange={toggleSelectAll}
+                      type="checkbox"
+                    />
+                  </th>
+                  <th>序号</th>
+                  <th>操作方向</th>
+                  <th>买入价格</th>
+                  <th>买入数量</th>
+                  <th>卖出价格</th>
+                  <th>卖出数量</th>
+                  <th>成交费用</th>
+                  <th>资金流向</th>
+                  <th>持仓数量</th>
+                  <th>持仓成本</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length ? (
+                  rows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="t-check-col">
+                        <input
+                          aria-label={`选择第 ${row.index} 行`}
+                          checked={selectedIds.includes(row.id)}
+                          onChange={() => toggleSelect(row.id)}
+                          type="checkbox"
+                        />
+                      </td>
+                      <td>{row.index}</td>
+                      <td>{tSideLabel(row.side)}</td>
+                      <td>{formatOptional(row.buyPrice)}</td>
+                      <td>{formatOptionalQty(row.buyQuantity)}</td>
+                      <td>{formatOptional(row.sellPrice)}</td>
+                      <td>{formatOptionalQty(row.sellQuantity)}</td>
+                      <td>{currency(row.fee)}</td>
+                      <td className={cashFlowTone(row)}>{currency(row.cashFlow)}</td>
+                      <td>{row.positionQuantity.toLocaleString("zh-CN")}</td>
+                      <td>{currency(row.positionAvgCost)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="t-empty-cell" colSpan={11}>
+                      请先「底仓初始化」，再添加买入 / 卖出操作。
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </CalculatorShell>
   );
+}
+
+function tSideLabel(side: TLedgerSide) {
+  return ({ init: "初始持仓", buy: "买入", sell: "卖出" } as const)[side];
+}
+
+function formatOptional(value: number | null) {
+  return value == null ? "—" : currency(value);
+}
+
+function formatOptionalQty(value: number | null) {
+  return value == null ? "—" : value.toLocaleString("zh-CN");
+}
+
+function cashFlowTone(row: TLedgerRow) {
+  if (row.side === "init" || row.cashFlow === 0) return "";
+  return row.cashFlow >= 0 ? "positive" : "negative";
+}
+
+function csvEscape(value: string | number) {
+  const text = String(value);
+  if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
 }
 
 function ChangeCalculator() {
@@ -538,14 +754,21 @@ function useCalculatorFeeSettings() {
 
 function CalculatorFeePanel({
   assetType,
+  compact = false,
   customEnabled,
   customSettings,
+  mode = "full",
   selectTemplate,
   selectedTemplateId,
   setCustomEnabled,
   setCustomSettings,
   templates,
-}: ReturnType<typeof useCalculatorFeeSettings>) {
+  trailing = null,
+}: ReturnType<typeof useCalculatorFeeSettings> & {
+  compact?: boolean;
+  mode?: "full" | "custom-only";
+  trailing?: ReactNode;
+}) {
   const [templateOpen, setTemplateOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const templateOptions = templates.filter((template) => template.assetType === assetType);
@@ -558,208 +781,138 @@ function CalculatorFeePanel({
     setCustomSettings(next);
   }
 
+  const hasExpanded = (mode === "full" && templateOpen && templateOptions.length > 0) || customOpen;
+
   return (
-    <section className="calculator-fee-panel">
-      {templateOptions.length ? (
-        <div className="trade-fee-template-field">
+    <section className={`calculator-fee-panel${compact ? " calculator-fee-panel--compact" : ""}`}>
+      <div className="calculator-fee-toggles">
+        <div className="t-fee-toggle-stack">
+          {mode === "full" && templateOptions.length ? (
+            <button
+              aria-expanded={templateOpen}
+              className="trade-fee-template-toggle"
+              onClick={() => setTemplateOpen((open) => !open)}
+              type="button"
+            >
+              <span>费率模板</span>
+              <span aria-hidden="true" className="trade-fee-template-caret">
+                {templateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+            </button>
+          ) : null}
           <button
-            aria-expanded={templateOpen}
+            aria-expanded={customOpen}
             className="trade-fee-template-toggle"
-            onClick={() => setTemplateOpen((open) => !open)}
+            onClick={() => setCustomOpen((open) => !open)}
             type="button"
           >
-            <span>费率模板</span>
+            <span>自定义</span>
             <span aria-hidden="true" className="trade-fee-template-caret">
-              {templateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {customOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           </button>
-          {templateOpen ? (
-            <AppSelect
-              className="trade-fee-template-select"
-              onChange={(value) => {
-                selectTemplate(Number(value));
-                setTemplateOpen(false);
-              }}
-              options={templateOptions.map((template) => ({
-                label: feeTemplateLabel(template),
-                value: template.id,
-              }))}
-              value={selectedTemplateId ?? templateOptions[0]?.id ?? null}
-            />
+        </div>
+      </div>
+
+      {compact ? trailing : null}
+
+      {hasExpanded ? (
+        <div className="calculator-fee-expanded">
+          {mode === "full" && templateOpen && templateOptions.length ? (
+            <div className="trade-fee-template-field">
+              <AppSelect
+                className="trade-fee-template-select"
+                onChange={(value) => {
+                  selectTemplate(Number(value));
+                  setTemplateOpen(false);
+                }}
+                options={templateOptions.map((template) => ({
+                  label: feeTemplateLabel(template),
+                  value: template.id,
+                }))}
+                value={selectedTemplateId ?? templateOptions[0]?.id ?? null}
+              />
+            </div>
+          ) : null}
+
+          {customOpen ? (
+            <div className="trade-fee-template-field calculator-custom-fee-fields">
+              <AppSwitch
+                aria-label="自定义费率"
+                checked={customEnabled}
+                checkedChildren="开启"
+                className="calculator-custom-fee-enable"
+                onChange={setCustomEnabled}
+                unCheckedChildren="关闭"
+              />
+              <div className="fee-fields calculator-custom-fee-grid">
+                <label>
+                  佣金模式
+                  <AppSelect
+                    onChange={(value) => updateCustom("commissionMode", value)}
+                    options={[
+                      { label: "按比例", value: "rate" },
+                      { label: "固定手续费", value: "fixed" },
+                    ]}
+                    value={customSettings.commissionMode}
+                  />
+                </label>
+                {customSettings.commissionMode === "fixed" ? (
+                  <AppNumberStepper
+                    label="固定手续费"
+                    onChange={(value) => updateCustom("fixedCommission", value ?? 0)}
+                    step={0.01}
+                    value={customSettings.fixedCommission}
+                  />
+                ) : (
+                  <>
+                    <AppNumberStepper
+                      label="佣金费率(%)"
+                      onChange={(value) => updateCustom("commissionRate", value ?? 0)}
+                      step={0.001}
+                      value={customSettings.commissionRate}
+                    />
+                    <AppNumberStepper label="最低佣金" onChange={(value) => updateCustom("minCommission", value ?? 0)} step={0.01} value={customSettings.minCommission} />
+                  </>
+                )}
+                <AppNumberStepper
+                  label="印花税率(%)"
+                  onChange={(value) => updateCustom("stampTaxRate", value ?? 0)}
+                  step={0.001}
+                  value={customSettings.stampTaxRate}
+                />
+                <AppNumberStepper
+                  label="过户费率(%)"
+                  onChange={(value) => updateCustom("transferRate", value ?? 0)}
+                  step={0.001}
+                  value={customSettings.transferRate}
+                />
+              </div>
+            </div>
           ) : null}
         </div>
       ) : null}
-
-      <div className="trade-fee-template-field">
-        <button
-          aria-expanded={customOpen}
-          className="trade-fee-template-toggle"
-          onClick={() => setCustomOpen((open) => !open)}
-          type="button"
-        >
-          <span>自定义</span>
-          <span aria-hidden="true" className="trade-fee-template-caret">
-            {customOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </span>
-        </button>
-        {customOpen ? (
-          <div className="calculator-custom-fee-fields">
-            <AppSwitch
-              aria-label="自定义费率"
-              checked={customEnabled}
-              checkedChildren="开启"
-              className="calculator-custom-fee-enable"
-              onChange={setCustomEnabled}
-              unCheckedChildren="关闭"
-            />
-            <div className="fee-fields calculator-custom-fee-grid">
-              <label>
-                佣金模式
-                <AppSelect
-                  onChange={(value) => updateCustom("commissionMode", value)}
-                  options={[
-                    { label: "按比例", value: "rate" },
-                    { label: "固定手续费", value: "fixed" },
-                  ]}
-                  value={customSettings.commissionMode}
-                />
-              </label>
-              {customSettings.commissionMode === "fixed" ? (
-                <AppNumberStepper
-                  label="固定手续费"
-                  onChange={(value) => updateCustom("fixedCommission", value ?? 0)}
-                  step={0.01}
-                  value={customSettings.fixedCommission}
-                />
-              ) : (
-                <>
-                  <AppNumberStepper
-                    label="佣金费率(%)"
-                    onChange={(value) => updateCustom("commissionRate", value ?? 0)}
-                    step={0.001}
-                    value={customSettings.commissionRate}
-                  />
-                  <AppNumberStepper label="最低佣金" onChange={(value) => updateCustom("minCommission", value ?? 0)} step={0.01} value={customSettings.minCommission} />
-                </>
-              )}
-              <AppNumberStepper
-                label="印花税率(%)"
-                onChange={(value) => updateCustom("stampTaxRate", value ?? 0)}
-                step={0.001}
-                value={customSettings.stampTaxRate}
-              />
-              <AppNumberStepper
-                label="过户费率(%)"
-                onChange={(value) => updateCustom("transferRate", value ?? 0)}
-                step={0.001}
-                value={customSettings.transferRate}
-              />
-            </div>
-          </div>
-        ) : null}
-      </div>
     </section>
   );
-}
-
-function useTemplateFeeSettings() {
-  const [templates, setTemplates] = useState<FeeTemplate[]>([]);
-  const [settings, setSettings] = useState(defaultFeeSettings);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadFeeTemplates()
-      .then((items) => {
-        if (cancelled) return;
-        setTemplates(items);
-        const preferences = loadFeePreferences();
-        const preferred = preferences.calculatorTemplateId
-          ? resolveFeeTemplate(items, settings.assetType, { preferredTemplateId: preferences.calculatorTemplateId })
-          : null;
-        const resolved = preferred ?? resolveFeeTemplate(items, settings.assetType);
-        if (resolved) {
-          setSelectedTemplateId(resolved.id);
-          setSettings(templateToFeeSettings(resolved));
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  function selectTemplate(templateId: number) {
-    const template = templates.find((item) => item.id === templateId);
-    if (!template) return;
-    setSelectedTemplateId(template.id);
-    setSettings(templateToFeeSettings(template));
-    saveFeePreferences({ calculatorTemplateId: template.id });
-  }
-
-  function updateSettings(next: FeeSettings) {
-    if (next.assetType !== settings.assetType) {
-      const resolved = resolveFeeTemplate(templates, next.assetType);
-      if (resolved) {
-        setSelectedTemplateId(resolved.id);
-        setSettings(templateToFeeSettings(resolved));
-        saveFeePreferences({ calculatorTemplateId: resolved.id });
-        return;
-      }
-    }
-    setSettings(next);
-  }
-
-  return {
-    settings,
-    setSettings: updateSettings,
-    selectedTemplateId,
-    setSelectedTemplateId: selectTemplate,
-    templates,
-  };
 }
 
 function CalculatorShell({ children }: { children: ReactNode }) {
   return <section className="calculator-shell">{children}</section>;
 }
 
-function NumberField({
-  label,
-  min = 0,
-  normalizeToStep = false,
-  onChange,
-  step = 1,
-  stepper = false,
-  value,
+function ResultTable({
+  rows,
+  title,
+  columns = 1,
 }: {
-  label: string;
-  min?: number;
-  normalizeToStep?: boolean;
-  onChange: (value: number) => void;
-  step?: number;
-  stepper?: boolean;
-  value: number;
+  rows: Array<[string, string, number?]>;
+  title: string;
+  columns?: 1 | 2;
 }) {
-  if (stepper) {
-    return (
-      <AppNumberStepper label={label} min={min} normalizeToStep={normalizeToStep} onChange={(value) => onChange(value ?? 0)} step={step} value={value} />
-    );
-  }
-
-  return (
-    <label>
-      {label}
-      <input min={min} step={step} type="number" value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Number(event.target.value))} />
-    </label>
-  );
-}
-
-function ResultTable({ rows, title }: { rows: Array<[string, string, number?]>; title: string }) {
   const copyText = rows.map(([name, value]) => `${name}\t${value}`).join("\n");
 
   return (
-    <section className="panel result-panel">
+    <section className={["panel result-panel", columns === 2 ? "result-panel--cols-2" : ""].filter(Boolean).join(" ")}>
       <div className="section-header">
         <h2>{title}</h2>
         <button className="text-button" onClick={() => void navigator.clipboard?.writeText(copyText)} type="button">
@@ -767,16 +920,29 @@ function ResultTable({ rows, title }: { rows: Array<[string, string, number?]>; 
           复制
         </button>
       </div>
-      <table className="result-table">
-        <tbody>
+      {columns === 2 ? (
+        <div className="result-grid-2">
           {rows.map(([name, value, tone]) => (
-            <tr key={name}>
-              <th>{name}</th>
-              <td className={tone === undefined ? "" : tone >= 0 ? "positive" : "negative"}>{value}</td>
-            </tr>
+            <div className="result-grid-item" key={name}>
+              <span className="result-grid-label">{name}</span>
+              <span className={["result-grid-value", tone === undefined ? "" : tone >= 0 ? "positive" : "negative"].filter(Boolean).join(" ")}>
+                {value}
+              </span>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      ) : (
+        <table className="result-table">
+          <tbody>
+            {rows.map(([name, value, tone]) => (
+              <tr key={name}>
+                <th>{name}</th>
+                <td className={tone === undefined ? "" : tone >= 0 ? "positive" : "negative"}>{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }

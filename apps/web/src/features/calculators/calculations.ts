@@ -31,26 +31,45 @@ export type ProfitCostResult = {
   totalCost: number;
 };
 
-export type TTradeInput = FeeSettings & {
-  baseQuantity: number;
-  baseAvgCost: number;
-  sequence: "buyFirst" | "sellFirst";
-  buyPrice: number;
-  buyQuantity: number;
-  sellPrice: number;
-  sellQuantity: number;
+/** 做 T 账本操作：初始持仓 / 买入 / 卖出 */
+export type TLedgerSide = "init" | "buy" | "sell";
+
+export type TLedgerEntryInput = {
+  id: string;
+  side: TLedgerSide;
+  price: number;
+  quantity: number;
 };
 
-export type TTradeResult = {
-  buyAmount: number;
-  buyFees: number;
-  sellAmount: number;
-  sellFees: number;
+export type TLedgerRow = {
+  id: string;
+  index: number;
+  side: TLedgerSide;
+  buyPrice: number | null;
+  buyQuantity: number | null;
+  sellPrice: number | null;
+  sellQuantity: number | null;
+  fee: number;
   cashFlow: number;
-  realizedProfit: number;
-  finalQuantity: number;
-  finalCost: number;
-  finalAvgCost: number;
+  positionQuantity: number;
+  positionAvgCost: number;
+};
+
+export type TLedgerSummary = {
+  positionQuantity: number;
+  positionAvgCost: number;
+  positionCost: number;
+  positionMarketValue: number;
+  realizedPnl: number;
+  unrealizedPnl: number;
+  totalPnl: number;
+  totalFees: number;
+  totalCashFlow: number;
+  /** 做 T 收益：已实现盈亏 */
+  tProfit: number;
+  markPrice: number;
+  /** 可提取利润：已实现盈亏中非负部分 */
+  extractableProfit: number;
 };
 
 export type ChangeInput = {
@@ -125,55 +144,133 @@ export function calculateProfitCost(input: ProfitCostInput): ProfitCostResult {
   };
 }
 
-export function calculateTTrade(input: TTradeInput): TTradeResult {
-  const buyAmount = input.buyPrice * input.buyQuantity;
-  const sellAmount = input.sellPrice * input.sellQuantity;
-  const buyFees = calculateSideFees("buy", buyAmount, input);
-  const sellFees = calculateSideFees("sell", sellAmount, input);
-  const initialCost = input.baseQuantity * input.baseAvgCost;
-  const cashFlow = sellAmount - sellFees - buyAmount - buyFees;
+/**
+ * 按真实做 T 逻辑从首条记录重算整本账：
+ * - 买入：金额+手续费入成本，移动加权平均
+ * - 卖出：金额-手续费为现金流，平均成本不变，仅减仓
+ * - finalPrice：可选情景价；有值时用其估算持仓市值与未实现/总盈亏，无值则用最后成交价
+ */
+export function buildTLedger(
+  entries: TLedgerEntryInput[],
+  feeSettings: FeeSettings,
+  options?: { finalPrice?: number | null },
+): { rows: TLedgerRow[]; summary: TLedgerSummary } {
+  const rows: TLedgerRow[] = [];
+  let positionQuantity = 0;
+  let positionAvgCost = 0;
+  let realizedPnl = 0;
+  let totalFees = 0;
+  let totalCashFlow = 0;
+  let lastTradePrice = 0;
 
-  if (input.sequence === "buyFirst") {
-    const tradableQuantity = input.baseQuantity + input.buyQuantity;
-    const sellQuantity = Math.min(input.sellQuantity, tradableQuantity);
-    const tQuantity = Math.min(input.buyQuantity, sellQuantity);
-    const baseSellQuantity = Math.max(0, sellQuantity - tQuantity);
-    const realizedProfit =
-      (input.sellPrice - input.buyPrice) * tQuantity +
-      (input.sellPrice - input.baseAvgCost) * baseSellQuantity -
-      sellFees -
-      (buyFees * tQuantity) / Math.max(input.buyQuantity, 1);
-    const remainingBuyQuantity = Math.max(0, input.buyQuantity - tQuantity);
-    const finalQuantity = input.baseQuantity + input.buyQuantity - sellQuantity;
-    const finalCost = initialCost + input.buyPrice * remainingBuyQuantity + buyFees - (input.baseAvgCost * baseSellQuantity + (buyFees * tQuantity) / Math.max(input.buyQuantity, 1));
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    const price = Math.max(0, entry.price);
+    let quantity = Math.max(0, entry.quantity);
 
-    return normalizeTResult({
-      buyAmount,
-      buyFees,
-      sellAmount,
-      sellFees,
+    if (entry.side === "init") {
+      positionQuantity = quantity;
+      positionAvgCost = price;
+      lastTradePrice = price;
+      rows.push({
+        id: entry.id,
+        index: i + 1,
+        side: "init",
+        buyPrice: null,
+        buyQuantity: null,
+        sellPrice: null,
+        sellQuantity: null,
+        fee: 0,
+        cashFlow: 0,
+        positionQuantity,
+        positionAvgCost,
+      });
+      continue;
+    }
+
+    if (entry.side === "buy") {
+      const amount = price * quantity;
+      const fee = quantity > 0 && price > 0 ? calculateTradeFee("buy", price, quantity, feeSettings) : 0;
+      const cashFlow = -(amount + fee);
+      const nextQuantity = positionQuantity + quantity;
+      const nextCost = positionQuantity * positionAvgCost + amount + fee;
+      positionQuantity = nextQuantity;
+      positionAvgCost = nextQuantity > 0 ? nextCost / nextQuantity : 0;
+      lastTradePrice = price;
+      totalFees += fee;
+      totalCashFlow += cashFlow;
+      rows.push({
+        id: entry.id,
+        index: i + 1,
+        side: "buy",
+        buyPrice: price,
+        buyQuantity: quantity,
+        sellPrice: null,
+        sellQuantity: null,
+        fee,
+        cashFlow,
+        positionQuantity,
+        positionAvgCost,
+      });
+      continue;
+    }
+
+    // sell
+    quantity = Math.min(quantity, positionQuantity);
+    const amount = price * quantity;
+    const fee = quantity > 0 && price > 0 ? calculateTradeFee("sell", price, quantity, feeSettings) : 0;
+    const cashFlow = amount - fee;
+    const sellCost = positionAvgCost * quantity;
+    realizedPnl += amount - sellCost - fee;
+    positionQuantity = Math.max(0, positionQuantity - quantity);
+    // 平均成本保持不变；清仓后成本归零
+    if (positionQuantity <= 0) {
+      positionQuantity = 0;
+      positionAvgCost = 0;
+    }
+    lastTradePrice = price;
+    totalFees += fee;
+    totalCashFlow += cashFlow;
+    rows.push({
+      id: entry.id,
+      index: i + 1,
+      side: "sell",
+      buyPrice: null,
+      buyQuantity: null,
+      sellPrice: price,
+      sellQuantity: quantity,
+      fee,
       cashFlow,
-      realizedProfit,
-      finalQuantity,
-      finalCost,
+      positionQuantity,
+      positionAvgCost,
     });
   }
 
-  const sellQuantity = Math.min(input.sellQuantity, input.baseQuantity);
-  const realizedProfit = (input.sellPrice - input.baseAvgCost) * sellQuantity - sellFees;
-  const finalQuantity = input.baseQuantity - sellQuantity + input.buyQuantity;
-  const finalCost = initialCost - input.baseAvgCost * sellQuantity + buyAmount + buyFees;
+  const scenarioPrice = options?.finalPrice;
+  const hasScenarioPrice = scenarioPrice != null && Number.isFinite(scenarioPrice) && scenarioPrice > 0;
+  const markPrice = hasScenarioPrice ? scenarioPrice : lastTradePrice;
+  const positionCost = positionQuantity * positionAvgCost;
+  const positionMarketValue = positionQuantity * markPrice;
+  const unrealizedPnl = positionQuantity > 0 ? (markPrice - positionAvgCost) * positionQuantity : 0;
+  const totalPnl = realizedPnl + unrealizedPnl;
 
-  return normalizeTResult({
-    buyAmount,
-    buyFees,
-    sellAmount,
-    sellFees,
-    cashFlow,
-    realizedProfit,
-    finalQuantity,
-    finalCost,
-  });
+  return {
+    rows,
+    summary: {
+      positionQuantity,
+      positionAvgCost,
+      positionCost,
+      positionMarketValue,
+      realizedPnl,
+      unrealizedPnl,
+      totalPnl,
+      totalFees,
+      totalCashFlow,
+      tProfit: realizedPnl,
+      markPrice,
+      extractableProfit: Math.max(0, realizedPnl),
+    },
+  };
 }
 
 export function calculateChange(input: ChangeInput): ChangeResult {
@@ -234,17 +331,6 @@ function calculateSideFees(side: "buy" | "sell", amount: number, settings: FeeSe
   const transferFee = amount * percentToRate(settings.transferRate);
   const stampTax = side === "sell" && settings.assetType === "stock" ? amount * percentToRate(settings.stampTaxRate) : 0;
   return commission + transferFee + stampTax;
-}
-
-function normalizeTResult(result: Omit<TTradeResult, "finalAvgCost">): TTradeResult {
-  const finalCost = Math.max(0, result.finalCost);
-  const finalQuantity = Math.max(0, result.finalQuantity);
-  return {
-    ...result,
-    finalCost,
-    finalQuantity,
-    finalAvgCost: finalQuantity > 0 ? finalCost / finalQuantity : 0,
-  };
 }
 
 function percentToRate(value: number) {

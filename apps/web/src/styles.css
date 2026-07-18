@@ -370,6 +370,16 @@ textarea {
   min-height: 100vh;
 }
 
+.app-shell:has(.t-calculator-form) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.workspace:has(.t-calculator-form) {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .icon-rail {
   display: flex;
   align-items: center;
@@ -2006,6 +2016,11 @@ textarea {
   font-size: 13px;
 }
 
+.calculator-input-grid > .calculator-asset-type-field {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .calculator-asset-type-field > .field-label-with-tip > label {
   color: inherit;
   font-size: inherit;
@@ -2018,7 +2033,18 @@ textarea {
 }
 
 .calculator-fee-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 14px;
+}
+
+.calculator-fee-toggles {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 16px;
 }
 
 .calculator-custom-fee-fields {
@@ -2757,6 +2783,501 @@ textarea {
   flex: 0 0 420px;
 }
 
+.calculators-page:has(.t-calculator-form) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 12px;
+}
+
+.calculators-page:has(.t-calculator-form) .calculator-page-header {
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.calculators-page:has(.t-calculator-form) .calculator-page-meta,
+.calculators-page:has(.t-calculator-form) .calculator-page-heading {
+  padding: 10px 14px;
+}
+
+.calculators-page:has(.t-calculator-form) .calculator-page-heading svg {
+  width: 22px;
+  height: 22px;
+}
+
+.calculators-page:has(.t-calculator-form) .calculator-page-heading-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.calculators-page:has(.t-calculator-form) .calculators-tabs {
+  flex: 0 0 auto;
+  padding: 6px;
+}
+
+.calculator-shell:has(.t-calculator-form) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 12px;
+}
+
+.t-calculator-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.t-calculator-top {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 12px;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  max-height: min(38vh, 360px);
+  min-height: 0;
+  overflow: auto;
+}
+
+.t-calculator-top > .t-calculator-panel {
+  display: flex;
+  flex: 1 1 0;
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+  max-width: none;
+  width: auto;
+  padding: 8px 14px 12px;
+}
+
+.t-input-main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.t-input-align {
+  --t-label-line: 20px;
+  --t-control-gap: 6px;
+  --t-control-min-height: 38px;
+  display: grid;
+  /* 前三列合计 75%，后三列合计 25% 且等分 */
+  grid-template-columns: repeat(3, minmax(0, 3fr)) repeat(3, minmax(0, 1fr));
+  column-gap: 10px;
+  row-gap: 10px;
+  align-items: start;
+  width: 100%;
+}
+
+/* Flatten row wrappers so both rows share one column track sizing. */
+.t-input-align > .t-input-grid.calculator-input-grid {
+  display: contents;
+}
+
+.t-action-bar--inline {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  margin: calc(var(--t-label-line) + var(--t-control-gap)) 0 0;
+  padding: 0;
+  border: 0;
+  grid-column: span 3;
+  align-self: start;
+  min-height: var(--t-control-min-height);
+}
+
+/* 统一「标签行 + 间距 + 控件行」，保证最终价格与成本类型等控件基线一致 */
+.t-input-align .app-number-stepper-field,
+.t-input-align > .t-input-grid > label,
+.t-input-align .calculator-asset-type-field {
+  display: grid;
+  grid-template-rows: var(--t-label-line) var(--t-control-min-height);
+  row-gap: var(--t-control-gap);
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.t-input-align .app-number-stepper-field > label,
+.t-input-align .calculator-asset-type-field > .field-label-with-tip {
+  display: flex;
+  align-items: center;
+  height: var(--t-label-line);
+  min-height: var(--t-label-line);
+  max-height: var(--t-label-line);
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: var(--t-label-line);
+  color: var(--muted);
+  overflow: visible;
+}
+
+.t-input-align .app-number-stepper-field > label .field-label-with-tip,
+.t-input-align .field-label-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--t-label-line);
+  min-height: var(--t-label-line);
+  max-height: var(--t-label-line);
+  margin: 0;
+  font-size: 13px;
+  line-height: var(--t-label-line);
+  color: var(--muted);
+}
+
+.t-input-align .calculator-asset-type-field {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 交易方向：标签文字与控件分行，颜色不传到 select */
+.t-input-align > .t-input-grid > label {
+  font-size: 13px;
+  line-height: var(--t-label-line);
+  color: var(--muted);
+}
+
+.t-input-align > .t-input-grid > label > .app-select {
+  color: var(--ink);
+}
+
+/* 覆盖 .calculator-input-grid 后写的 margin-top: 6px，避免标签间距被叠高 */
+.t-input-align .trade-qty-stepper,
+.t-input-align .app-select,
+.t-input-align .calculator-asset-type-field .app-select,
+.t-input-align .calculator-input-grid .trade-qty-stepper,
+.t-input-align .calculator-input-grid .app-select,
+.t-input-align .calculator-input-grid .app-number-stepper-field .trade-qty-stepper {
+  width: 100%;
+  max-width: 100%;
+  height: var(--t-control-min-height);
+  min-height: var(--t-control-min-height);
+  margin-top: 0;
+  box-sizing: border-box;
+}
+
+.t-input-align .app-select-trigger {
+  height: var(--t-control-min-height);
+  min-height: var(--t-control-min-height);
+  box-sizing: border-box;
+}
+
+.calculator-fee-panel--compact {
+  display: contents;
+  margin-top: 0;
+}
+
+.calculator-fee-panel--compact .calculator-fee-toggles,
+.t-input-align .t-peer-action {
+  display: flex;
+  flex-direction: column;
+  gap: var(--t-control-gap);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.calculator-fee-panel--compact .calculator-fee-toggles::before,
+.t-input-align .t-peer-action::before {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  height: var(--t-label-line);
+}
+
+.calculator-fee-panel--compact .t-fee-toggle-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--t-control-min-height);
+}
+
+.calculator-fee-panel--compact .calculator-fee-toggles .trade-fee-template-toggle {
+  width: auto;
+  justify-content: center;
+}
+
+.t-input-align .t-init-button {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--t-control-min-height);
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--ink);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.t-input-align .t-init-button:hover {
+  background: #24312b;
+}
+
+.calculator-fee-panel--compact .calculator-fee-expanded {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+
+.calculator-fee-panel--compact .trade-fee-template-field {
+  margin: 0;
+}
+
+.calculator-fee-panel--compact .calculator-custom-fee-grid.fee-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 0;
+}
+
+.t-input-section {
+  margin-top: 0;
+}
+
+.t-input-main > .t-input-section:first-child {
+  margin-top: 0;
+}
+
+.t-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.t-action-bar .primary-button,
+.t-action-bar .secondary-button {
+  display: inline-flex;
+  width: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-top: 0;
+  padding: 0 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.t-action-bar .primary-button {
+  border: 0;
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.t-action-bar .primary-button:hover {
+  opacity: 0.92;
+}
+
+.t-action-bar .secondary-button {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.t-action-bar .secondary-button:hover {
+  background: #f5f7f6;
+}
+
+.t-calculator-top > .t-status-column {
+  width: 420px;
+  flex: 0 0 420px;
+  min-width: 0;
+}
+
+.t-calculator-top > .t-status-column > .result-panel {
+  width: 100%;
+  height: 100%;
+  position: static;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+
+.t-status-column .section-header h2 {
+  font-size: 16px;
+}
+
+.t-status-column .result-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
+  margin-top: 8px;
+}
+
+.t-status-column .result-grid-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.t-status-column .result-grid-label {
+  flex: 0 1 auto;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.t-status-column .result-grid-value {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.t-ledger-panel {
+  display: flex;
+  flex: 1 1 50%;
+  flex-direction: column;
+  width: 100%;
+  min-height: max(50vh, 320px);
+  padding: 12px 14px;
+  overflow: hidden;
+}
+
+.t-ledger-panel > .section-header {
+  flex: 0 0 auto;
+}
+
+.t-ledger-panel > .section-header h2 {
+  font-size: 15px;
+}
+
+.t-table-wrap {
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow: auto;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fcfdfc;
+}
+
+.t-ledger-table {
+  min-width: 960px;
+  margin-top: 0;
+}
+
+.t-ledger-table th,
+.t-ledger-table td {
+  padding: 10px 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-ledger-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f4f7f5;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .workspace:has(.t-calculator-form) {
+    height: auto;
+    overflow: visible;
+  }
+
+  .calculators-page:has(.t-calculator-form),
+  .calculator-shell:has(.t-calculator-form),
+  .t-calculator-form {
+    overflow: visible;
+  }
+
+  .t-calculator-top {
+    flex-wrap: wrap;
+    max-height: none;
+  }
+
+  .t-calculator-top > .t-calculator-panel,
+  .t-calculator-top > .t-status-column {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .t-calculator-top > .t-calculator-panel {
+    flex-direction: column;
+  }
+
+  .t-calculator-top > .t-status-column {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .t-action-bar--inline {
+    flex-wrap: wrap;
+  }
+
+  .t-ledger-panel {
+    min-height: 50vh;
+  }
+}
+
+.t-check-col {
+  width: 36px;
+  text-align: center;
+}
+
+.t-empty-cell {
+  color: var(--muted);
+  text-align: center !important;
+  height: 28vh;
+  vertical-align: middle;
+  padding: 28px 12px !important;
+}
+
+.t-retention-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .calculator-input-grid,
 .fee-fields {
   display: grid;
@@ -2785,6 +3306,13 @@ textarea {
 .average-line .trade-qty-stepper,
 .average-line .app-number-stepper-field .trade-qty-stepper {
   margin-top: 6px;
+}
+
+.t-input-align .calculator-input-grid input:not(.trade-qty-input),
+.t-input-align .calculator-input-grid .trade-qty-stepper,
+.t-input-align .calculator-input-grid .app-select,
+.t-input-align .calculator-input-grid .app-number-stepper-field .trade-qty-stepper {
+  margin-top: 0;
 }
 
 .fee-fields {
