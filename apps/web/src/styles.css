@@ -2886,19 +2886,49 @@ textarea {
   display: contents;
 }
 
-.t-action-bar--inline {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
+/* 第2行右侧 25%：与左侧字段同结构（标签占位 + 控件行），四按钮等分且与交易数量同高同行 */
+/* 须压过 .t-action-bar { display:flex }，否则 grid 失效按钮会上浮到标签行 */
+.t-action-bar.t-action-bar--inline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: var(--t-label-line) var(--t-control-min-height);
+  row-gap: var(--t-control-gap);
+  column-gap: 6px;
   width: 100%;
   min-width: 0;
-  margin: calc(var(--t-label-line) + var(--t-control-gap)) 0 0;
+  margin: 0;
   padding: 0;
   border: 0;
   grid-column: span 3;
   align-self: start;
+  box-sizing: border-box;
+}
+
+.t-action-bar.t-action-bar--inline::before {
+  content: "";
+  grid-column: 1 / -1;
+  grid-row: 1;
+  height: var(--t-label-line);
+  pointer-events: none;
+}
+
+.t-action-bar.t-action-bar--inline > .primary-button,
+.t-action-bar.t-action-bar--inline > .secondary-button {
+  grid-row: 2;
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  height: var(--t-control-min-height);
   min-height: var(--t-control-min-height);
+  max-height: var(--t-control-min-height);
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 4px;
+  box-sizing: border-box;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* 统一「标签行 + 间距 + 控件行」，保证最终价格与成本类型等控件基线一致 */
@@ -3026,6 +3056,7 @@ textarea {
   min-width: 0;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   min-height: var(--t-control-min-height);
   margin: 0;
   padding: 0 8px;
@@ -3249,8 +3280,13 @@ textarea {
     flex: 1 1 auto;
   }
 
-  .t-action-bar--inline {
-    flex-wrap: wrap;
+  .t-action-bar.t-action-bar--inline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: var(--t-label-line) repeat(2, var(--t-control-min-height));
+  }
+
+  .t-action-bar.t-action-bar--inline > :nth-child(n + 3) {
+    grid-row: 3;
   }
 
   .t-ledger-panel {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Calculator, ChevronDown, ChevronRight, Copy, Download, Plus, Trash2 } from "lucide-react";
+import { Calculator, ChevronDown, ChevronRight, Copy, Download, Layers, PiggyBank, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppSwitch } from "../../components/AppSwitch";
@@ -353,6 +353,7 @@ function TCalculator() {
                       trailing={
                         <div className="t-peer-action">
                           <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
+                            <Layers size={14} />
                             底仓初始化
                           </button>
                         </div>
@@ -374,19 +375,20 @@ function TCalculator() {
                     <AppNumberStepper label="交易价格" onChange={setTradePrice} step={priceStep} value={tradePrice} />
                     <AppNumberStepper label="交易数量" normalizeToStep onChange={setTradeQuantity} step={100} value={tradeQuantity} />
                     <div className="t-action-bar t-action-bar--inline">
-                      <button className="primary-button" onClick={addOperation} type="button">
-                        <Plus size={15} />
-                        添加操作
+                      <button className="primary-button" onClick={addOperation} type="button" title="添加操作">
+                        <Plus size={14} />
+                        添加
                       </button>
-                      <button className="secondary-button" onClick={deleteSelected} type="button">
-                        <Trash2 size={15} />
-                        删除操作
+                      <button className="secondary-button" onClick={deleteSelected} type="button" title="删除操作">
+                        <Trash2 size={14} />
+                        删除
                       </button>
                       <button className="secondary-button" onClick={analyzeRetention} type="button">
+                        <PiggyBank size={14} />
                         利润留存
                       </button>
                       <button className="secondary-button" onClick={downloadExcel} type="button">
-                        <Download size={15} />
+                        <Download size={14} />
                         下载做T表
                       </button>
                     </div>
