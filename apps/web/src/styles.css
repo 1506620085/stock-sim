@@ -372,11 +372,15 @@ textarea {
 
 .app-shell:has(.t-calculator-form) {
   height: 100vh;
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }
 
 .workspace:has(.t-calculator-form) {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -3203,7 +3207,7 @@ textarea {
   flex-direction: column;
   width: 100%;
   min-height: 0;
-  padding: 12px 14px;
+  padding: 10px 14px 12px;
   overflow: hidden;
 }
 
@@ -3212,6 +3216,7 @@ textarea {
 }
 
 .t-ledger-panel > .section-header h2 {
+  margin-top: 0;
   font-size: 15px;
 }
 
@@ -3221,26 +3226,27 @@ textarea {
   flex-direction: column;
   min-height: 0;
   overflow: auto;
-  margin-top: 8px;
+  margin-top: 6px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fcfdfc;
 }
 
+/* 无数据时：区域仍铺满，但不产生纵向滚动条（表头+100%空行会叠高出 1 屏） */
+.t-table-wrap:has(.t-empty-cell) {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .t-ledger-table {
   width: 100%;
   min-width: 960px;
-  min-height: 100%;
   margin-top: 0;
   table-layout: fixed;
 }
 
-.t-ledger-table tbody {
-  height: 100%;
-}
-
-.t-ledger-table tbody tr.t-empty-row {
-  height: 100%;
+.result-table.t-ledger-table {
+  margin-top: 0;
 }
 
 .t-ledger-table th,
@@ -3304,7 +3310,7 @@ textarea {
 
   .t-ledger-panel {
     flex: 1 1 auto;
-    min-height: 50vh;
+    min-height: min(50vh, 420px);
   }
 }
 
@@ -3316,9 +3322,25 @@ textarea {
 .t-empty-cell {
   color: var(--muted);
   text-align: center !important;
+  height: auto;
+  min-height: 0;
+  vertical-align: top;
+  padding: 24px 12px !important;
+}
+
+/* 空表仍铺满容器，提示贴在表头下方而非垂直居中留白 */
+.result-table.t-ledger-table:has(.t-empty-cell) {
   height: 100%;
-  vertical-align: middle;
-  padding: 28px 12px !important;
+}
+
+.result-table.t-ledger-table:has(.t-empty-cell) tbody {
+  height: 100%;
+}
+
+.result-table.t-ledger-table:has(.t-empty-cell) tbody tr,
+.result-table.t-ledger-table:has(.t-empty-cell) .t-empty-cell {
+  height: 100%;
+  vertical-align: top;
 }
 
 .t-retention-hint {
