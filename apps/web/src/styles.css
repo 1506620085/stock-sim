@@ -3419,6 +3419,10 @@ textarea {
   font-weight: 600;
 }
 
+.result-table.t-ledger-table tbody tr:hover td {
+  background: #eef3f0;
+}
+
 .result-table.t-ledger-table .t-check-col {
   width: 36px;
   text-align: center;
