@@ -411,7 +411,16 @@ function TCalculator() {
 
           <div className="t-status-column">
             <ResultTable
-              columns={2}
+              columns={3}
+              footer={
+                <p className="t-retention-hint">
+                  {summary.extractableProfit > 0
+                    ? summary.extractableProfit >= summary.positionCost
+                      ? "可提取利润已覆盖剩余持仓成本。"
+                      : "可提取利润尚未完全覆盖剩余持仓成本。"
+                    : "当前暂无可提取利润。"}
+                </p>
+              }
               rows={[
                 ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
                 ["当前平均成本", currency(summary.positionAvgCost)],
@@ -426,13 +435,6 @@ function TCalculator() {
               ]}
               title="最终状态"
             />
-            <p className="t-retention-hint">
-              {summary.extractableProfit > 0
-                ? summary.extractableProfit >= summary.positionCost
-                  ? "可提取利润已覆盖剩余持仓成本。"
-                  : "可提取利润尚未完全覆盖剩余持仓成本。"
-                : "当前暂无可提取利润。"}
-            </p>
           </div>
         </div>
 
@@ -908,15 +910,22 @@ function ResultTable({
   rows,
   title,
   columns = 1,
+  footer = null,
 }: {
   rows: Array<[string, string, number?]>;
   title: string;
-  columns?: 1 | 2;
+  columns?: 1 | 2 | 3;
+  footer?: ReactNode;
 }) {
   const copyText = rows.map(([name, value]) => `${name}\t${value}`).join("\n");
+  const gridClass = columns === 3 ? "result-grid-3" : columns === 2 ? "result-grid-2" : null;
 
   return (
-    <section className={["panel result-panel", columns === 2 ? "result-panel--cols-2" : ""].filter(Boolean).join(" ")}>
+    <section
+      className={["panel result-panel", columns === 2 ? "result-panel--cols-2" : "", columns === 3 ? "result-panel--cols-3" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="section-header">
         <h2>{title}</h2>
         <button className="text-button" onClick={() => void navigator.clipboard?.writeText(copyText)} type="button">
@@ -924,8 +933,8 @@ function ResultTable({
           复制
         </button>
       </div>
-      {columns === 2 ? (
-        <div className="result-grid-2">
+      {gridClass ? (
+        <div className={gridClass}>
           {rows.map(([name, value, tone]) => (
             <div className="result-grid-item" key={name}>
               <span className="result-grid-label">{name}</span>
@@ -947,6 +956,7 @@ function ResultTable({
           </tbody>
         </table>
       )}
+      {footer}
     </section>
   );
 }
