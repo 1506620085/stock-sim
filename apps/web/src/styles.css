@@ -3228,6 +3228,7 @@ textarea {
 .t-ledger-table {
   min-width: 960px;
   margin-top: 0;
+  table-layout: fixed;
 }
 
 .t-ledger-table th,
@@ -3385,6 +3386,35 @@ textarea {
   color: var(--ink);
   font-weight: 700;
   text-align: right;
+}
+
+/* 做T账本：表头与数据按列居中对齐 */
+.result-table.t-ledger-table th,
+.result-table.t-ledger-table td {
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.result-table.t-ledger-table thead th {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.result-table.t-ledger-table td {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.result-table.t-ledger-table .t-check-col {
+  width: 36px;
+  text-align: center;
+}
+
+.result-table.t-ledger-table .t-empty-cell {
+  text-align: center;
+  font-weight: 500;
 }
 
 .average-lines {
