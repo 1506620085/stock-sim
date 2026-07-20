@@ -3398,8 +3398,20 @@ textarea {
 }
 
 .result-table.t-ledger-table thead th {
+  position: sticky;
   font-weight: 600;
   color: var(--muted);
+}
+
+.result-table.t-ledger-table thead th:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 22%;
+  bottom: 22%;
+  right: 0;
+  width: 2px;
+  background: var(--line);
+  pointer-events: none;
 }
 
 .result-table.t-ledger-table td {
