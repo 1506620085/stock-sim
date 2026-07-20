@@ -355,18 +355,12 @@ function TCalculator() {
                         value={fee.assetType}
                       />
                     </div>
-                    <CalculatorFeePanel
-                      {...fee}
-                      compact
-                      trailing={
-                        <div className="t-peer-action">
-                          <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
-                            <Layers size={14} />
-                            底仓初始化
-                          </button>
-                        </div>
-                      }
-                    />
+                    <div className="t-peer-action">
+                      <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
+                        <Layers size={14} />
+                        底仓初始化
+                      </button>
+                    </div>
                   </div>
                   <div className="calculator-input-grid t-input-grid t-input-grid--trade">
                     <label>
@@ -382,6 +376,7 @@ function TCalculator() {
                     </label>
                     <AppNumberStepper label="交易价格" onChange={setTradePrice} step={priceStep} value={tradePrice} />
                     <AppNumberStepper label="交易数量" normalizeToStep onChange={setTradeQuantity} step={100} value={tradeQuantity} />
+                    <CalculatorFeePanel {...fee} compact />
                   </div>
                   <div className="t-action-bar t-action-bar--row">
                     <button className="primary-button" onClick={addOperation} type="button" title="添加操作">

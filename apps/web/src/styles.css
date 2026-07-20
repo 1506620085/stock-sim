@@ -2855,8 +2855,8 @@ textarea {
   --t-control-gap: 6px;
   --t-control-min-height: 38px;
   display: grid;
-  /* 前四列等宽（交易方向同宽），供操作按钮与输入框左右对齐；后两列留给费率/初始化 */
-  grid-template-columns: repeat(4, minmax(0, 2.7fr)) repeat(2, minmax(0, 1fr));
+  /* 前四列等宽（交易方向同宽）；末列合并原「费率/初始化」两列 */
+  grid-template-columns: repeat(4, minmax(0, 2.7fr)) minmax(0, 2fr);
   column-gap: 10px;
   row-gap: 10px;
   align-items: start;
@@ -2989,6 +2989,7 @@ textarea {
 .t-input-align .t-peer-action {
   display: flex;
   flex-direction: column;
+  grid-column: 5;
   gap: var(--t-control-gap);
   width: 100%;
   min-width: 0;
@@ -3006,16 +3007,17 @@ textarea {
 
 .calculator-fee-panel--compact .t-fee-toggle-stack {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
+  justify-content: space-between;
+  gap: 8px;
   width: 100%;
   min-height: var(--t-control-min-height);
 }
 
 .calculator-fee-panel--compact .calculator-fee-toggles .trade-fee-template-toggle {
   width: auto;
+  flex-shrink: 0;
   justify-content: center;
 }
 
