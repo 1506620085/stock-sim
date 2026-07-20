@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Calculator, ChevronDown, ChevronRight, Copy, Download, Layers, PiggyBank, Plus, Trash2 } from "lucide-react";
+import { Calculator, Copy, Download, Layers, PiggyBank, Plus, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
-import { AppSwitch } from "../../components/AppSwitch";
 import { FieldLabelWithTip } from "../../components/FieldHelpTip";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
-import { feeTemplateLabel, loadFeePreferences, loadFeeTemplates, resolveFeeTemplate, saveFeePreferences, templateToFeeSettings, type FeeTemplate } from "../settings/api";
 import {
   buildTLedger,
   calculateAverage,
@@ -99,26 +97,27 @@ export function CalculatorsPage() {
 }
 
 function ProfitCostCalculator() {
-  const fee = useCalculatorFeeSettings();
+  const { assetType, changeAssetType } = useCalculatorAssetType();
   const [buyPrice, setBuyPrice] = useState<number | null>(null);
   const [sellPrice, setSellPrice] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number | null>(null);
-  const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
+  const priceStep = assetType === "etf" ? 0.001 : 0.01;
+  const feeSettings = useMemo(() => feeSettingsForAssetType(assetType), [assetType]);
   const result = useMemo(
     () =>
       calculateProfitCost({
-        ...fee.effectiveSettings,
+        ...feeSettings,
         buyPrice: buyPrice ?? 0,
         sellPrice: sellPrice ?? 0,
         quantity: quantity ?? 0,
       }),
-    [buyPrice, fee.effectiveSettings, quantity, sellPrice],
+    [buyPrice, feeSettings, quantity, sellPrice],
   );
 
   useEffect(() => {
-    setBuyPrice((current) => (current == null ? current : Number(current.toFixed(fee.assetType === "etf" ? 3 : 2))));
-    setSellPrice((current) => (current == null ? current : Number(current.toFixed(fee.assetType === "etf" ? 3 : 2))));
-  }, [fee.assetType]);
+    setBuyPrice((current) => (current == null ? current : Number(current.toFixed(assetType === "etf" ? 3 : 2))));
+    setSellPrice((current) => (current == null ? current : Number(current.toFixed(assetType === "etf" ? 3 : 2))));
+  }, [assetType]);
 
   return (
     <CalculatorShell>
@@ -128,19 +127,19 @@ function ProfitCostCalculator() {
           <div className="calculator-asset-type-field">
             <FieldLabelWithTip
               htmlFor="profit-cost-asset-type"
-              tip="在买卖价格中，股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
-              tipAriaLabel="价格精度说明"
+              tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按系统默认费率计算。"
+              tipAriaLabel="成本类型说明"
             >
               成本类型
             </FieldLabelWithTip>
             <AppSelect
               id="profit-cost-asset-type"
-              onChange={fee.changeAssetType}
+              onChange={changeAssetType}
               options={[
                 { label: "股票", value: "stock" },
                 { label: "ETF", value: "etf" },
               ]}
-              value={fee.assetType}
+              value={assetType}
             />
           </div>
           <div className="calculator-input-grid">
@@ -148,7 +147,6 @@ function ProfitCostCalculator() {
             <AppNumberStepper label="卖出价格" normalizeToStep onChange={setSellPrice} step={priceStep} value={sellPrice} />
             <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>
-          <CalculatorFeePanel {...fee} />
         </div>
         <ResultTable
           rows={[
@@ -171,7 +169,7 @@ function ProfitCostCalculator() {
 }
 
 function TCalculator() {
-  const fee = useCalculatorFeeSettings();
+  const { assetType, changeAssetType } = useCalculatorAssetType();
   const [baseAvgCost, setBaseAvgCost] = useState<number | null>(10);
   const [baseQuantity, setBaseQuantity] = useState<number | null>(1000);
   const [tradeSide, setTradeSide] = useState<"buy" | "sell">("buy");
@@ -181,26 +179,19 @@ function TCalculator() {
   const [entries, setEntries] = useState<TLedgerEntryInput[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
-  const feeSettings = useMemo(
-    (): FeeSettings => ({
-      ...defaultFeeSettings,
-      assetType: fee.assetType,
-      stampTaxRate: fee.assetType === "stock" ? defaultFeeSettings.stampTaxRate : 0,
-    }),
-    [fee.assetType],
-  );
+  const priceStep = assetType === "etf" ? 0.001 : 0.01;
+  const feeSettings = useMemo(() => feeSettingsForAssetType(assetType), [assetType]);
   const { rows, summary } = useMemo(
     () => buildTLedger(entries, feeSettings, { finalPrice }),
     [entries, feeSettings, finalPrice],
   );
 
   useEffect(() => {
-    const decimals = fee.assetType === "etf" ? 3 : 2;
+    const decimals = assetType === "etf" ? 3 : 2;
     setBaseAvgCost((current) => (current == null ? current : Number(current.toFixed(decimals))));
     setTradePrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
     setFinalPrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
-  }, [fee.assetType]);
+  }, [assetType]);
 
   function initBasePosition() {
     const cost = baseAvgCost ?? 0;
@@ -359,12 +350,12 @@ function TCalculator() {
                       </FieldLabelWithTip>
                       <AppSelect
                         id="t-asset-type"
-                        onChange={fee.changeAssetType}
+                        onChange={changeAssetType}
                         options={[
                           { label: "股票", value: "stock" },
                           { label: "ETF", value: "etf" },
                         ]}
-                        value={fee.assetType}
+                        value={assetType}
                       />
                     </div>
                   </div>
@@ -578,23 +569,24 @@ function ChangeCalculator() {
 }
 
 function AveragePriceCalculator() {
-  const fee = useCalculatorFeeSettings();
+  const { assetType, changeAssetType } = useCalculatorAssetType();
   const [lines, setLines] = useState<AverageLine[]>([
     { id: "1", price: null, quantity: null },
     { id: "2", price: null, quantity: null },
   ]);
-  const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
-  const result = useMemo(() => calculateAverage(lines, fee.effectiveSettings), [fee.effectiveSettings, lines]);
+  const priceStep = assetType === "etf" ? 0.001 : 0.01;
+  const feeSettings = useMemo(() => feeSettingsForAssetType(assetType), [assetType]);
+  const result = useMemo(() => calculateAverage(lines, feeSettings), [feeSettings, lines]);
 
   useEffect(() => {
-    const decimals = fee.assetType === "etf" ? 3 : 2;
+    const decimals = assetType === "etf" ? 3 : 2;
     setLines((items) =>
       items.map((line) => ({
         ...line,
         price: line.price == null ? null : Number(line.price.toFixed(decimals)),
       })),
     );
-  }, [fee.assetType]);
+  }, [assetType]);
 
   function updateLine(id: string, patch: Partial<AverageLine>) {
     setLines((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -622,19 +614,19 @@ function AveragePriceCalculator() {
           <div className="calculator-asset-type-field">
             <FieldLabelWithTip
               htmlFor="average-price-asset-type"
-              tip="在买卖价格中，股票默认精确到两位小数；将成本类型切换为 ETF 后，可精确到三位小数。"
-              tipAriaLabel="价格精度说明"
+              tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按系统默认费率计算。"
+              tipAriaLabel="成本类型说明"
             >
               成本类型
             </FieldLabelWithTip>
             <AppSelect
               id="average-price-asset-type"
-              onChange={fee.changeAssetType}
+              onChange={changeAssetType}
               options={[
                 { label: "股票", value: "stock" },
                 { label: "ETF", value: "etf" },
               ]}
-              value={fee.assetType}
+              value={assetType}
             />
           </div>
           <div className="average-lines">
@@ -661,7 +653,6 @@ function AveragePriceCalculator() {
               </div>
             ))}
           </div>
-          <CalculatorFeePanel {...fee} />
         </div>
         <ResultTable
           rows={[
@@ -678,231 +669,22 @@ function AveragePriceCalculator() {
   );
 }
 
-function useCalculatorFeeSettings() {
-  const [templates, setTemplates] = useState<FeeTemplate[]>([]);
-  const [assetType, setAssetType] = useState<AssetType>("stock");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-  const [customEnabled, setCustomEnabled] = useState(false);
-  const [customSettings, setCustomSettings] = useState<FeeSettings>(defaultFeeSettings);
-
-  const selectedTemplate = useMemo(
-    () => resolveFeeTemplate(templates, assetType, { preferredTemplateId: selectedTemplateId ?? undefined }),
-    [assetType, selectedTemplateId, templates],
-  );
-
-  const templateSettings = useMemo(
-    () => (selectedTemplate ? templateToFeeSettings(selectedTemplate) : { ...defaultFeeSettings, assetType }),
-    [assetType, selectedTemplate],
-  );
-
-  const effectiveSettings = useMemo(
-    () => ({
-      ...(customEnabled ? customSettings : templateSettings),
-      assetType,
-    }),
-    [assetType, customEnabled, customSettings, templateSettings],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    loadFeeTemplates()
-      .then((items) => {
-        if (cancelled) return;
-        setTemplates(items);
-        const preferences = loadFeePreferences();
-        const initialAssetType = defaultFeeSettings.assetType;
-        const resolved = resolveFeeTemplate(items, initialAssetType, {
-          preferredTemplateId: preferences.calculatorTemplateId,
-        });
-        if (resolved) {
-          setAssetType(resolved.assetType);
-          setSelectedTemplateId(resolved.id);
-          setCustomSettings(templateToFeeSettings(resolved));
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  function selectTemplate(templateId: number) {
-    const template = templates.find((item) => item.id === templateId);
-    if (!template) return;
-    setSelectedTemplateId(template.id);
-    setAssetType(template.assetType);
-    saveFeePreferences({ calculatorTemplateId: template.id });
-  }
-
-  function changeAssetType(nextAssetType: AssetType) {
-    const resolved = resolveFeeTemplate(templates, nextAssetType, {
-      preferredTemplateId: selectedTemplateId ?? undefined,
-    });
-    setAssetType(nextAssetType);
-    if (resolved) {
-      setSelectedTemplateId(resolved.id);
-      saveFeePreferences({ calculatorTemplateId: resolved.id });
-    }
-    setCustomSettings((current) => ({
-      ...current,
-      assetType: nextAssetType,
-      stampTaxRate: nextAssetType === "stock" ? current.stampTaxRate : 0,
-    }));
-  }
-
-  function updateCustomSettings(next: FeeSettings) {
-    setCustomSettings({ ...next, assetType });
-  }
-
+function feeSettingsForAssetType(assetType: AssetType): FeeSettings {
   return {
+    ...defaultFeeSettings,
     assetType,
-    changeAssetType,
-    customEnabled,
-    customSettings,
-    effectiveSettings,
-    selectTemplate,
-    selectedTemplateId,
-    setCustomEnabled,
-    setCustomSettings: updateCustomSettings,
-    templates,
+    stampTaxRate: assetType === "stock" ? defaultFeeSettings.stampTaxRate : 0,
   };
 }
 
-function CalculatorFeePanel({
-  assetType,
-  customEnabled,
-  customSettings,
-  mode = "full",
-  selectTemplate,
-  selectedTemplateId,
-  setCustomEnabled,
-  setCustomSettings,
-  templates,
-}: ReturnType<typeof useCalculatorFeeSettings> & {
-  mode?: "full" | "custom-only";
-}) {
-  const [templateOpen, setTemplateOpen] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
-  const templateOptions = templates.filter((template) => template.assetType === assetType);
+function useCalculatorAssetType() {
+  const [assetType, setAssetType] = useState<AssetType>("stock");
 
-  function updateCustom<K extends keyof FeeSettings>(key: K, value: FeeSettings[K]) {
-    const next = { ...customSettings, [key]: value, assetType };
-    if (key === "assetType") {
-      next.stampTaxRate = value === "stock" ? customSettings.stampTaxRate : 0;
-    }
-    setCustomSettings(next);
+  function changeAssetType(nextAssetType: AssetType) {
+    setAssetType(nextAssetType);
   }
 
-  const hasExpanded = (mode === "full" && templateOpen && templateOptions.length > 0) || customOpen;
-
-  return (
-    <section className="calculator-fee-panel">
-      <div className="calculator-fee-toggles">
-        {mode === "full" && templateOptions.length ? (
-          <button
-            aria-expanded={templateOpen}
-            className="trade-fee-template-toggle"
-            onClick={() => setTemplateOpen((open) => !open)}
-            type="button"
-          >
-            <span>费率模板</span>
-            <span aria-hidden="true" className="trade-fee-template-caret">
-              {templateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </span>
-          </button>
-        ) : null}
-        <button
-          aria-expanded={customOpen}
-          className="trade-fee-template-toggle"
-          onClick={() => setCustomOpen((open) => !open)}
-          type="button"
-        >
-          <span>自定义</span>
-          <span aria-hidden="true" className="trade-fee-template-caret">
-            {customOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </span>
-        </button>
-      </div>
-
-      {hasExpanded ? (
-        <div className="calculator-fee-expanded">
-          {mode === "full" && templateOpen && templateOptions.length ? (
-            <div className="trade-fee-template-field">
-              <AppSelect
-                className="trade-fee-template-select"
-                onChange={(value) => {
-                  selectTemplate(Number(value));
-                  setTemplateOpen(false);
-                }}
-                options={templateOptions.map((template) => ({
-                  label: feeTemplateLabel(template),
-                  value: template.id,
-                }))}
-                value={selectedTemplateId ?? templateOptions[0]?.id ?? null}
-              />
-            </div>
-          ) : null}
-
-          {customOpen ? (
-            <div className="trade-fee-template-field calculator-custom-fee-fields">
-              <AppSwitch
-                aria-label="自定义费率"
-                checked={customEnabled}
-                checkedChildren="开启"
-                className="calculator-custom-fee-enable"
-                onChange={setCustomEnabled}
-                unCheckedChildren="关闭"
-              />
-              <div className="fee-fields calculator-custom-fee-grid">
-                <label>
-                  佣金模式
-                  <AppSelect
-                    onChange={(value) => updateCustom("commissionMode", value)}
-                    options={[
-                      { label: "按比例", value: "rate" },
-                      { label: "固定手续费", value: "fixed" },
-                    ]}
-                    value={customSettings.commissionMode}
-                  />
-                </label>
-                {customSettings.commissionMode === "fixed" ? (
-                  <AppNumberStepper
-                    label="固定手续费"
-                    onChange={(value) => updateCustom("fixedCommission", value ?? 0)}
-                    step={0.01}
-                    value={customSettings.fixedCommission}
-                  />
-                ) : (
-                  <>
-                    <AppNumberStepper
-                      label="佣金费率(%)"
-                      onChange={(value) => updateCustom("commissionRate", value ?? 0)}
-                      step={0.001}
-                      value={customSettings.commissionRate}
-                    />
-                    <AppNumberStepper label="最低佣金" onChange={(value) => updateCustom("minCommission", value ?? 0)} step={0.01} value={customSettings.minCommission} />
-                  </>
-                )}
-                <AppNumberStepper
-                  label="印花税率(%)"
-                  onChange={(value) => updateCustom("stampTaxRate", value ?? 0)}
-                  step={0.001}
-                  value={customSettings.stampTaxRate}
-                />
-                <AppNumberStepper
-                  label="过户费率(%)"
-                  onChange={(value) => updateCustom("transferRate", value ?? 0)}
-                  step={0.001}
-                  value={customSettings.transferRate}
-                />
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
-  );
+  return { assetType, changeAssetType };
 }
 
 function CalculatorShell({ children }: { children: ReactNode }) {
