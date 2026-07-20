@@ -3186,6 +3186,8 @@ textarea {
 
 .t-status-column .result-grid-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto);
+  grid-auto-flow: column;
 }
 
 .t-status-column .result-grid-item {
