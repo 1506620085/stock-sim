@@ -300,8 +300,9 @@ function TCalculator() {
       ["未实现盈亏", currency(summary.unrealizedPnl)],
       ["总盈亏", currency(summary.totalPnl)],
       ["累计手续费", currency(summary.totalFees)],
-      ["剩余持仓成本", currency(summary.positionCost)],
+      ["已实现利润", currency(summary.realizedPnl)],
       ["可提取利润", currency(summary.extractableProfit)],
+      ["剩余持仓成本", currency(summary.positionCost)],
     ];
     const csv = [header, ...body, ...summaryRows]
       .map((line) => line.map(csvEscape).join(","))
@@ -410,7 +411,7 @@ function TCalculator() {
 
           <div className="t-status-column">
             <ResultTable
-              columns={4}
+              columns={3}
               footer={
                 <p className="t-retention-hint">
                   {summary.extractableProfit > 0
@@ -421,16 +422,21 @@ function TCalculator() {
                 </p>
               }
               rows={[
+                // 第1列：持仓现状
                 ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
                 ["当前平均成本", currency(summary.positionAvgCost)],
                 ["当前持仓市值", currency(summary.positionMarketValue)],
+                ["", ""],
+                // 第2列：盈亏结果
                 ["已实现盈亏", currency(summary.realizedPnl), summary.realizedPnl],
                 ["未实现盈亏", currency(summary.unrealizedPnl), summary.unrealizedPnl],
                 ["总盈亏", currency(summary.totalPnl), summary.totalPnl],
-                ["累计手续费", currency(summary.totalFees)],
-                ["剩余持仓成本", currency(summary.positionCost)],
                 ["", ""],
+                // 第3列：费用与留存
+                ["累计手续费", currency(summary.totalFees)],
+                ["已实现利润", currency(summary.realizedPnl), summary.realizedPnl],
                 ["可提取利润", currency(summary.extractableProfit), summary.extractableProfit],
+                ["剩余持仓成本", currency(summary.positionCost)],
               ]}
               title="最终状态"
             />
