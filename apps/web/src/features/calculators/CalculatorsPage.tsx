@@ -382,24 +382,24 @@ function TCalculator() {
                     </label>
                     <AppNumberStepper label="交易价格" onChange={setTradePrice} step={priceStep} value={tradePrice} />
                     <AppNumberStepper label="交易数量" normalizeToStep onChange={setTradeQuantity} step={100} value={tradeQuantity} />
-                    <div className="t-action-bar t-action-bar--inline">
-                      <button className="primary-button" onClick={addOperation} type="button" title="添加操作">
-                        <Plus size={14} />
-                        添加
-                      </button>
-                      <button className="secondary-button" onClick={deleteSelected} type="button" title="删除操作">
-                        <Trash2 size={14} />
-                        删除
-                      </button>
-                      <button className="secondary-button" onClick={analyzeRetention} type="button">
-                        <PiggyBank size={14} />
-                        利润留存
-                      </button>
-                      <button className="secondary-button" onClick={downloadExcel} type="button">
-                        <Download size={14} />
-                        下载做T表
-                      </button>
-                    </div>
+                  </div>
+                  <div className="t-action-bar t-action-bar--row">
+                    <button className="primary-button" onClick={addOperation} type="button" title="添加操作">
+                      <Plus size={14} />
+                      添加
+                    </button>
+                    <button className="secondary-button" onClick={deleteSelected} type="button" title="删除操作">
+                      <Trash2 size={14} />
+                      删除
+                    </button>
+                    <button className="secondary-button" onClick={analyzeRetention} type="button">
+                      <PiggyBank size={14} />
+                      利润留存
+                    </button>
+                    <button className="secondary-button" onClick={downloadExcel} type="button">
+                      <Download size={14} />
+                      下载做T表
+                    </button>
                   </div>
                 </div>
                 <button className="sr-only" type="submit" tabIndex={-1} aria-hidden="true">
