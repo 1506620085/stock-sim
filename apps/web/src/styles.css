@@ -2818,14 +2818,13 @@ textarea {
 
 .t-calculator-top {
   display: grid;
-  flex: 0 0 25vh;
-  grid-template-columns: minmax(0, 58.5fr) minmax(300px, 41.5fr);
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 58.5fr) minmax(260px, 41.5fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
   width: 100%;
-  max-height: 25vh;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .t-calculator-top > .t-calculator-panel {
@@ -2835,10 +2834,10 @@ textarea {
   min-width: 0;
   max-width: none;
   width: auto;
-  height: 25vh;
+  height: auto;
   min-height: 0;
   padding: 8px 14px 12px;
-  overflow: auto;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -2855,8 +2854,8 @@ textarea {
   --t-control-gap: 6px;
   --t-control-min-height: 38px;
   display: grid;
-  /* 前四列等宽（交易方向同宽）；末列合并原「费率/初始化」两列 */
-  grid-template-columns: repeat(4, minmax(0, 2.7fr)) minmax(0, 2fr);
+  /* 四列均分：行1 底仓字段；行2 交易字段+底仓初始化 */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   column-gap: 10px;
   row-gap: 10px;
   align-items: start;
@@ -2868,12 +2867,14 @@ textarea {
   display: contents;
 }
 
-/* 交易行下方：跨前四列，子网格与「交易方向」等列宽对齐 */
+/* 交易行下方：四按钮与四列输入对齐；上方预留标签行，使行间距与字段行一致 */
 .t-action-bar.t-action-bar--row {
   display: grid;
-  grid-column: 1 / 5;
+  grid-column: 1 / -1;
   grid-template-columns: subgrid;
+  grid-template-rows: var(--t-label-line) var(--t-control-min-height);
   column-gap: 10px;
+  row-gap: var(--t-control-gap);
   width: auto;
   min-width: 0;
   margin: 0;
@@ -2883,8 +2884,15 @@ textarea {
   box-sizing: border-box;
 }
 
+.t-action-bar.t-action-bar--row::before {
+  content: "";
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
 .t-action-bar.t-action-bar--row > .primary-button,
 .t-action-bar.t-action-bar--row > .secondary-button {
+  grid-row: 2;
   display: inline-flex;
   width: 100%;
   min-width: 0;
@@ -2980,16 +2988,9 @@ textarea {
   box-sizing: border-box;
 }
 
-.calculator-fee-panel--compact {
-  display: contents;
-  margin-top: 0;
-}
-
-.calculator-fee-panel--compact .calculator-fee-toggles,
 .t-input-align .t-peer-action {
   display: flex;
   flex-direction: column;
-  grid-column: 5;
   gap: var(--t-control-gap);
   width: 100%;
   min-width: 0;
@@ -2997,28 +2998,11 @@ textarea {
   padding: 0;
 }
 
-.calculator-fee-panel--compact .calculator-fee-toggles::before,
 .t-input-align .t-peer-action::before {
   content: "";
   display: block;
   flex-shrink: 0;
   height: var(--t-label-line);
-}
-
-.calculator-fee-panel--compact .t-fee-toggle-stack {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-height: var(--t-control-min-height);
-}
-
-.calculator-fee-panel--compact .calculator-fee-toggles .trade-fee-template-toggle {
-  width: auto;
-  flex-shrink: 0;
-  justify-content: center;
 }
 
 .t-input-align .t-init-button {
@@ -3042,23 +3026,6 @@ textarea {
 
 .t-input-align .t-init-button:hover {
   background: #24312b;
-}
-
-.calculator-fee-panel--compact .calculator-fee-expanded {
-  grid-column: 1 / -1;
-  width: 100%;
-  min-width: 0;
-}
-
-.calculator-fee-panel--compact .trade-fee-template-field {
-  margin: 0;
-}
-
-.calculator-fee-panel--compact .calculator-custom-fee-grid.fee-fields {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-  padding-top: 0;
 }
 
 .t-input-section {
@@ -3121,8 +3088,8 @@ textarea {
   flex-direction: column;
   width: auto;
   min-width: 0;
-  height: 25vh;
-  align-self: start;
+  height: auto;
+  align-self: stretch;
 }
 
 .t-calculator-top > .t-status-column > .result-panel {
@@ -3136,7 +3103,7 @@ textarea {
   position: static;
   padding: 12px 14px 8px;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: visible;
 }
 
 .t-status-column .section-header h2 {
@@ -3213,10 +3180,10 @@ textarea {
 
 .t-ledger-panel {
   display: flex;
-  flex: 1 1 67%;
+  flex: 1 1 auto;
   flex-direction: column;
   width: 100%;
-  min-height: 67%;
+  min-height: 0;
   padding: 10px 14px 12px;
   overflow: hidden;
 }
@@ -3277,6 +3244,21 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 
+@media (max-width: 1100px) {
+  .t-calculator-top {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+
+  .t-status-column .result-grid-label,
+  .t-status-column .result-grid-value {
+    font-size: 13px;
+  }
+
+  .t-status-column .result-grid-item {
+    padding: 8px 0;
+  }
+}
+
 @media (max-width: 900px) {
   .workspace:has(.t-calculator-form) {
     height: auto;
@@ -3290,29 +3272,153 @@ textarea {
   }
 
   .t-calculator-top {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     grid-template-columns: 1fr;
-    max-height: none;
   }
 
   .t-calculator-top > .t-calculator-panel,
   .t-calculator-top > .t-status-column {
     width: 100%;
     min-width: 0;
+    height: auto;
   }
 
   .t-calculator-top > .t-calculator-panel {
     flex-direction: column;
+    overflow: visible;
+  }
+
+  .t-calculator-top > .t-status-column > .result-panel {
+    height: auto;
+    overflow: visible;
+  }
+
+  .t-input-align {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .t-action-bar.t-action-bar--row {
     grid-column: 1 / -1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    row-gap: 8px;
+  }
+
+  .t-action-bar.t-action-bar--row::before {
+    display: none;
+  }
+
+  .t-action-bar.t-action-bar--row > .primary-button,
+  .t-action-bar.t-action-bar--row > .secondary-button {
+    grid-row: auto;
+  }
+
+  .t-status-column .result-grid-3 {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-flow: row;
+  }
+
+  .t-status-column .result-grid-item--spacer {
+    display: none;
   }
 
   .t-ledger-panel {
     flex: 1 1 auto;
-    min-height: 67vh;
+    min-height: 40vh;
+  }
+}
+
+@media (max-width: 560px) {
+  .t-input-align {
+    grid-template-columns: 1fr;
+  }
+
+  .t-action-bar.t-action-bar--row {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    row-gap: 8px;
+  }
+
+  .t-action-bar.t-action-bar--row::before {
+    display: none;
+  }
+
+  .t-action-bar.t-action-bar--row > .primary-button,
+  .t-action-bar.t-action-bar--row > .secondary-button {
+    grid-row: auto;
+  }
+}
+
+/* 矮屏：压缩控件与状态行，避免输入区/最终状态出现滚动条 */
+@media (max-height: 780px) {
+  .t-input-align {
+    --t-label-line: 16px;
+    --t-control-gap: 4px;
+    --t-control-min-height: 32px;
+    row-gap: 6px;
+    column-gap: 8px;
+  }
+
+  .t-calculator-top {
+    gap: 8px;
+  }
+
+  .t-calculator-top > .t-calculator-panel {
+    padding: 6px 12px 8px;
+  }
+
+  .t-calculator-top > .t-status-column > .result-panel {
+    padding: 8px 12px 6px;
+  }
+
+  .t-status-column .section-header h2 {
+    font-size: 14px;
+  }
+
+  .t-status-column .result-grid-2,
+  .t-status-column .result-grid-3,
+  .t-status-column .result-grid-4 {
+    margin-top: 4px;
+  }
+
+  .t-status-column .result-grid-item {
+    padding: 5px 0;
+  }
+
+  .t-status-column .result-grid-label,
+  .t-status-column .result-grid-value {
+    font-size: 12px;
+  }
+
+  .t-input-align .app-number-stepper-field > label,
+  .t-input-align .calculator-asset-type-field > .field-label-with-tip,
+  .t-input-align > .t-input-grid > label {
+    font-size: 12px;
+  }
+
+  .t-action-bar.t-action-bar--row > .primary-button,
+  .t-action-bar.t-action-bar--row > .secondary-button,
+  .t-input-align .t-init-button {
+    font-size: 11px;
+    padding: 0 6px;
+  }
+}
+
+@media (max-height: 640px) {
+  .t-input-align {
+    --t-label-line: 14px;
+    --t-control-gap: 2px;
+    --t-control-min-height: 28px;
+    row-gap: 4px;
+  }
+
+  .t-status-column .result-grid-item {
+    padding: 3px 0;
+  }
+
+  .t-calculator-form {
+    gap: 8px;
   }
 }
 

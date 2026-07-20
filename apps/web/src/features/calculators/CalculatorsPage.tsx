@@ -182,9 +182,17 @@ function TCalculator() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
+  const feeSettings = useMemo(
+    (): FeeSettings => ({
+      ...defaultFeeSettings,
+      assetType: fee.assetType,
+      stampTaxRate: fee.assetType === "stock" ? defaultFeeSettings.stampTaxRate : 0,
+    }),
+    [fee.assetType],
+  );
   const { rows, summary } = useMemo(
-    () => buildTLedger(entries, fee.effectiveSettings, { finalPrice }),
-    [entries, fee.effectiveSettings, finalPrice],
+    () => buildTLedger(entries, feeSettings, { finalPrice }),
+    [entries, feeSettings, finalPrice],
   );
 
   useEffect(() => {
@@ -342,7 +350,11 @@ function TCalculator() {
                       value={finalPrice}
                     />
                     <div className="calculator-asset-type-field">
-                      <FieldLabelWithTip htmlFor="t-asset-type" tip="成本类型决定印花税等费率规则；费率模板按此类型筛选。" tipAriaLabel="成本类型说明">
+                      <FieldLabelWithTip
+                        htmlFor="t-asset-type"
+                        tip="成本类型决定费率规则：股票卖出计印花税，ETF 不计；佣金等按系统默认费率计算。"
+                        tipAriaLabel="成本类型说明"
+                      >
                         成本类型
                       </FieldLabelWithTip>
                       <AppSelect
@@ -354,12 +366,6 @@ function TCalculator() {
                         ]}
                         value={fee.assetType}
                       />
-                    </div>
-                    <div className="t-peer-action">
-                      <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
-                        <Layers size={14} />
-                        底仓初始化
-                      </button>
                     </div>
                   </div>
                   <div className="calculator-input-grid t-input-grid t-input-grid--trade">
@@ -376,7 +382,12 @@ function TCalculator() {
                     </label>
                     <AppNumberStepper label="交易价格" onChange={setTradePrice} step={priceStep} value={tradePrice} />
                     <AppNumberStepper label="交易数量" normalizeToStep onChange={setTradeQuantity} step={100} value={tradeQuantity} />
-                    <CalculatorFeePanel {...fee} compact />
+                    <div className="t-peer-action">
+                      <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
+                        <Layers size={14} />
+                        底仓初始化
+                      </button>
+                    </div>
                   </div>
                   <div className="t-action-bar t-action-bar--row">
                     <button className="primary-button" onClick={addOperation} type="button" title="添加操作">
@@ -760,7 +771,6 @@ function useCalculatorFeeSettings() {
 
 function CalculatorFeePanel({
   assetType,
-  compact = false,
   customEnabled,
   customSettings,
   mode = "full",
@@ -769,11 +779,8 @@ function CalculatorFeePanel({
   setCustomEnabled,
   setCustomSettings,
   templates,
-  trailing = null,
 }: ReturnType<typeof useCalculatorFeeSettings> & {
-  compact?: boolean;
   mode?: "full" | "custom-only";
-  trailing?: ReactNode;
 }) {
   const [templateOpen, setTemplateOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -790,37 +797,33 @@ function CalculatorFeePanel({
   const hasExpanded = (mode === "full" && templateOpen && templateOptions.length > 0) || customOpen;
 
   return (
-    <section className={`calculator-fee-panel${compact ? " calculator-fee-panel--compact" : ""}`}>
+    <section className="calculator-fee-panel">
       <div className="calculator-fee-toggles">
-        <div className="t-fee-toggle-stack">
-          {mode === "full" && templateOptions.length ? (
-            <button
-              aria-expanded={templateOpen}
-              className="trade-fee-template-toggle"
-              onClick={() => setTemplateOpen((open) => !open)}
-              type="button"
-            >
-              <span>费率模板</span>
-              <span aria-hidden="true" className="trade-fee-template-caret">
-                {templateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </span>
-            </button>
-          ) : null}
+        {mode === "full" && templateOptions.length ? (
           <button
-            aria-expanded={customOpen}
+            aria-expanded={templateOpen}
             className="trade-fee-template-toggle"
-            onClick={() => setCustomOpen((open) => !open)}
+            onClick={() => setTemplateOpen((open) => !open)}
             type="button"
           >
-            <span>自定义</span>
+            <span>费率模板</span>
             <span aria-hidden="true" className="trade-fee-template-caret">
-              {customOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {templateOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           </button>
-        </div>
+        ) : null}
+        <button
+          aria-expanded={customOpen}
+          className="trade-fee-template-toggle"
+          onClick={() => setCustomOpen((open) => !open)}
+          type="button"
+        >
+          <span>自定义</span>
+          <span aria-hidden="true" className="trade-fee-template-caret">
+            {customOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        </button>
       </div>
-
-      {compact ? trailing : null}
 
       {hasExpanded ? (
         <div className="calculator-fee-expanded">
