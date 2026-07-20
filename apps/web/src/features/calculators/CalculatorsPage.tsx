@@ -411,7 +411,7 @@ function TCalculator() {
 
           <div className="t-status-column">
             <ResultTable
-              columns={3}
+              columns={4}
               footer={
                 <p className="t-retention-hint">
                   {summary.extractableProfit > 0
@@ -914,15 +914,21 @@ function ResultTable({
 }: {
   rows: Array<[string, string, number?]>;
   title: string;
-  columns?: 1 | 2 | 3;
+  columns?: 1 | 2 | 3 | 4;
   footer?: ReactNode;
 }) {
   const copyText = rows.map(([name, value]) => `${name}\t${value}`).join("\n");
-  const gridClass = columns === 3 ? "result-grid-3" : columns === 2 ? "result-grid-2" : null;
+  const gridClass =
+    columns === 4 ? "result-grid-4" : columns === 3 ? "result-grid-3" : columns === 2 ? "result-grid-2" : null;
 
   return (
     <section
-      className={["panel result-panel", columns === 2 ? "result-panel--cols-2" : "", columns === 3 ? "result-panel--cols-3" : ""]
+      className={[
+        "panel result-panel",
+        columns === 2 ? "result-panel--cols-2" : "",
+        columns === 3 ? "result-panel--cols-3" : "",
+        columns === 4 ? "result-panel--cols-4" : "",
+      ]
         .filter(Boolean)
         .join(" ")}
     >
