@@ -180,7 +180,6 @@ function TCalculator() {
   const [finalPrice, setFinalPrice] = useState<number | null>(null);
   const [entries, setEntries] = useState<TLedgerEntryInput[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [showRetention, setShowRetention] = useState(false);
 
   const priceStep = fee.assetType === "etf" ? 0.001 : 0.01;
   const { rows, summary } = useMemo(
@@ -204,7 +203,6 @@ function TCalculator() {
     }
     setEntries([{ id: crypto.randomUUID(), side: "init", price: cost, quantity }]);
     setSelectedIds([]);
-    setShowRetention(false);
     showSuccess("底仓已初始化");
   }
 
@@ -226,7 +224,6 @@ function TCalculator() {
     setEntries((items) => [...items, { id: crypto.randomUUID(), side: tradeSide, price, quantity }]);
     setTradePrice(null);
     setTradeQuantity(null);
-    setShowRetention(false);
   }
 
   function handleAddSubmit(event: FormEvent) {
@@ -239,13 +236,22 @@ function TCalculator() {
       showInfo("请先勾选要删除的记录。");
       return;
     }
-    setEntries((items) => {
-      const next = items.filter((item) => !selectedIds.includes(item.id));
-      const hasInit = next.some((item) => item.side === "init");
-      return hasInit ? next : [];
-    });
+
+    const initIds = new Set(entries.filter((entry) => entry.side === "init").map((entry) => entry.id));
+    const deletingInit = selectedIds.some((id) => initIds.has(id));
+    const deletableIds = selectedIds.filter((id) => !initIds.has(id));
+
+    if (deletingInit) {
+      showInfo("初始底仓不可删除");
+    }
+
+    if (!deletableIds.length) {
+      setSelectedIds((ids) => ids.filter((id) => !initIds.has(id)));
+      return;
+    }
+
+    setEntries((items) => items.filter((item) => !deletableIds.includes(item.id)));
     setSelectedIds([]);
-    setShowRetention(false);
     showSuccess("已删除并重新计算");
   }
 
@@ -263,7 +269,6 @@ function TCalculator() {
       showInfo("请先初始化底仓并添加操作。");
       return;
     }
-    setShowRetention(true);
     showSuccess("已按当前做 T 收益更新利润留存分析");
   }
 
@@ -295,6 +300,9 @@ function TCalculator() {
       ["未实现盈亏", currency(summary.unrealizedPnl)],
       ["总盈亏", currency(summary.totalPnl)],
       ["累计手续费", currency(summary.totalFees)],
+      ["已实现利润", currency(summary.realizedPnl)],
+      ["可提取利润", currency(summary.extractableProfit)],
+      ["剩余持仓成本", currency(summary.positionCost)],
     ];
     const csv = [header, ...body, ...summaryRows]
       .map((line) => line.map(csvEscape).join(","))
@@ -412,25 +420,19 @@ function TCalculator() {
                 ["未实现盈亏", currency(summary.unrealizedPnl), summary.unrealizedPnl],
                 ["总盈亏", currency(summary.totalPnl), summary.totalPnl],
                 ["累计手续费", currency(summary.totalFees)],
-                ...(showRetention
-                  ? ([
-                      ["已实现利润", currency(summary.realizedPnl), summary.realizedPnl],
-                      ["可提取利润", currency(summary.extractableProfit), summary.extractableProfit],
-                      ["剩余持仓成本", currency(summary.positionCost)],
-                    ] as Array<[string, string, number?]>)
-                  : []),
+                ["已实现利润", currency(summary.realizedPnl), summary.realizedPnl],
+                ["可提取利润", currency(summary.extractableProfit), summary.extractableProfit],
+                ["剩余持仓成本", currency(summary.positionCost)],
               ]}
               title="最终状态"
             />
-            {showRetention ? (
-              <p className="t-retention-hint">
-                {summary.extractableProfit > 0
-                  ? summary.extractableProfit >= summary.positionCost
-                    ? "可提取利润已覆盖剩余持仓成本。"
-                    : "可提取利润尚未完全覆盖剩余持仓成本。"
-                  : "当前暂无可提取利润。"}
-              </p>
-            ) : null}
+            <p className="t-retention-hint">
+              {summary.extractableProfit > 0
+                ? summary.extractableProfit >= summary.positionCost
+                  ? "可提取利润已覆盖剩余持仓成本。"
+                  : "可提取利润尚未完全覆盖剩余持仓成本。"
+                : "当前暂无可提取利润。"}
+            </p>
           </div>
         </div>
 
