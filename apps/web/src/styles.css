@@ -2791,41 +2791,17 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  gap: 12px;
 }
 
-.calculators-page:has(.t-calculator-form) .calculator-page-header {
-  flex: 0 0 auto;
-  gap: 10px;
-}
-
-.calculators-page:has(.t-calculator-form) .calculator-page-meta,
-.calculators-page:has(.t-calculator-form) .calculator-page-heading {
-  padding: 10px 14px;
-}
-
-.calculators-page:has(.t-calculator-form) .calculator-page-heading svg {
-  width: 22px;
-  height: 22px;
-}
-
-.calculators-page:has(.t-calculator-form) .calculator-page-heading-desc {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-}
-
+.calculators-page:has(.t-calculator-form) .calculator-page-header,
 .calculators-page:has(.t-calculator-form) .calculators-tabs {
   flex: 0 0 auto;
-  padding: 6px;
 }
 
 .calculator-shell:has(.t-calculator-form) {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  gap: 12px;
 }
 
 .t-calculator-form {
