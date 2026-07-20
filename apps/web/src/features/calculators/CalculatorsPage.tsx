@@ -487,7 +487,7 @@ function TCalculator() {
                     </tr>
                   ))
                 ) : (
-                  <tr>
+                  <tr className="t-empty-row">
                     <td className="t-empty-cell" colSpan={11}>
                       请先「底仓初始化」，再添加买入 / 卖出操作。
                     </td>
