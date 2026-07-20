@@ -2855,8 +2855,8 @@ textarea {
   --t-control-gap: 6px;
   --t-control-min-height: 38px;
   display: grid;
-  /* 前三列（价格/数量等）再收 10%；成本类型及右侧两列保持原相对占比 */
-  grid-template-columns: repeat(3, minmax(0, 2.7fr)) repeat(3, minmax(0, 1fr));
+  /* 前四列等宽（交易方向同宽），供操作按钮与输入框左右对齐；后两列留给费率/初始化 */
+  grid-template-columns: repeat(4, minmax(0, 2.7fr)) repeat(2, minmax(0, 1fr));
   column-gap: 10px;
   row-gap: 10px;
   align-items: start;
@@ -2868,13 +2868,13 @@ textarea {
   display: contents;
 }
 
-/* 交易行下方整行：四按钮等分 */
+/* 交易行下方：跨前四列，子网格与「交易方向」等列宽对齐 */
 .t-action-bar.t-action-bar--row {
   display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
+  grid-column: 1 / 5;
+  grid-template-columns: subgrid;
+  column-gap: 10px;
+  width: auto;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -3304,6 +3304,7 @@ textarea {
   }
 
   .t-action-bar.t-action-bar--row {
+    grid-column: 1 / -1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
