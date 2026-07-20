@@ -300,9 +300,8 @@ function TCalculator() {
       ["未实现盈亏", currency(summary.unrealizedPnl)],
       ["总盈亏", currency(summary.totalPnl)],
       ["累计手续费", currency(summary.totalFees)],
-      ["已实现利润", currency(summary.realizedPnl)],
-      ["可提取利润", currency(summary.extractableProfit)],
       ["剩余持仓成本", currency(summary.positionCost)],
+      ["可提取利润", currency(summary.extractableProfit)],
     ];
     const csv = [header, ...body, ...summaryRows]
       .map((line) => line.map(csvEscape).join(","))
@@ -429,9 +428,9 @@ function TCalculator() {
                 ["未实现盈亏", currency(summary.unrealizedPnl), summary.unrealizedPnl],
                 ["总盈亏", currency(summary.totalPnl), summary.totalPnl],
                 ["累计手续费", currency(summary.totalFees)],
-                ["已实现利润", currency(summary.realizedPnl), summary.realizedPnl],
-                ["可提取利润", currency(summary.extractableProfit), summary.extractableProfit],
                 ["剩余持仓成本", currency(summary.positionCost)],
+                ["", ""],
+                ["可提取利润", currency(summary.extractableProfit), summary.extractableProfit],
               ]}
               title="最终状态"
             />
@@ -917,7 +916,10 @@ function ResultTable({
   columns?: 1 | 2 | 3 | 4;
   footer?: ReactNode;
 }) {
-  const copyText = rows.map(([name, value]) => `${name}\t${value}`).join("\n");
+  const copyText = rows
+    .filter(([name]) => name)
+    .map(([name, value]) => `${name}\t${value}`)
+    .join("\n");
   const gridClass =
     columns === 4 ? "result-grid-4" : columns === 3 ? "result-grid-3" : columns === 2 ? "result-grid-2" : null;
 
@@ -941,24 +943,30 @@ function ResultTable({
       </div>
       {gridClass ? (
         <div className={gridClass}>
-          {rows.map(([name, value, tone]) => (
-            <div className="result-grid-item" key={name}>
-              <span className="result-grid-label">{name}</span>
-              <span className={["result-grid-value", tone === undefined ? "" : tone >= 0 ? "positive" : "negative"].filter(Boolean).join(" ")}>
-                {value}
-              </span>
-            </div>
-          ))}
+          {rows.map(([name, value, tone], index) =>
+            name ? (
+              <div className="result-grid-item" key={name}>
+                <span className="result-grid-label">{name}</span>
+                <span className={["result-grid-value", tone === undefined ? "" : tone >= 0 ? "positive" : "negative"].filter(Boolean).join(" ")}>
+                  {value}
+                </span>
+              </div>
+            ) : (
+              <div aria-hidden="true" className="result-grid-item result-grid-item--spacer" key={`spacer-${index}`} />
+            ),
+          )}
         </div>
       ) : (
         <table className="result-table">
           <tbody>
-            {rows.map(([name, value, tone]) => (
-              <tr key={name}>
-                <th>{name}</th>
-                <td className={tone === undefined ? "" : tone >= 0 ? "positive" : "negative"}>{value}</td>
-              </tr>
-            ))}
+            {rows
+              .filter(([name]) => name)
+              .map(([name, value, tone]) => (
+                <tr key={name}>
+                  <th>{name}</th>
+                  <td className={tone === undefined ? "" : tone >= 0 ? "positive" : "negative"}>{value}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       )}

@@ -3200,6 +3200,13 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 
+.t-status-column .result-grid-item--spacer {
+  border-bottom: 0;
+  padding: 0;
+  min-height: 0;
+  pointer-events: none;
+}
+
 .t-status-column .result-grid-label {
   flex: 0 1 auto;
   min-width: 0;
