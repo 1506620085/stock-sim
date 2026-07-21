@@ -318,7 +318,7 @@ function TCalculator() {
     }
     setDialog({
       type: "confirmFresh",
-      message: dirty ? "当前有未保存的修改，新建将清空工作区，是否继续？" : "确定清空当前做 T，从头开始？",
+      message: "当前未保存的内容将被清空，是否创建新的做T记录？",
     });
   }
 
@@ -814,7 +814,7 @@ function TCalculator() {
           closeDialog();
         }}
         open={dialog?.type === "confirmFresh"}
-        title="新建做 T"
+        title="新建做T"
       />
 
       <AppConfirmDialog
