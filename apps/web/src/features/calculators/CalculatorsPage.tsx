@@ -190,6 +190,7 @@ function TCalculator() {
   const [historyList, setHistoryList] = useState<THistorySession[]>(() => loadTHistory());
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [dialog, setDialog] = useState<THistoryDialog | null>(null);
 
   const priceStep = assetType === "etf" ? 0.001 : 0.01;
   const feeSettings = useMemo(() => feeSettingsForAssetType(assetType), [assetType]);
@@ -205,8 +206,21 @@ function TCalculator() {
     setFinalPrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
   }, [assetType]);
 
+  useEffect(() => {
+    if (!dialog) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDialog(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [dialog]);
+
   function markDirty() {
     setDirty(true);
+  }
+
+  function closeDialog() {
+    setDialog(null);
   }
 
   function buildSnapshot(id: string, name: string, createdAt: string): THistorySession {
@@ -225,6 +239,35 @@ function TCalculator() {
     };
   }
 
+  function applyHistorySession(session: THistorySession) {
+    changeAssetType(session.assetType);
+    setBaseAvgCost(session.baseAvgCost);
+    setBaseQuantity(session.baseQuantity);
+    setFinalPrice(session.finalPrice);
+    setTradeSide(session.tradeSide);
+    setTradePrice(null);
+    setTradeQuantity(null);
+    setEntries(session.entries.map((entry) => ({ ...entry })));
+    setSelectedIds([]);
+    setActiveHistoryId(session.id);
+    setDirty(false);
+    showSuccess(`已打开「${session.name}」`);
+  }
+
+  function clearWorkspace() {
+    setBaseAvgCost(null);
+    setBaseQuantity(null);
+    setTradeSide("buy");
+    setTradePrice(null);
+    setTradeQuantity(null);
+    setFinalPrice(null);
+    setEntries([]);
+    setSelectedIds([]);
+    setActiveHistoryId(null);
+    setDirty(false);
+    showSuccess("已新建空白做 T");
+  }
+
   function saveHistory() {
     if (!entries.some((entry) => entry.side === "init")) {
       showInfo("请先初始化底仓后再保存。");
@@ -241,36 +284,30 @@ function TCalculator() {
       return;
     }
 
+    setDialog({ type: "saveName", draft: defaultTHistoryName() });
+  }
+
+  function confirmSaveName() {
+    if (dialog?.type !== "saveName") return;
     const suggested = defaultTHistoryName();
-    const input = window.prompt("保存名称", suggested);
-    if (input == null) return;
-    const name = input.trim() || suggested;
+    const name = dialog.draft.trim() || suggested;
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const next = upsertTHistory(buildSnapshot(id, name, now));
     setHistoryList(next);
     setActiveHistoryId(id);
     setDirty(false);
+    closeDialog();
     showSuccess("已保存到做 T 历史");
   }
 
   function openHistory(session: THistorySession) {
     if (activeHistoryId === session.id && !dirty) return;
-    if (dirty && !window.confirm("当前有未保存的修改，打开历史将放弃这些修改，是否继续？")) {
+    if (dirty) {
+      setDialog({ type: "confirmOpen", session });
       return;
     }
-    changeAssetType(session.assetType);
-    setBaseAvgCost(session.baseAvgCost);
-    setBaseQuantity(session.baseQuantity);
-    setFinalPrice(session.finalPrice);
-    setTradeSide(session.tradeSide);
-    setTradePrice(null);
-    setTradeQuantity(null);
-    setEntries(session.entries.map((entry) => ({ ...entry })));
-    setSelectedIds([]);
-    setActiveHistoryId(session.id);
-    setDirty(false);
-    showSuccess(`已打开「${session.name}」`);
+    applyHistorySession(session);
   }
 
   function startFresh() {
@@ -283,46 +320,47 @@ function TCalculator() {
       finalPrice != null ||
       tradePrice != null ||
       tradeQuantity != null;
-    if (
-      hasContent &&
-      !window.confirm(dirty ? "当前有未保存的修改，新建将清空工作区，是否继续？" : "确定清空当前做 T，从头开始？")
-    ) {
+    if (!hasContent) {
+      clearWorkspace();
       return;
     }
-    setBaseAvgCost(null);
-    setBaseQuantity(null);
-    setTradeSide("buy");
-    setTradePrice(null);
-    setTradeQuantity(null);
-    setFinalPrice(null);
-    setEntries([]);
-    setSelectedIds([]);
-    setActiveHistoryId(null);
-    setDirty(false);
-    showSuccess("已新建空白做 T");
+    setDialog({
+      type: "confirmFresh",
+      message: dirty ? "当前有未保存的修改，新建将清空工作区，是否继续？" : "确定清空当前做 T，从头开始？",
+    });
   }
 
   function handleRenameHistory(session: THistorySession, event: MouseEvent) {
     event.stopPropagation();
-    const input = window.prompt("重命名", session.name);
-    if (input == null) return;
-    const name = input.trim();
+    setDialog({ type: "rename", sessionId: session.id, draft: session.name });
+  }
+
+  function confirmRename() {
+    if (dialog?.type !== "rename") return;
+    const name = dialog.draft.trim();
     if (!name) {
       showInfo("名称不能为空。");
       return;
     }
-    setHistoryList(renameTHistory(session.id, name));
+    setHistoryList(renameTHistory(dialog.sessionId, name));
+    closeDialog();
     showSuccess("已重命名");
   }
 
   function handleDeleteHistory(session: THistorySession, event: MouseEvent) {
     event.stopPropagation();
-    if (!window.confirm(`确定删除「${session.name}」？`)) return;
+    setDialog({ type: "confirmDelete", session });
+  }
+
+  function confirmDeleteHistory() {
+    if (dialog?.type !== "confirmDelete") return;
+    const session = dialog.session;
     const next = deleteTHistory(session.id);
     setHistoryList(next);
     if (activeHistoryId === session.id) {
       setActiveHistoryId(null);
     }
+    closeDialog();
     showSuccess("已删除历史记录");
   }
 
@@ -744,9 +782,108 @@ function TCalculator() {
           </section>
         </div>
       </div>
+
+      {dialog ? (
+        <div className="settings-modal-backdrop" onClick={closeDialog} role="presentation">
+          <div
+            aria-labelledby="t-history-dialog-title"
+            aria-modal="true"
+            className={`settings-modal${dialog.type === "saveName" || dialog.type === "rename" ? "" : " settings-confirm-modal"}`}
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            {dialog.type === "saveName" || dialog.type === "rename" ? (
+              <>
+                <div className="section-header">
+                  <h2 id="t-history-dialog-title">{dialog.type === "saveName" ? "保存做 T 历史" : "重命名"}</h2>
+                </div>
+                <label className="t-history-dialog-field">
+                  名称
+                  <input
+                    autoFocus
+                    onChange={(event) =>
+                      setDialog((current) =>
+                        current && (current.type === "saveName" || current.type === "rename")
+                          ? { ...current, draft: event.target.value }
+                          : current,
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (dialog.type === "saveName") confirmSaveName();
+                        else confirmRename();
+                      }
+                    }}
+                    type="text"
+                    value={dialog.draft}
+                  />
+                </label>
+                <div className="settings-actions">
+                  <button className="secondary-button" onClick={closeDialog} type="button">
+                    取消
+                  </button>
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      if (dialog.type === "saveName") confirmSaveName();
+                      else confirmRename();
+                    }}
+                    type="button"
+                  >
+                    {dialog.type === "saveName" ? "保存" : "确定"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 id="t-history-dialog-title">
+                  {dialog.type === "confirmDelete" ? "删除历史" : dialog.type === "confirmOpen" ? "打开历史" : "新建做 T"}
+                </h2>
+                <p className="settings-confirm-copy">
+                  {dialog.type === "confirmDelete"
+                    ? `确定删除「${dialog.session.name}」吗？删除后无法恢复。`
+                    : dialog.type === "confirmOpen"
+                      ? "当前有未保存的修改，打开历史将放弃这些修改，是否继续？"
+                      : dialog.message}
+                </p>
+                <div className="settings-actions">
+                  <button className="secondary-button" onClick={closeDialog} type="button">
+                    取消
+                  </button>
+                  <button
+                    className={`primary-button${dialog.type === "confirmDelete" ? " danger-confirm-button" : ""}`}
+                    onClick={() => {
+                      if (dialog.type === "confirmDelete") {
+                        confirmDeleteHistory();
+                      } else if (dialog.type === "confirmOpen") {
+                        applyHistorySession(dialog.session);
+                        closeDialog();
+                      } else {
+                        clearWorkspace();
+                        closeDialog();
+                      }
+                    }}
+                    type="button"
+                  >
+                    {dialog.type === "confirmDelete" ? "删除" : dialog.type === "confirmOpen" ? "打开" : "新建"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
     </CalculatorShell>
   );
 }
+
+type THistoryDialog =
+  | { type: "saveName"; draft: string }
+  | { type: "rename"; sessionId: string; draft: string }
+  | { type: "confirmOpen"; session: THistorySession }
+  | { type: "confirmFresh"; message: string }
+  | { type: "confirmDelete"; session: THistorySession };
 
 function tSideLabel(side: TLedgerSide) {
   return ({ init: "初始持仓", buy: "买入", sell: "卖出" } as const)[side];

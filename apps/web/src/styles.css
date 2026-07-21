@@ -3215,6 +3215,32 @@ textarea {
   gap: 4px;
 }
 
+.t-history-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.t-history-dialog-field > input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.t-history-dialog-field > input:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+
 .t-history-list {
   display: flex;
   flex: 1 1 auto;
