@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Calculator, Copy, Download, Layers, PiggyBank, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { Calculator, Copy, Download, Layers, Pencil, PiggyBank, Plus, Save, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { FieldLabelWithTip } from "../../components/FieldHelpTip";
@@ -17,6 +17,15 @@ import {
   type TLedgerRow,
   type TLedgerSide,
 } from "./calculations";
+import {
+  defaultTHistoryName,
+  deleteTHistory,
+  formatTHistoryTime,
+  loadTHistory,
+  renameTHistory,
+  upsertTHistory,
+  type THistorySession,
+} from "./tHistory";
 
 type CalculatorTab = "profit" | "t" | "change" | "average";
 
@@ -178,6 +187,9 @@ function TCalculator() {
   const [finalPrice, setFinalPrice] = useState<number | null>(null);
   const [entries, setEntries] = useState<TLedgerEntryInput[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [historyList, setHistoryList] = useState<THistorySession[]>(() => loadTHistory());
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
 
   const priceStep = assetType === "etf" ? 0.001 : 0.01;
   const feeSettings = useMemo(() => feeSettingsForAssetType(assetType), [assetType]);
@@ -193,6 +205,98 @@ function TCalculator() {
     setFinalPrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
   }, [assetType]);
 
+  function markDirty() {
+    setDirty(true);
+  }
+
+  function buildSnapshot(id: string, name: string, createdAt: string): THistorySession {
+    const now = new Date().toISOString();
+    return {
+      id,
+      name,
+      createdAt,
+      updatedAt: now,
+      assetType,
+      baseAvgCost,
+      baseQuantity,
+      finalPrice,
+      tradeSide,
+      entries,
+    };
+  }
+
+  function saveHistory() {
+    if (!entries.some((entry) => entry.side === "init")) {
+      showInfo("请先初始化底仓后再保存。");
+      return;
+    }
+
+    const existing = activeHistoryId ? historyList.find((item) => item.id === activeHistoryId) : undefined;
+    if (existing) {
+      const next = upsertTHistory(buildSnapshot(existing.id, existing.name, existing.createdAt));
+      setHistoryList(next);
+      setActiveHistoryId(existing.id);
+      setDirty(false);
+      showSuccess("历史记录已更新");
+      return;
+    }
+
+    const suggested = defaultTHistoryName();
+    const input = window.prompt("保存名称", suggested);
+    if (input == null) return;
+    const name = input.trim() || suggested;
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const next = upsertTHistory(buildSnapshot(id, name, now));
+    setHistoryList(next);
+    setActiveHistoryId(id);
+    setDirty(false);
+    showSuccess("已保存到做 T 历史");
+  }
+
+  function openHistory(session: THistorySession) {
+    if (activeHistoryId === session.id && !dirty) return;
+    if (dirty && !window.confirm("当前有未保存的修改，打开历史将放弃这些修改，是否继续？")) {
+      return;
+    }
+    changeAssetType(session.assetType);
+    setBaseAvgCost(session.baseAvgCost);
+    setBaseQuantity(session.baseQuantity);
+    setFinalPrice(session.finalPrice);
+    setTradeSide(session.tradeSide);
+    setTradePrice(null);
+    setTradeQuantity(null);
+    setEntries(session.entries.map((entry) => ({ ...entry })));
+    setSelectedIds([]);
+    setActiveHistoryId(session.id);
+    setDirty(false);
+    showSuccess(`已打开「${session.name}」`);
+  }
+
+  function handleRenameHistory(session: THistorySession, event: MouseEvent) {
+    event.stopPropagation();
+    const input = window.prompt("重命名", session.name);
+    if (input == null) return;
+    const name = input.trim();
+    if (!name) {
+      showInfo("名称不能为空。");
+      return;
+    }
+    setHistoryList(renameTHistory(session.id, name));
+    showSuccess("已重命名");
+  }
+
+  function handleDeleteHistory(session: THistorySession, event: MouseEvent) {
+    event.stopPropagation();
+    if (!window.confirm(`确定删除「${session.name}」？`)) return;
+    const next = deleteTHistory(session.id);
+    setHistoryList(next);
+    if (activeHistoryId === session.id) {
+      setActiveHistoryId(null);
+    }
+    showSuccess("已删除历史记录");
+  }
+
   function initBasePosition() {
     const cost = baseAvgCost ?? 0;
     const quantity = baseQuantity ?? 0;
@@ -202,6 +306,7 @@ function TCalculator() {
     }
     setEntries([{ id: crypto.randomUUID(), side: "init", price: cost, quantity }]);
     setSelectedIds([]);
+    markDirty();
     showSuccess("底仓已初始化");
   }
 
@@ -223,6 +328,7 @@ function TCalculator() {
     setEntries((items) => [...items, { id: crypto.randomUUID(), side: tradeSide, price, quantity }]);
     setTradePrice(null);
     setTradeQuantity(null);
+    markDirty();
   }
 
   function handleAddSubmit(event: FormEvent) {
@@ -251,6 +357,7 @@ function TCalculator() {
 
     setEntries((items) => items.filter((item) => !deletableIds.includes(item.id)));
     setSelectedIds([]);
+    markDirty();
     showSuccess("已删除并重新计算");
   }
 
@@ -325,8 +432,25 @@ function TCalculator() {
               <form className="t-input-section" onSubmit={handleAddSubmit}>
                 <div className="t-input-align">
                   <div className="calculator-input-grid t-input-grid t-input-grid--base">
-                    <AppNumberStepper label="底仓成本价" onChange={setBaseAvgCost} step={priceStep} value={baseAvgCost} />
-                    <AppNumberStepper label="底仓数量" normalizeToStep onChange={setBaseQuantity} step={100} value={baseQuantity} />
+                    <AppNumberStepper
+                      label="底仓成本价"
+                      onChange={(value) => {
+                        setBaseAvgCost(value);
+                        markDirty();
+                      }}
+                      step={priceStep}
+                      value={baseAvgCost}
+                    />
+                    <AppNumberStepper
+                      label="底仓数量"
+                      normalizeToStep
+                      onChange={(value) => {
+                        setBaseQuantity(value);
+                        markDirty();
+                      }}
+                      step={100}
+                      value={baseQuantity}
+                    />
                     <AppNumberStepper
                       label={
                         <FieldLabelWithTip
@@ -336,7 +460,10 @@ function TCalculator() {
                           最终价格
                         </FieldLabelWithTip>
                       }
-                      onChange={setFinalPrice}
+                      onChange={(value) => {
+                        setFinalPrice(value);
+                        markDirty();
+                      }}
                       step={priceStep}
                       value={finalPrice}
                     />
@@ -350,7 +477,10 @@ function TCalculator() {
                       </FieldLabelWithTip>
                       <AppSelect
                         id="t-asset-type"
-                        onChange={changeAssetType}
+                        onChange={(value) => {
+                          changeAssetType(value);
+                          markDirty();
+                        }}
                         options={[
                           { label: "股票", value: "stock" },
                           { label: "ETF", value: "etf" },
@@ -363,7 +493,10 @@ function TCalculator() {
                     <label>
                       交易方向
                       <AppSelect
-                        onChange={setTradeSide}
+                        onChange={(value) => {
+                          setTradeSide(value);
+                          markDirty();
+                        }}
                         options={[
                           { label: "买入", value: "buy" },
                           { label: "卖出", value: "sell" },
@@ -440,69 +573,141 @@ function TCalculator() {
           </div>
         </div>
 
-        <section className="panel t-ledger-panel">
-          <div className="section-header">
-            <h2>做 T 记录</h2>
-          </div>
-          <div className="t-table-wrap">
-            <table className="result-table t-ledger-table">
-              <thead>
-                <tr>
-                  <th className="t-check-col">
-                    <input
-                      aria-label="全选"
-                      checked={rows.length > 0 && selectedIds.length === rows.length}
-                      onChange={toggleSelectAll}
-                      type="checkbox"
-                    />
-                  </th>
-                  <th>序号</th>
-                  <th>操作方向</th>
-                  <th>买入价格</th>
-                  <th>买入数量</th>
-                  <th>卖出价格</th>
-                  <th>卖出数量</th>
-                  <th>成交费用</th>
-                  <th>资金流向</th>
-                  <th>持仓数量</th>
-                  <th>持仓成本</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length ? (
-                  rows.map((row) => (
-                    <tr key={row.id}>
-                      <td className="t-check-col">
-                        <input
-                          aria-label={`选择第 ${row.index} 行`}
-                          checked={selectedIds.includes(row.id)}
-                          onChange={() => toggleSelect(row.id)}
-                          type="checkbox"
-                        />
-                      </td>
-                      <td>{row.index}</td>
-                      <td>{tSideLabel(row.side)}</td>
-                      <td>{formatOptional(row.buyPrice)}</td>
-                      <td>{formatOptionalQty(row.buyQuantity)}</td>
-                      <td>{formatOptional(row.sellPrice)}</td>
-                      <td>{formatOptionalQty(row.sellQuantity)}</td>
-                      <td>{currency(row.fee)}</td>
-                      <td className={cashFlowTone(row)}>{currency(row.cashFlow)}</td>
-                      <td>{row.positionQuantity.toLocaleString("zh-CN")}</td>
-                      <td>{currency(row.positionAvgCost)}</td>
-                    </tr>
-                  ))
-                ) : (
+        <div className="t-bottom-split">
+          <section className="panel t-history-panel">
+            <div className="section-header">
+              <h2>做 T 历史</h2>
+              <button
+                className="text-button"
+                disabled={Boolean(activeHistoryId) && !dirty}
+                onClick={saveHistory}
+                type="button"
+                title={activeHistoryId ? (dirty ? "更新当前历史" : "已与历史同步") : "保存为新历史"}
+              >
+                <Save size={15} />
+                {activeHistoryId ? (dirty ? "更新" : "已保存") : "保存"}
+              </button>
+            </div>
+            <div className="t-history-list">
+              {historyList.length ? (
+                historyList.map((session) => {
+                  const isActive = activeHistoryId === session.id;
+                  return (
+                    <div
+                      className={`t-history-item${isActive ? " is-active" : ""}`}
+                      key={session.id}
+                      onClick={() => openHistory(session)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openHistory(session);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="t-history-item-main">
+                        <div className="t-history-item-title">
+                          <span className="t-history-item-name">{session.name}</span>
+                          {isActive ? <span className="t-history-item-badge">当前</span> : null}
+                        </div>
+                        <div className="t-history-item-meta">
+                          <span>{session.assetType === "etf" ? "ETF" : "股票"}</span>
+                          <span>{session.entries.length} 笔</span>
+                          <span>{formatTHistoryTime(session.updatedAt)}</span>
+                        </div>
+                      </div>
+                      <div className="t-history-item-actions">
+                        <button
+                          aria-label={`重命名 ${session.name}`}
+                          className="t-history-action"
+                          onClick={(event) => handleRenameHistory(session, event)}
+                          type="button"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          aria-label={`删除 ${session.name}`}
+                          className="t-history-action t-history-action--danger"
+                          onClick={(event) => handleDeleteHistory(session, event)}
+                          type="button"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="t-history-empty">暂无历史，保存当前做 T 后会出现在这里</p>
+              )}
+            </div>
+          </section>
+
+          <section className="panel t-ledger-panel">
+            <div className="section-header">
+              <h2>做 T 记录</h2>
+            </div>
+            <div className="t-table-wrap">
+              <table className="result-table t-ledger-table">
+                <thead>
                   <tr>
-                    <td className="t-empty-cell" colSpan={11}>
-                      请先「底仓初始化」，再添加买入 / 卖出操作。
-                    </td>
+                    <th className="t-check-col">
+                      <input
+                        aria-label="全选"
+                        checked={rows.length > 0 && selectedIds.length === rows.length}
+                        onChange={toggleSelectAll}
+                        type="checkbox"
+                      />
+                    </th>
+                    <th>序号</th>
+                    <th>操作方向</th>
+                    <th>买入价格</th>
+                    <th>买入数量</th>
+                    <th>卖出价格</th>
+                    <th>卖出数量</th>
+                    <th>成交费用</th>
+                    <th>资金流向</th>
+                    <th>持仓数量</th>
+                    <th>持仓成本</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {rows.length ? (
+                    rows.map((row) => (
+                      <tr key={row.id}>
+                        <td className="t-check-col">
+                          <input
+                            aria-label={`选择第 ${row.index} 行`}
+                            checked={selectedIds.includes(row.id)}
+                            onChange={() => toggleSelect(row.id)}
+                            type="checkbox"
+                          />
+                        </td>
+                        <td>{row.index}</td>
+                        <td>{tSideLabel(row.side)}</td>
+                        <td>{formatOptional(row.buyPrice)}</td>
+                        <td>{formatOptionalQty(row.buyQuantity)}</td>
+                        <td>{formatOptional(row.sellPrice)}</td>
+                        <td>{formatOptionalQty(row.sellQuantity)}</td>
+                        <td>{currency(row.fee)}</td>
+                        <td className={cashFlowTone(row)}>{currency(row.cashFlow)}</td>
+                        <td>{row.positionQuantity.toLocaleString("zh-CN")}</td>
+                        <td>{currency(row.positionAvgCost)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="t-empty-cell" colSpan={11}>
+                        请先「底仓初始化」，再添加买入 / 卖出操作。
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
     </CalculatorShell>
   );
@@ -558,8 +763,16 @@ function ChangeCalculator() {
         </div>
         <ResultTable
           rows={[
-            ["涨跌金额", currency(result.changeAmount), result.changeAmount],
-            ["涨跌幅", percent(result.changeRate), result.changeRate],
+            [
+              "涨跌金额",
+              currentPrice == null ? "—" : currency(result.changeAmount),
+              currentPrice == null ? undefined : result.changeAmount,
+            ],
+            [
+              "涨跌幅",
+              currentPrice == null ? "—" : percent(result.changeRate),
+              currentPrice == null ? undefined : result.changeRate,
+            ],
             ["目标上涨价格", currency(result.targetUpPrice)],
             ["目标下跌价格", currency(result.targetDownPrice)],
             ["5% 涨停参考", currency(result.limit5Up)],
