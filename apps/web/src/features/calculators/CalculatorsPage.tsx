@@ -27,6 +27,16 @@ import {
   upsertTHistory,
   type THistorySession,
 } from "./tHistory";
+import {
+  countFilledAverageLines,
+  defaultAverageHistoryName,
+  deleteAverageHistory,
+  formatAverageHistoryTime,
+  loadAverageHistory,
+  renameAverageHistory,
+  upsertAverageHistory,
+  type AverageHistorySession,
+} from "./averageHistory";
 
 type CalculatorTab = "profit" | "t" | "change" | "average";
 
@@ -919,6 +929,11 @@ function AveragePriceCalculator() {
     { id: "1", price: null, quantity: null },
     { id: "2", price: null, quantity: null },
   ]);
+  const [historyList, setHistoryList] = useState<AverageHistorySession[]>(() => loadAverageHistory());
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [dialog, setDialog] = useState<AverageHistoryDialog | null>(null);
+
   const priceStep = assetType === "etf" ? 0.001 : 0.01;
   const feeSettings = useMemo(() => feeSettingsForAssetType(assetType), [assetType]);
   const result = useMemo(() => calculateAverage(lines, feeSettings), [feeSettings, lines]);
@@ -933,72 +948,285 @@ function AveragePriceCalculator() {
     );
   }, [assetType]);
 
+  function markDirty() {
+    setDirty(true);
+  }
+
+  function closeDialog() {
+    setDialog(null);
+  }
+
+  function buildSnapshot(id: string, name: string, createdAt: string): AverageHistorySession {
+    return {
+      id,
+      name,
+      createdAt,
+      updatedAt: new Date().toISOString(),
+      assetType,
+      lines: lines.map((line) => ({ ...line })),
+    };
+  }
+
+  function applyHistorySession(session: AverageHistorySession) {
+    changeAssetType(session.assetType);
+    setLines(session.lines.map((line) => ({ ...line })));
+    setActiveHistoryId(session.id);
+    setDirty(false);
+    showSuccess(`已打开「${session.name}」`);
+  }
+
+  function clearWorkspace() {
+    setLines([
+      { id: crypto.randomUUID(), price: null, quantity: null },
+      { id: crypto.randomUUID(), price: null, quantity: null },
+    ]);
+    setActiveHistoryId(null);
+    setDirty(false);
+    showSuccess("已新建空白平均价格计算");
+  }
+
+  function saveHistory() {
+    if (countFilledAverageLines(lines) === 0) {
+      showInfo("请先填写至少一行有效的价格与数量后再保存。");
+      return;
+    }
+
+    const existing = activeHistoryId ? historyList.find((item) => item.id === activeHistoryId) : undefined;
+    if (existing) {
+      const next = upsertAverageHistory(buildSnapshot(existing.id, existing.name, existing.createdAt));
+      setHistoryList(next);
+      setActiveHistoryId(existing.id);
+      setDirty(false);
+      showSuccess("历史记录已更新");
+      return;
+    }
+
+    setDialog({ type: "saveName", draft: defaultAverageHistoryName() });
+  }
+
+  function confirmSaveName() {
+    if (dialog?.type !== "saveName") return;
+    const suggested = defaultAverageHistoryName();
+    const name = dialog.draft.trim() || suggested;
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const next = upsertAverageHistory(buildSnapshot(id, name, now));
+    setHistoryList(next);
+    setActiveHistoryId(id);
+    setDirty(false);
+    closeDialog();
+    showSuccess("已保存到平均价格历史");
+  }
+
+  function openHistory(session: AverageHistorySession) {
+    if (activeHistoryId === session.id && !dirty) return;
+    if (dirty) {
+      setDialog({ type: "confirmOpen", session });
+      return;
+    }
+    applyHistorySession(session);
+  }
+
+  function startFresh() {
+    const hasContent =
+      dirty ||
+      activeHistoryId != null ||
+      lines.some((line) => line.price != null || line.quantity != null);
+    if (!hasContent) {
+      clearWorkspace();
+      return;
+    }
+    setDialog({
+      type: "confirmFresh",
+      message: "当前未保存的内容将被清空，是否创建新的平均价格记录？",
+    });
+  }
+
+  function handleRenameHistory(session: AverageHistorySession, event: MouseEvent) {
+    event.stopPropagation();
+    setDialog({ type: "rename", sessionId: session.id, draft: session.name });
+  }
+
+  function confirmRename() {
+    if (dialog?.type !== "rename") return;
+    const name = dialog.draft.trim();
+    if (!name) {
+      showInfo("名称不能为空。");
+      return;
+    }
+    setHistoryList(renameAverageHistory(dialog.sessionId, name));
+    closeDialog();
+    showSuccess("已重命名");
+  }
+
+  function handleDeleteHistory(session: AverageHistorySession, event: MouseEvent) {
+    event.stopPropagation();
+    setDialog({ type: "confirmDelete", session });
+  }
+
+  function confirmDeleteHistory() {
+    if (dialog?.type !== "confirmDelete") return;
+    const session = dialog.session;
+    const next = deleteAverageHistory(session.id);
+    setHistoryList(next);
+    if (activeHistoryId === session.id) {
+      setActiveHistoryId(null);
+    }
+    closeDialog();
+    showSuccess("已删除历史记录");
+  }
+
   function updateLine(id: string, patch: Partial<AverageLine>) {
     setLines((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+    markDirty();
   }
 
   function addLine() {
     setLines((items) => [...items, { id: crypto.randomUUID(), price: null, quantity: null }]);
+    markDirty();
   }
 
   function removeLine(id: string) {
     setLines((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+    markDirty();
   }
 
   return (
     <CalculatorShell>
-      <div className="calculator-form">
-        <div className="panel">
-          <div className="section-header">
-            <h2>买入明细</h2>
-            <button className="text-button" onClick={addLine} type="button">
-              <Plus size={15} />
-              新增
-            </button>
-          </div>
-          <div className="calculator-asset-type-field">
-            <FieldLabelWithTip
-              htmlFor="average-price-asset-type"
-              tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按系统默认费率计算。"
-              tipAriaLabel="成本类型说明"
-            >
-              成本类型
-            </FieldLabelWithTip>
-            <AppSelect
-              id="average-price-asset-type"
-              onChange={changeAssetType}
-              options={[
-                { label: "股票", value: "stock" },
-                { label: "ETF", value: "etf" },
-              ]}
-              value={assetType}
-            />
-          </div>
-          <div className="average-lines">
-            {lines.map((line, index) => (
-              <div className="average-line" key={line.id}>
-                <span>{index + 1}</span>
-                <AppNumberStepper
-                  label="价格"
-                  normalizeToStep
-                  onChange={(value) => updateLine(line.id, { price: value })}
-                  step={priceStep}
-                  value={line.price}
-                />
-                <AppNumberStepper
-                  label="数量"
-                  normalizeToStep
-                  onChange={(value) => updateLine(line.id, { quantity: value })}
-                  step={100}
-                  value={line.quantity}
-                />
-                <button aria-label="删除买入行" className="icon-button danger-button" onClick={() => removeLine(line.id)} type="button">
-                  <Trash2 size={16} />
+      <div className="calculator-form average-calculator-form">
+        <div className="average-workspace">
+          <section className="panel t-history-panel average-history-panel">
+            <div className="section-header">
+              <h2>平均价历史</h2>
+              <div className="t-history-header-actions">
+                <button className="text-button" onClick={startFresh} type="button" title="清空工作区，从头计算">
+                  <FilePlus size={15} />
+                  新建
+                </button>
+                <button
+                  className="text-button"
+                  disabled={Boolean(activeHistoryId) && !dirty}
+                  onClick={saveHistory}
+                  type="button"
+                  title={activeHistoryId ? (dirty ? "更新当前历史" : "已与历史同步") : "保存为新历史"}
+                >
+                  <Save size={15} />
+                  {activeHistoryId ? (dirty ? "更新" : "已保存") : "保存"}
                 </button>
               </div>
-            ))}
+            </div>
+            <div className="t-history-list">
+              {historyList.length ? (
+                historyList.map((session) => {
+                  const isActive = activeHistoryId === session.id;
+                  return (
+                    <div
+                      className={`t-history-item${isActive ? " is-active" : ""}`}
+                      key={session.id}
+                      onClick={() => openHistory(session)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openHistory(session);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="t-history-item-main">
+                        <div className="t-history-item-title">
+                          <span className="t-history-item-name">{session.name}</span>
+                          {isActive ? <span className="t-history-item-badge">当前</span> : null}
+                        </div>
+                        <div className="t-history-item-meta">
+                          <span>{session.assetType === "etf" ? "ETF" : "股票"}</span>
+                          <span>{countFilledAverageLines(session.lines)} 行</span>
+                          <span>{formatAverageHistoryTime(session.updatedAt)}</span>
+                        </div>
+                      </div>
+                      <div className="t-history-item-actions">
+                        <button
+                          aria-label={`重命名 ${session.name}`}
+                          className="t-history-action"
+                          onClick={(event) => handleRenameHistory(session, event)}
+                          type="button"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          aria-label={`删除 ${session.name}`}
+                          className="t-history-action t-history-action--danger"
+                          onClick={(event) => handleDeleteHistory(session, event)}
+                          type="button"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="t-history-empty">暂无历史，保存当前计算后会出现在这里</p>
+              )}
+            </div>
+          </section>
+
+          <div className="panel average-input-panel">
+            <div className="section-header">
+              <h2>买入明细</h2>
+              <button className="text-button" onClick={addLine} type="button">
+                <Plus size={15} />
+                新增
+              </button>
+            </div>
+            <div className="calculator-asset-type-field">
+              <FieldLabelWithTip
+                htmlFor="average-price-asset-type"
+                tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按系统默认费率计算。"
+                tipAriaLabel="成本类型说明"
+              >
+                成本类型
+              </FieldLabelWithTip>
+              <AppSelect
+                id="average-price-asset-type"
+                onChange={(value) => {
+                  changeAssetType(value);
+                  markDirty();
+                }}
+                options={[
+                  { label: "股票", value: "stock" },
+                  { label: "ETF", value: "etf" },
+                ]}
+                value={assetType}
+              />
+            </div>
+            <div className="average-lines">
+              {lines.map((line, index) => (
+                <div className="average-line" key={line.id}>
+                  <span>{index + 1}</span>
+                  <AppNumberStepper
+                    label="价格"
+                    normalizeToStep
+                    onChange={(value) => updateLine(line.id, { price: value })}
+                    step={priceStep}
+                    value={line.price}
+                  />
+                  <AppNumberStepper
+                    label="数量"
+                    normalizeToStep
+                    onChange={(value) => updateLine(line.id, { quantity: value })}
+                    step={100}
+                    value={line.quantity}
+                  />
+                  <button aria-label="删除买入行" className="icon-button danger-button" onClick={() => removeLine(line.id)} type="button">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+
         <ResultTable
           rows={[
             ["总数量", result.totalQuantity.toLocaleString("zh-CN")],
@@ -1010,9 +1238,68 @@ function AveragePriceCalculator() {
           title="计算结果"
         />
       </div>
+
+      <AppPromptDialog
+        confirmLabel={dialog?.type === "saveName" ? "保存" : "确定"}
+        onCancel={closeDialog}
+        onChange={(value) =>
+          setDialog((current) =>
+            current && (current.type === "saveName" || current.type === "rename") ? { ...current, draft: value } : current,
+          )
+        }
+        onConfirm={() => {
+          if (dialog?.type === "saveName") confirmSaveName();
+          else if (dialog?.type === "rename") confirmRename();
+        }}
+        open={dialog?.type === "saveName" || dialog?.type === "rename"}
+        title={dialog?.type === "rename" ? "重命名" : "保存平均价格历史"}
+        value={dialog?.type === "saveName" || dialog?.type === "rename" ? dialog.draft : ""}
+      />
+
+      <AppConfirmDialog
+        confirmLabel="打开"
+        message="当前有未保存的修改，打开历史将放弃这些修改，是否继续？"
+        onCancel={closeDialog}
+        onConfirm={() => {
+          if (dialog?.type !== "confirmOpen") return;
+          applyHistorySession(dialog.session);
+          closeDialog();
+        }}
+        open={dialog?.type === "confirmOpen"}
+        title="打开历史"
+      />
+
+      <AppConfirmDialog
+        confirmLabel="新建"
+        message={dialog?.type === "confirmFresh" ? dialog.message : ""}
+        onCancel={closeDialog}
+        onConfirm={() => {
+          clearWorkspace();
+          closeDialog();
+        }}
+        open={dialog?.type === "confirmFresh"}
+        title="新建平均价格"
+      />
+
+      <AppConfirmDialog
+        confirmLabel="删除"
+        danger
+        message={dialog?.type === "confirmDelete" ? `确定删除「${dialog.session.name}」吗？删除后无法恢复。` : ""}
+        onCancel={closeDialog}
+        onConfirm={confirmDeleteHistory}
+        open={dialog?.type === "confirmDelete"}
+        title="删除历史"
+      />
     </CalculatorShell>
   );
 }
+
+type AverageHistoryDialog =
+  | { type: "saveName"; draft: string }
+  | { type: "rename"; sessionId: string; draft: string }
+  | { type: "confirmOpen"; session: AverageHistorySession }
+  | { type: "confirmFresh"; message: string }
+  | { type: "confirmDelete"; session: AverageHistorySession };
 
 function feeSettingsForAssetType(assetType: AssetType): FeeSettings {
   return {

@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #f4f7f5;
   --panel: #ffffff;
   --ink: #17201c;
@@ -1489,7 +1489,7 @@ textarea {
   line-height: 1.35;
 }
 
-/* 文档标题：首行 H1，语雀/Notion 风格 */
+/* 鏂囨。鏍囬锛氶琛?H1锛岃闆€/Notion 椋庢牸 */
 .kb-editor .tiptap > h1:first-child {
   margin: 0 0 28px;
   min-height: calc(44px * 1.2);
@@ -2283,7 +2283,7 @@ textarea {
   padding: 18px 20px 20px;
 }
 
-/* Must come after .settings-modal — same element uses both classes */
+/* Must come after .settings-modal 鈥?same element uses both classes */
 .settings-modal.notes-modal {
   width: 50%;
   height: auto;
@@ -2928,7 +2928,7 @@ textarea {
   --t-control-gap: 6px;
   --t-control-min-height: 38px;
   display: grid;
-  /* 四列均分：行1 底仓字段；行2 交易字段+底仓初始化 */
+  /* 鍥涘垪鍧囧垎锛氳1 搴曚粨瀛楁锛涜2 浜ゆ槗瀛楁+搴曚粨鍒濆鍖?*/
   grid-template-columns: repeat(4, minmax(0, 1fr));
   column-gap: 10px;
   row-gap: 10px;
@@ -2941,7 +2941,7 @@ textarea {
   display: contents;
 }
 
-/* 交易行下方：四按钮与四列输入对齐；上方预留标签行，使行间距与字段行一致 */
+/* 浜ゆ槗琛屼笅鏂癸細鍥涙寜閽笌鍥涘垪杈撳叆瀵归綈锛涗笂鏂归鐣欐爣绛捐锛屼娇琛岄棿璺濅笌瀛楁琛屼竴鑷?*/
 .t-action-bar.t-action-bar--row {
   display: grid;
   grid-column: 1 / -1;
@@ -2982,7 +2982,7 @@ textarea {
   white-space: nowrap;
 }
 
-/* 统一「标签行 + 间距 + 控件行」，保证最终价格与成本类型等控件基线一致 */
+/* 缁熶竴銆屾爣绛捐 + 闂磋窛 + 鎺т欢琛屻€嶏紝淇濊瘉鏈€缁堜环鏍间笌鎴愭湰绫诲瀷绛夋帶浠跺熀绾夸竴鑷?*/
 .t-input-align .app-number-stepper-field,
 .t-input-align > .t-input-grid > label,
 .t-input-align .calculator-asset-type-field {
@@ -3030,7 +3030,7 @@ textarea {
   color: var(--muted);
 }
 
-/* 交易方向：标签文字与控件分行，颜色不传到 select */
+/* 浜ゆ槗鏂瑰悜锛氭爣绛炬枃瀛椾笌鎺т欢鍒嗚锛岄鑹蹭笉浼犲埌 select */
 .t-input-align > .t-input-grid > label {
   font-size: 13px;
   line-height: var(--t-label-line);
@@ -3041,7 +3041,7 @@ textarea {
   color: var(--ink);
 }
 
-/* 覆盖 .calculator-input-grid 后写的 margin-top: 6px，避免标签间距被叠高 */
+/* 瑕嗙洊 .calculator-input-grid 鍚庡啓鐨?margin-top: 6px锛岄伩鍏嶆爣绛鹃棿璺濊鍙犻珮 */
 .t-input-align .trade-qty-stepper,
 .t-input-align .app-select,
 .t-input-align .calculator-asset-type-field .app-select,
@@ -3436,7 +3436,7 @@ textarea {
   background: #fcfdfc;
 }
 
-/* 无数据时：区域仍铺满，但不产生纵向滚动条（表头+100%空行会叠高出 1 屏） */
+/* 鏃犳暟鎹椂锛氬尯鍩熶粛閾烘弧锛屼絾涓嶄骇鐢熺旱鍚戞粴鍔ㄦ潯锛堣〃澶?100%绌鸿浼氬彔楂樺嚭 1 灞忥級 */
 .t-table-wrap:has(.t-empty-cell) {
   overflow-x: auto;
   overflow-y: hidden;
@@ -3586,7 +3586,7 @@ textarea {
   }
 }
 
-/* 矮屏：压缩控件与状态行，避免输入区/最终状态出现滚动条 */
+/* 鐭睆锛氬帇缂╂帶浠朵笌鐘舵€佽锛岄伩鍏嶈緭鍏ュ尯/鏈€缁堢姸鎬佸嚭鐜版粴鍔ㄦ潯 */
 @media (max-height: 780px) {
   .t-input-align {
     --t-label-line: 16px;
@@ -3672,7 +3672,7 @@ textarea {
   padding: 24px 12px !important;
 }
 
-/* 空表仍铺满容器，提示贴在表头下方而非垂直居中留白 */
+/* 绌鸿〃浠嶉摵婊″鍣紝鎻愮ず璐村湪琛ㄥご涓嬫柟鑰岄潪鍨傜洿灞呬腑鐣欑櫧 */
 .result-table.t-ledger-table:has(.t-empty-cell) {
   height: 100%;
 }
@@ -3767,7 +3767,7 @@ textarea {
   text-align: right;
 }
 
-/* 做T账本：表头与数据按列居中对齐 */
+/* 鍋歍璐︽湰锛氳〃澶翠笌鏁版嵁鎸夊垪灞呬腑瀵归綈 */
 .result-table.t-ledger-table th,
 .result-table.t-ledger-table td {
   padding: 10px 8px;
@@ -3812,6 +3812,47 @@ textarea {
   font-weight: 500;
 }
 
+
+.average-calculator-form {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.average-workspace {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.34fr) minmax(280px, 1fr);
+  gap: 12px;
+  flex: 1 1 auto;
+  width: calc(100% - 436px);
+  max-width: 960px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.average-history-panel {
+  max-height: min(70vh, 640px);
+}
+
+.average-input-panel {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .average-workspace {
+    width: 100%;
+    max-width: none;
+    grid-template-columns: 1fr;
+  }
+
+  .average-history-panel {
+    max-height: 240px;
+  }
+
+  .average-calculator-form > .result-panel {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+}
 .average-lines {
   display: flex;
   flex-direction: column;
@@ -4360,7 +4401,7 @@ textarea {
   width: 156px;
 }
 
-/* Default form look — match native input / AppSelect / stepper */
+/* Default form look 鈥?match native input / AppSelect / stepper */
 .app-date-picker.ant-picker {
   display: inline-flex;
   align-items: center;
