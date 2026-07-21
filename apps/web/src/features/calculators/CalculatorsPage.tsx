@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
-import { Calculator, Copy, Download, Layers, Pencil, PiggyBank, Plus, Save, Trash2 } from "lucide-react";
+import { Calculator, Copy, Download, FilePlus, Layers, Pencil, PiggyBank, Plus, Save, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { FieldLabelWithTip } from "../../components/FieldHelpTip";
@@ -271,6 +271,35 @@ function TCalculator() {
     setActiveHistoryId(session.id);
     setDirty(false);
     showSuccess(`已打开「${session.name}」`);
+  }
+
+  function startFresh() {
+    const hasContent =
+      dirty ||
+      activeHistoryId != null ||
+      entries.length > 0 ||
+      baseAvgCost != null ||
+      baseQuantity != null ||
+      finalPrice != null ||
+      tradePrice != null ||
+      tradeQuantity != null;
+    if (
+      hasContent &&
+      !window.confirm(dirty ? "当前有未保存的修改，新建将清空工作区，是否继续？" : "确定清空当前做 T，从头开始？")
+    ) {
+      return;
+    }
+    setBaseAvgCost(null);
+    setBaseQuantity(null);
+    setTradeSide("buy");
+    setTradePrice(null);
+    setTradeQuantity(null);
+    setFinalPrice(null);
+    setEntries([]);
+    setSelectedIds([]);
+    setActiveHistoryId(null);
+    setDirty(false);
+    showSuccess("已新建空白做 T");
   }
 
   function handleRenameHistory(session: THistorySession, event: MouseEvent) {
@@ -577,16 +606,22 @@ function TCalculator() {
           <section className="panel t-history-panel">
             <div className="section-header">
               <h2>做 T 历史</h2>
-              <button
-                className="text-button"
-                disabled={Boolean(activeHistoryId) && !dirty}
-                onClick={saveHistory}
-                type="button"
-                title={activeHistoryId ? (dirty ? "更新当前历史" : "已与历史同步") : "保存为新历史"}
-              >
-                <Save size={15} />
-                {activeHistoryId ? (dirty ? "更新" : "已保存") : "保存"}
-              </button>
+              <div className="t-history-header-actions">
+                <button className="text-button" onClick={startFresh} type="button" title="清空工作区，从头做 T">
+                  <FilePlus size={15} />
+                  新建
+                </button>
+                <button
+                  className="text-button"
+                  disabled={Boolean(activeHistoryId) && !dirty}
+                  onClick={saveHistory}
+                  type="button"
+                  title={activeHistoryId ? (dirty ? "更新当前历史" : "已与历史同步") : "保存为新历史"}
+                >
+                  <Save size={15} />
+                  {activeHistoryId ? (dirty ? "更新" : "已保存") : "保存"}
+                </button>
+              </div>
             </div>
             <div className="t-history-list">
               {historyList.length ? (
