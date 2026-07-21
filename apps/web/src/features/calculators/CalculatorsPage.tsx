@@ -170,8 +170,8 @@ function ProfitCostCalculator() {
 
 function TCalculator() {
   const { assetType, changeAssetType } = useCalculatorAssetType();
-  const [baseAvgCost, setBaseAvgCost] = useState<number | null>(10);
-  const [baseQuantity, setBaseQuantity] = useState<number | null>(1000);
+  const [baseAvgCost, setBaseAvgCost] = useState<number | null>(null);
+  const [baseQuantity, setBaseQuantity] = useState<number | null>(null);
   const [tradeSide, setTradeSide] = useState<"buy" | "sell">("buy");
   const [tradePrice, setTradePrice] = useState<number | null>(null);
   const [tradeQuantity, setTradeQuantity] = useState<number | null>(null);
@@ -532,10 +532,18 @@ function csvEscape(value: string | number) {
 }
 
 function ChangeCalculator() {
-  const [basePrice, setBasePrice] = useState(10);
-  const [currentPrice, setCurrentPrice] = useState(11.2);
-  const [targetRate, setTargetRate] = useState(8);
-  const result = useMemo(() => calculateChange({ basePrice, currentPrice, targetRate }), [basePrice, currentPrice, targetRate]);
+  const [basePrice, setBasePrice] = useState<number | null>(null);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [targetRate, setTargetRate] = useState<number | null>(null);
+  const result = useMemo(
+    () =>
+      calculateChange({
+        basePrice: basePrice ?? 0,
+        currentPrice: currentPrice ?? 0,
+        targetRate: targetRate ?? 0,
+      }),
+    [basePrice, currentPrice, targetRate],
+  );
 
   return (
     <CalculatorShell>
@@ -543,9 +551,9 @@ function ChangeCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <AppNumberStepper label="基准价格" onChange={(value) => setBasePrice(value ?? 0)} step={0.01} value={basePrice} />
-            <AppNumberStepper label="当前价格" onChange={(value) => setCurrentPrice(value ?? 0)} step={0.01} value={currentPrice} />
-            <AppNumberStepper label="目标涨跌幅(%)" onChange={(value) => setTargetRate(value ?? 0)} step={0.1} value={targetRate} />
+            <AppNumberStepper label="基准价格" onChange={setBasePrice} step={0.01} value={basePrice} />
+            <AppNumberStepper label="当前价格" onChange={setCurrentPrice} step={0.01} value={currentPrice} />
+            <AppNumberStepper label="目标涨跌幅(%)" onChange={setTargetRate} step={0.1} value={targetRate} />
           </div>
         </div>
         <ResultTable
