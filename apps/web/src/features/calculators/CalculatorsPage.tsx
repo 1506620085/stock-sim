@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type MouseEvent, type Rea
 import { Calculator, Copy, Download, FilePlus, Layers, Pencil, PiggyBank, Plus, Save, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
+import { AppConfirmDialog, AppPromptDialog } from "../../components/AppDialog";
 import { FieldLabelWithTip } from "../../components/FieldHelpTip";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
 import {
@@ -205,15 +206,6 @@ function TCalculator() {
     setTradePrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
     setFinalPrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
   }, [assetType]);
-
-  useEffect(() => {
-    if (!dialog) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDialog(null);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [dialog]);
 
   function markDirty() {
     setDirty(true);
@@ -783,97 +775,57 @@ function TCalculator() {
         </div>
       </div>
 
-      {dialog ? (
-        <div className="settings-modal-backdrop" onClick={closeDialog} role="presentation">
-          <div
-            aria-labelledby="t-history-dialog-title"
-            aria-modal="true"
-            className={`settings-modal${dialog.type === "saveName" || dialog.type === "rename" ? "" : " settings-confirm-modal"}`}
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            {dialog.type === "saveName" || dialog.type === "rename" ? (
-              <>
-                <div className="section-header">
-                  <h2 id="t-history-dialog-title">{dialog.type === "saveName" ? "保存做 T 历史" : "重命名"}</h2>
-                </div>
-                <label className="t-history-dialog-field">
-                  名称
-                  <input
-                    autoFocus
-                    onChange={(event) =>
-                      setDialog((current) =>
-                        current && (current.type === "saveName" || current.type === "rename")
-                          ? { ...current, draft: event.target.value }
-                          : current,
-                      )
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        if (dialog.type === "saveName") confirmSaveName();
-                        else confirmRename();
-                      }
-                    }}
-                    type="text"
-                    value={dialog.draft}
-                  />
-                </label>
-                <div className="settings-actions">
-                  <button className="secondary-button" onClick={closeDialog} type="button">
-                    取消
-                  </button>
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      if (dialog.type === "saveName") confirmSaveName();
-                      else confirmRename();
-                    }}
-                    type="button"
-                  >
-                    {dialog.type === "saveName" ? "保存" : "确定"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 id="t-history-dialog-title">
-                  {dialog.type === "confirmDelete" ? "删除历史" : dialog.type === "confirmOpen" ? "打开历史" : "新建做 T"}
-                </h2>
-                <p className="settings-confirm-copy">
-                  {dialog.type === "confirmDelete"
-                    ? `确定删除「${dialog.session.name}」吗？删除后无法恢复。`
-                    : dialog.type === "confirmOpen"
-                      ? "当前有未保存的修改，打开历史将放弃这些修改，是否继续？"
-                      : dialog.message}
-                </p>
-                <div className="settings-actions">
-                  <button className="secondary-button" onClick={closeDialog} type="button">
-                    取消
-                  </button>
-                  <button
-                    className={`primary-button${dialog.type === "confirmDelete" ? " danger-confirm-button" : ""}`}
-                    onClick={() => {
-                      if (dialog.type === "confirmDelete") {
-                        confirmDeleteHistory();
-                      } else if (dialog.type === "confirmOpen") {
-                        applyHistorySession(dialog.session);
-                        closeDialog();
-                      } else {
-                        clearWorkspace();
-                        closeDialog();
-                      }
-                    }}
-                    type="button"
-                  >
-                    {dialog.type === "confirmDelete" ? "删除" : dialog.type === "confirmOpen" ? "打开" : "新建"}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
+      <AppPromptDialog
+        confirmLabel={dialog?.type === "saveName" ? "保存" : "确定"}
+        onCancel={closeDialog}
+        onChange={(value) =>
+          setDialog((current) =>
+            current && (current.type === "saveName" || current.type === "rename") ? { ...current, draft: value } : current,
+          )
+        }
+        onConfirm={() => {
+          if (dialog?.type === "saveName") confirmSaveName();
+          else if (dialog?.type === "rename") confirmRename();
+        }}
+        open={dialog?.type === "saveName" || dialog?.type === "rename"}
+        title={dialog?.type === "rename" ? "重命名" : "保存做 T 历史"}
+        value={dialog?.type === "saveName" || dialog?.type === "rename" ? dialog.draft : ""}
+      />
+
+      <AppConfirmDialog
+        confirmLabel="打开"
+        message="当前有未保存的修改，打开历史将放弃这些修改，是否继续？"
+        onCancel={closeDialog}
+        onConfirm={() => {
+          if (dialog?.type !== "confirmOpen") return;
+          applyHistorySession(dialog.session);
+          closeDialog();
+        }}
+        open={dialog?.type === "confirmOpen"}
+        title="打开历史"
+      />
+
+      <AppConfirmDialog
+        confirmLabel="新建"
+        message={dialog?.type === "confirmFresh" ? dialog.message : ""}
+        onCancel={closeDialog}
+        onConfirm={() => {
+          clearWorkspace();
+          closeDialog();
+        }}
+        open={dialog?.type === "confirmFresh"}
+        title="新建做 T"
+      />
+
+      <AppConfirmDialog
+        confirmLabel="删除"
+        danger
+        message={dialog?.type === "confirmDelete" ? `确定删除「${dialog.session.name}」吗？删除后无法恢复。` : ""}
+        onCancel={closeDialog}
+        onConfirm={confirmDeleteHistory}
+        open={dialog?.type === "confirmDelete"}
+        title="删除历史"
+      />
     </CalculatorShell>
   );
 }
