@@ -206,7 +206,7 @@ export async function importSessionRecords(
       quantity: number;
       fee: number;
       priceRule: string;
-      emotionScore: number | null;
+      emotionScore?: number | null;
       note: string | null;
     }>;
     reviews: Array<{
@@ -234,7 +234,7 @@ export async function importSessionRecords(
           quantity: trade.quantity,
           fee: trade.fee,
           price_rule: trade.priceRule,
-          emotion_score: trade.emotionScore,
+          emotion_score: trade.emotionScore ?? null,
           note: trade.note,
         })),
         reviews: payload.reviews.map((review) => ({

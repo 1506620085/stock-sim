@@ -35,7 +35,6 @@ const TRADE_HEADERS = [
   "数量",
   "手续费",
   "定价规则",
-  "情绪分",
   "笔记",
 ] as const;
 
@@ -65,7 +64,6 @@ export type ReplayExcelTrade = {
   quantity: number;
   fee: number;
   priceRule: string;
-  emotionScore: number | null;
   note: string | null;
 };
 
@@ -219,11 +217,10 @@ export async function buildReplayExcelBlob(options: {
       trade.quantity,
       trade.fee,
       trade.priceRule ?? "",
-      trade.emotionScore ?? "",
       trade.note ?? "",
     ]);
   }
-  applyColumnWidths(tradeSheet, [10, 12, 8, 12, 12, 12, 14, 10, 36]);
+  applyColumnWidths(tradeSheet, [10, 12, 8, 12, 12, 12, 14, 36]);
   tradeSheet.getColumn(4).numFmt = "0.0000";
   tradeSheet.getColumn(5).numFmt = "#,##0";
   tradeSheet.getColumn(6).numFmt = "0.00";
@@ -366,7 +363,6 @@ export async function parseReplayExcelFile(file: File): Promise<ReplayExcelPaylo
       quantity: toNumber(cellValue(row, tradeHeader, "数量"), "数量"),
       fee: toNumber(cellValue(row, tradeHeader, "手续费") ?? 0, "手续费"),
       priceRule: String(cellValue(row, tradeHeader, "定价规则") ?? "").trim() || "import",
-      emotionScore: toOptionalInt(cellValue(row, tradeHeader, "情绪分")),
       note: String(cellValue(row, tradeHeader, "笔记") ?? "").trim() || null,
     });
   });
