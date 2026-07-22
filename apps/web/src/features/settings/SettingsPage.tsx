@@ -460,7 +460,7 @@ export function SettingsPage() {
             onChange={(value) => {
               if (value != null) setResetStartingCash(value);
             }}
-            step={1000}
+            step={10000}
             value={resetStartingCash}
           />
         </div>
