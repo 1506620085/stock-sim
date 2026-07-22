@@ -73,6 +73,8 @@ export function QuickPositionControls({
     scheduleUpdate();
 
     const onWheel = (event: WheelEvent) => {
+      // 行内始终拦截滚轮，避免滚到边缘后继续冒泡导致整页上下滚动
+      event.preventDefault();
       if (node.scrollWidth <= node.clientWidth + 1) return;
       const delta =
         Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
@@ -80,7 +82,6 @@ export function QuickPositionControls({
       const maxScroll = node.scrollWidth - node.clientWidth;
       const next = Math.min(maxScroll, Math.max(0, node.scrollLeft + delta));
       if (next === node.scrollLeft) return;
-      event.preventDefault();
       node.scrollLeft = next;
       updateScrollHints();
     };
