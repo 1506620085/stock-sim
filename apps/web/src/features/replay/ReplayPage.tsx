@@ -14,6 +14,7 @@ import { defaultChartDisplaySettings } from "./chartDisplay";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, resolveBarPrice, replayPriceBasisLabel, toTradePriceRule, type FeeTemplate, type ReplayPriceBasis } from "../settings/api";
 import { calculateTradeFee } from "../calculators/calculations";
+import { QuickPositionControls } from "./QuickPositionControls";
 import {
   calculateAvailableCash,
   calculateMaxBuyableShares,
@@ -780,6 +781,14 @@ function TradePanel({
           <span className="trade-lot-hint">
             {showAdjustHint ? `失焦后将调整为 ${cappedPreviewQuantity.toLocaleString("zh-CN")} 股` : null}
           </span>
+          <QuickPositionControls
+            availableCash={availableCash}
+            feeSettings={feeSettings}
+            maxTradeQuantity={maxTradeQuantity}
+            onApplyQuantity={onQuantityChange}
+            price={price}
+            side={side}
+          />
         </div>
         <div className="trade-fund-field">
           <div aria-label="资金信息" className="trade-fund-info">

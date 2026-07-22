@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #f4f7f5;
   --panel: #ffffff;
   --ink: #17201c;
@@ -4853,6 +4853,212 @@ textarea {
   font-size: 12px;
   line-height: 1.2;
 }
+.quick-position-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.quick-position-buttons {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.quick-position-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.quick-position-chip:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.quick-position-settings {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.quick-position-settings:hover {
+  border-color: #c5d0ca;
+  background: #f5f7f6;
+  color: var(--ink);
+}
+
+.quick-position-dialog {
+  width: min(100%, 720px);
+  max-height: min(88vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.quick-position-dialog-header {
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.quick-position-dialog-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.quick-position-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-position-dialog-actions .primary-button,
+.quick-position-dialog-actions .secondary-button {
+  width: auto;
+  min-width: 72px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 12px;
+}
+
+.quick-position-dialog-hint {
+  flex: 0 0 auto;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.quick-position-editor-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  margin-top: 14px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.quick-position-editor-item {
+  display: grid;
+  grid-template-columns: 24px minmax(90px, 1.1fr) minmax(110px, 1.2fr) minmax(110px, 1fr) 36px;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fcfdfc;
+}
+
+.quick-position-editor-item.is-dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  opacity: 0.92;
+}
+
+.quick-position-drag-handle {
+  display: grid;
+  height: 38px;
+  place-items: center;
+  color: var(--muted);
+  cursor: grab;
+}
+
+.quick-position-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.quick-position-field > input {
+  width: 100%;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.quick-position-param {
+  min-width: 0;
+}
+
+.quick-position-field .app-select,
+.quick-position-editor-item .app-number-stepper-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.quick-position-editor-item .app-number-stepper-field > label {
+  font-size: 12px;
+}
+
+.quick-position-editor-item .trade-qty-stepper {
+  margin-top: 6px;
+}
+
+.quick-position-remove {
+  width: 36px;
+  height: 38px;
+}
+
+.quick-position-add {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .quick-position-editor-item {
+    grid-template-columns: 24px 1fr 36px;
+  }
+
+  .quick-position-editor-item .quick-position-field:nth-child(3),
+  .quick-position-editor-item .app-number-stepper-field {
+    grid-column: 2 / 3;
+  }
+
+  .quick-position-remove {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
 
 .trade-fund-field {
   display: flex;
