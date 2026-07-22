@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Database, RefreshCw, Save, Trash2, Wallet } from "lucide-react";
+import { Database, RefreshCw, RotateCcw, Save, Trash2, Wallet } from "lucide-react";
 import { AppDialogCheck, AppDialogShell } from "../../components/AppDialog";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
@@ -292,7 +292,8 @@ export function SettingsPage() {
             </div>
           </div>
           <div className="settings-account-actions">
-            <button className="secondary-button danger-outline-button" onClick={openResetDialog} type="button">
+            <button className="settings-account-reset-button" onClick={openResetDialog} type="button">
+              <RotateCcw size={16} />
               重置账户
             </button>
           </div>
