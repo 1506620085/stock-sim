@@ -2262,6 +2262,39 @@ textarea {
   margin-top: 18px;
 }
 
+.app-dialog-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.app-dialog-check input {
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+
+.settings-account-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+
+.danger-outline-button {
+  border-color: #e2b4b4;
+  color: #b42318;
+}
+
+.danger-outline-button:hover {
+  border-color: #d99292;
+  background: #fff5f5;
+  color: #912018;
+}
+
 .settings-modal-backdrop {
   position: fixed;
   inset: 0;

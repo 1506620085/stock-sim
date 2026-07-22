@@ -1,5 +1,6 @@
 import { API_BASE, apiFetch, apiJson, buildApiUrl } from "../../api/client";
 import type { FeeSettings } from "../calculators/calculations";
+import { DEFAULT_STARTING_CASH } from "../replay/tradeFunds";
 import type { Instrument } from "../replay/types";
 
 export type AdjustType = "none" | "qfq" | "hfq";
@@ -15,6 +16,8 @@ export type AppPreferences = {
   replayBuyPriceBasis: ReplayPriceBasis;
   /** 卖出成交价规则，默认最低价（保守训练） */
   replaySellPriceBasis: ReplayPriceBasis;
+  /** 模拟账户初始资产（元） */
+  startingCash: number;
 };
 
 export type FeeTemplate = {
@@ -55,6 +58,7 @@ export const defaultPreferences: AppPreferences = {
   tushareToken: "",
   replayBuyPriceBasis: "high",
   replaySellPriceBasis: "low",
+  startingCash: DEFAULT_STARTING_CASH,
 };
 
 export const REPLAY_PRICE_BASIS_OPTIONS: { label: string; value: ReplayPriceBasis }[] = [
@@ -71,6 +75,12 @@ function normalizeReplayPriceBasis(value: unknown, fallback: ReplayPriceBasis): 
   return typeof value === "string" && VALID_REPLAY_PRICE_BASIS.has(value as ReplayPriceBasis)
     ? (value as ReplayPriceBasis)
     : fallback;
+}
+
+function normalizeStartingCash(value: unknown): number {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return DEFAULT_STARTING_CASH;
+  return amount;
 }
 
 export function replayPriceBasisLabel(basis: ReplayPriceBasis): string {
@@ -109,6 +119,7 @@ export function loadPreferences(): AppPreferences {
       ...parsed,
       replayBuyPriceBasis: normalizeReplayPriceBasis(parsed.replayBuyPriceBasis, defaultPreferences.replayBuyPriceBasis),
       replaySellPriceBasis: normalizeReplayPriceBasis(parsed.replaySellPriceBasis, defaultPreferences.replaySellPriceBasis),
+      startingCash: normalizeStartingCash(parsed.startingCash),
     };
   } catch {
     return defaultPreferences;

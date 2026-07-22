@@ -1,4 +1,6 @@
 from app.schemas.core import (
+    AccountResetRequest,
+    AccountResetResult,
     DataQualityRead,
     FeeTemplateCreate,
     FeeTemplateRead,
@@ -33,6 +35,8 @@ from app.schemas.core import (
 )
 
 __all__ = [
+    "AccountResetRequest",
+    "AccountResetResult",
     "DataQualityRead",
     "FeeTemplateCreate",
     "FeeTemplateRead",

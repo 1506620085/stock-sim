@@ -131,6 +131,15 @@ class TradeRead(SQLModel):
     created_at: datetime
 
 
+class AccountResetRequest(SQLModel):
+    clear_trades: bool = False
+
+
+class AccountResetResult(SQLModel):
+    cleared_trades: int = 0
+    cleared_reviews: int = 0
+
+
 class PnlSummaryRead(SQLModel):
     quantity: float
     cost: float

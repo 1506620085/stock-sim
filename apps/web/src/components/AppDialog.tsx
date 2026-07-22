@@ -13,7 +13,7 @@ type AppDialogShellProps = {
   className?: string;
 };
 
-function AppDialogShell({ open, title, onClose, children, confirm = false, className = "" }: AppDialogShellProps) {
+export function AppDialogShell({ open, title, onClose, children, confirm = false, className = "" }: AppDialogShellProps) {
   const titleId = useId();
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function AppConfirmDialog({
 }: AppConfirmDialogProps) {
   return (
     <AppDialogShell confirm open={open} onClose={onCancel} title={title}>
-      <p className="app-dialog-copy">{message}</p>
+      <div className="app-dialog-copy">{message}</div>
       <div className="app-dialog-actions">
         <button className="secondary-button" onClick={onCancel} type="button">
           {cancelLabel}

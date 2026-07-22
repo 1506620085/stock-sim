@@ -5,7 +5,16 @@ from sqlmodel import Session, select
 
 from app.core.database import get_session
 from app.models import KlineDaily, ReplaySession, Trade, TradeReview
-from app.schemas import PnlSummaryRead, TradeCreate, TradeRead, TradeReviewCreate, TradeReviewRead, TradeUpdate
+from app.schemas import (
+    AccountResetRequest,
+    AccountResetResult,
+    PnlSummaryRead,
+    TradeCreate,
+    TradeRead,
+    TradeReviewCreate,
+    TradeReviewRead,
+    TradeUpdate,
+)
 from app.services.replay.pnl import calculate_fifo_position
 
 router = APIRouter(tags=["trades"])
@@ -52,6 +61,31 @@ def normalize_price_rule(side: str, price_rule: str | None) -> tuple[str, str]:
             detail="price_rule basis must be one of high, low, open, close, mid",
         )
     return f"{side}_{basis}", basis
+
+
+@router.get("/api/trades", response_model=list[TradeRead])
+def list_all_trades(session: Session = Depends(get_session)) -> list[Trade]:
+    statement = select(Trade).order_by(Trade.trade_date, Trade.id)
+    return list(session.exec(statement).all())
+
+
+@router.post("/api/account/reset", response_model=AccountResetResult)
+def reset_account(payload: AccountResetRequest, session: Session = Depends(get_session)) -> AccountResetResult:
+    cleared_trades = 0
+    cleared_reviews = 0
+    if payload.clear_trades:
+        reviews = list(session.exec(select(TradeReview)).all())
+        for review in reviews:
+            session.delete(review)
+        cleared_reviews = len(reviews)
+
+        trades = list(session.exec(select(Trade)).all())
+        for trade in trades:
+            session.delete(trade)
+        cleared_trades = len(trades)
+        session.commit()
+
+    return AccountResetResult(cleared_trades=cleared_trades, cleared_reviews=cleared_reviews)
 
 
 @router.get("/api/replay-sessions/{session_id}/trades", response_model=list[TradeRead])

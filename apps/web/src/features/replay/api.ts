@@ -172,6 +172,23 @@ export async function updateReplaySession(
   return toReplaySession(item);
 }
 
+export async function loadAllTrades(): Promise<TradeRecord[]> {
+  const items = await apiJson<TradeItem[]>(`${API_BASE}/api/trades`);
+  return items.map((item) => toTradeRecord(item, ""));
+}
+
+export async function resetAccount(clearTrades: boolean): Promise<{ clearedTrades: number; clearedReviews: number }> {
+  const result = await apiJson<{ cleared_trades: number; cleared_reviews: number }>(`${API_BASE}/api/account/reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clear_trades: clearTrades }),
+  });
+  return {
+    clearedTrades: Number(result.cleared_trades ?? 0),
+    clearedReviews: Number(result.cleared_reviews ?? 0),
+  };
+}
+
 export async function loadSessionTrades(sessionId: number, code: string): Promise<TradeRecord[]> {
   const items = await apiJson<TradeItem[]>(`${API_BASE}/api/replay-sessions/${sessionId}/trades`, undefined, { silent: true });
   return items.map((item) => toTradeRecord(item, code));

@@ -286,7 +286,10 @@ export function ReplayPage() {
   const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
 
   const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
-  const availableCash = useMemo(() => calculateAvailableCash(replayTrades), [replayTrades]);
+  const availableCash = useMemo(
+    () => calculateAvailableCash(replayTrades, preferences.startingCash),
+    [preferences.startingCash, replayTrades],
+  );
   const sellableQuantity = useMemo(() => normalizeTradeQuantity(position.quantity), [position.quantity]);
   const maxBuyableQuantity = useMemo(() => {
     if (!selectedFeeTemplate || tradePrice <= 0) return 0;

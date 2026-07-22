@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
-import { Database, RefreshCw, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Database, RefreshCw, Save, Trash2, Wallet } from "lucide-react";
+import { AppDialogShell } from "../../components/AppDialog";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
+import { loadAllTrades, resetAccount } from "../replay/api";
+import { calculateAvailableCash, formatCurrency } from "../replay/tradeFunds";
 import type { Instrument } from "../replay/types";
 import {
   createFeeTemplate,
@@ -48,17 +51,27 @@ export function SettingsPage() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [selectedInstrumentId, setSelectedInstrumentId] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
+  const [accountTrades, setAccountTrades] = useState<Awaited<ReturnType<typeof loadAllTrades>>>([]);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetStartingCash, setResetStartingCash] = useState(preferences.startingCash);
+  const [resetClearTrades, setResetClearTrades] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const editingTemplateId = templateModal?.mode === "edit" ? templateModal.templateId : null;
   const templateGroups = groupFeeTemplatesByAssetType(feeTemplates);
+  const currentAssets = useMemo(
+    () => calculateAvailableCash(accountTrades, preferences.startingCash),
+    [accountTrades, preferences.startingCash],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadFeeTemplates(), loadInstruments()])
-      .then(([templates, instrumentItems]) => {
+    Promise.all([loadFeeTemplates(), loadInstruments(), loadAllTrades()])
+      .then(([templates, instrumentItems, trades]) => {
         if (cancelled) return;
         setFeeTemplates(templates);
         setInstruments(instrumentItems);
+        setAccountTrades(trades);
         if (instrumentItems[0]?.id) {
           setSelectedInstrumentId(instrumentItems[0].id);
         }
@@ -93,11 +106,48 @@ export function SettingsPage() {
     void refreshDataQuality(selectedInstrumentId, preferences.adjustType);
   }, [preferences.adjustType, selectedInstrumentId]);
 
-  function updatePreferences(patch: Partial<AppPreferences>) {
+  function updatePreferences(patch: Partial<AppPreferences>, options?: { silent?: boolean }) {
     const next = { ...preferences, ...patch };
     setPreferences(next);
     savePreferences(next);
-    showSuccess("设置已保存");
+    if (!options?.silent) {
+      showSuccess("设置已保存");
+    }
+  }
+
+  function openResetDialog() {
+    setResetStartingCash(preferences.startingCash);
+    setResetClearTrades(false);
+    setResetDialogOpen(true);
+  }
+
+  async function handleResetAccount() {
+    if (resetStartingCash < 0 || !Number.isFinite(resetStartingCash)) {
+      showInfo("请输入有效的初始资产。");
+      return;
+    }
+    setResetting(true);
+    try {
+      let clearedTrades = 0;
+      if (resetClearTrades) {
+        const result = await resetAccount(true);
+        clearedTrades = result.clearedTrades;
+        setAccountTrades([]);
+      }
+      updatePreferences({ startingCash: resetStartingCash }, { silent: true });
+      setResetDialogOpen(false);
+      if (resetClearTrades) {
+        showSuccess(
+          clearedTrades > 0 ? `账户已重置，已清空 ${clearedTrades} 条买卖记录` : "账户已重置，当前没有买卖记录",
+        );
+      } else {
+        showSuccess("账户已重置");
+      }
+    } catch {
+      // apiFetch 已弹出错误提示
+    } finally {
+      setResetting(false);
+    }
   }
 
   async function refreshDataQuality(instrumentId = selectedInstrumentId, adjustType = preferences.adjustType) {
@@ -190,6 +240,37 @@ export function SettingsPage() {
   return (
     <section className="settings-page">
       <div className="settings-layout">
+        <section className="panel settings-panel">
+          <div className="section-header">
+            <h2>模拟账户</h2>
+            <Wallet size={18} />
+          </div>
+          <p className="settings-hint">初始资产保存在本地；现有资产按初始资产与全部买卖记录推算。</p>
+          <div className="settings-grid">
+            <AppNumberStepper
+              aria-label="初始资产"
+              label="初始资产（元）"
+              min={0}
+              onChange={(value) => {
+                if (value == null) return;
+                if (value === preferences.startingCash) return;
+                updatePreferences({ startingCash: value });
+              }}
+              step={1000}
+              value={preferences.startingCash}
+            />
+            <label>
+              现有资产
+              <input aria-label="现有资产" readOnly value={formatCurrency(currentAssets)} />
+            </label>
+          </div>
+          <div className="settings-account-actions">
+            <button className="secondary-button danger-outline-button" onClick={openResetDialog} type="button">
+              重置账户
+            </button>
+          </div>
+        </section>
+
         <section className="panel settings-panel">
           <div className="section-header">
             <h2>数据源与复权</h2>
@@ -369,6 +450,50 @@ export function SettingsPage() {
           </div>
         </div>
       ) : null}
+
+      <AppDialogShell
+        confirm
+        onClose={() => {
+          if (!resetting) setResetDialogOpen(false);
+        }}
+        open={resetDialogOpen}
+        title="重置账户"
+      >
+        <p className="app-dialog-copy">将按下方初始资产重新设定模拟账户。此操作不可撤销。</p>
+        <div className="app-dialog-field">
+          <AppNumberStepper
+            aria-label="重置后的初始资产"
+            label="初始资产（元）"
+            min={0}
+            onChange={(value) => {
+              if (value != null) setResetStartingCash(value);
+            }}
+            step={1000}
+            value={resetStartingCash}
+          />
+        </div>
+        <label className="app-dialog-check">
+          <input
+            checked={resetClearTrades}
+            onChange={(event) => setResetClearTrades(event.target.checked)}
+            type="checkbox"
+          />
+          <span>同时清空所有买卖记录</span>
+        </label>
+        <div className="app-dialog-actions">
+          <button className="secondary-button" disabled={resetting} onClick={() => setResetDialogOpen(false)} type="button">
+            取消
+          </button>
+          <button
+            className="primary-button danger-confirm-button"
+            disabled={resetting}
+            onClick={() => void handleResetAccount()}
+            type="button"
+          >
+            {resetting ? "重置中…" : "确认重置"}
+          </button>
+        </div>
+      </AppDialogShell>
     </section>
   );
 }
