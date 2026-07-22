@@ -146,3 +146,25 @@ export function AppPromptDialog({
     </AppDialogShell>
   );
 }
+
+export type AppDialogCheckProps = {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  children: ReactNode;
+  disabled?: boolean;
+};
+
+/** 对话框内复选/勾选项：横向排列，避免全局 input width:100% 把文案挤成竖排 */
+export function AppDialogCheck({ checked, onChange, children, disabled = false }: AppDialogCheckProps) {
+  return (
+    <label className="app-dialog-check">
+      <input
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        type="checkbox"
+      />
+      <span>{children}</span>
+    </label>
+  );
+}

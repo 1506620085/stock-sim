@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Database, RefreshCw, Save, Trash2, Wallet } from "lucide-react";
-import { AppDialogShell } from "../../components/AppDialog";
+import { AppDialogCheck, AppDialogShell } from "../../components/AppDialog";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
@@ -464,14 +464,9 @@ export function SettingsPage() {
             value={resetStartingCash}
           />
         </div>
-        <label className="app-dialog-check">
-          <input
-            checked={resetClearTrades}
-            onChange={(event) => setResetClearTrades(event.target.checked)}
-            type="checkbox"
-          />
-          <span>同时清空所有买卖记录</span>
-        </label>
+        <AppDialogCheck checked={resetClearTrades} disabled={resetting} onChange={setResetClearTrades}>
+          同时清空所有买卖记录
+        </AppDialogCheck>
         <div className="app-dialog-actions">
           <button className="secondary-button" disabled={resetting} onClick={() => setResetDialogOpen(false)} type="button">
             取消
