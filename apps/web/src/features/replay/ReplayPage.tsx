@@ -781,14 +781,6 @@ function TradePanel({
           <span className="trade-lot-hint">
             {showAdjustHint ? `失焦后将调整为 ${cappedPreviewQuantity.toLocaleString("zh-CN")} 股` : null}
           </span>
-          <QuickPositionControls
-            availableCash={availableCash}
-            feeSettings={feeSettings}
-            maxTradeQuantity={maxTradeQuantity}
-            onApplyQuantity={onQuantityChange}
-            price={price}
-            side={side}
-          />
         </div>
         <div className="trade-fund-field">
           <div aria-label="资金信息" className="trade-fund-info">
@@ -806,6 +798,16 @@ function TradePanel({
             </div>
           </div>
         </div>
+      </div>
+      <div className="quick-position-row">
+        <QuickPositionControls
+          availableCash={availableCash}
+          feeSettings={feeSettings}
+          maxTradeQuantity={maxTradeQuantity}
+          onApplyQuantity={onQuantityChange}
+          price={price}
+          side={side}
+        />
       </div>
       <div className="trade-fee-template-field">
         <button

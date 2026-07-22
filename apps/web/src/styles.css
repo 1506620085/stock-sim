@@ -4853,11 +4853,15 @@ textarea {
   font-size: 12px;
   line-height: 1.2;
 }
+.quick-position-row {
+  margin: 0 0 12px;
+}
+
 .quick-position-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 0;
   min-width: 0;
 }
 
