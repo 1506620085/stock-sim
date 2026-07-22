@@ -250,37 +250,45 @@ export function SettingsPage() {
           <p className="settings-hint">初始资产保存在本地，可通过「重置账户」修改；现有资产为可用资金加持仓账面成本。</p>
           <div className="settings-account-grid">
             <div className="settings-account-column">
-              <label>
-                初始资产
-                <input aria-label="初始资产" readOnly value={formatCurrency(preferences.startingCash)} />
-              </label>
-              <label>
-                现有资产
-                <input aria-label="现有资产" readOnly value={formatCurrency(currentAssets)} />
-              </label>
+              <div className="settings-account-metric">
+                <span className="settings-account-metric-label">初始资产</span>
+                <strong className="settings-account-metric-value">{formatCurrency(preferences.startingCash)}</strong>
+              </div>
+              <div className="settings-account-metric">
+                <span className="settings-account-metric-label">现有资产</span>
+                <strong className="settings-account-metric-value">{formatCurrency(currentAssets)}</strong>
+              </div>
             </div>
             <div className="settings-account-column">
-              <label>
-                总盈亏
-                <input
-                  aria-label="总盈亏"
-                  className={totalPnl > 0 ? "positive" : totalPnl < 0 ? "negative" : undefined}
-                  readOnly
-                  value={formatCurrency(totalPnl)}
-                />
-              </label>
-              <label>
-                收益率
-                <input
-                  aria-label="收益率"
-                  className={returnRate > 0 ? "positive" : returnRate < 0 ? "negative" : undefined}
-                  readOnly
-                  value={`${returnRate.toLocaleString("zh-CN", {
+              <div className="settings-account-metric">
+                <span className="settings-account-metric-label">总盈亏</span>
+                <strong
+                  className={[
+                    "settings-account-metric-value",
+                    totalPnl > 0 ? "positive" : totalPnl < 0 ? "negative" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {formatCurrency(totalPnl)}
+                </strong>
+              </div>
+              <div className="settings-account-metric">
+                <span className="settings-account-metric-label">收益率</span>
+                <strong
+                  className={[
+                    "settings-account-metric-value",
+                    returnRate > 0 ? "positive" : returnRate < 0 ? "negative" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {`${returnRate.toLocaleString("zh-CN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}%`}
-                />
-              </label>
+                </strong>
+              </div>
             </div>
           </div>
           <div className="settings-account-actions">
