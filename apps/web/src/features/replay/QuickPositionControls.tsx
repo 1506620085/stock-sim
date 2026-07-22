@@ -5,19 +5,20 @@
 import { useEffect, useId, useState, type DragEvent } from "react";
 import { GripVertical, Plus, Settings, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
-import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
 import type { FeeSettings } from "../calculators/calculations";
 import {
-  createEmptyQuickPosition,
+  createEmptyQuickPositionDraft,
+  draftToPreset,
+  formatQuickPositionLabel,
   loadQuickPositions,
+  presetToDraft,
   QUICK_POSITION_MAX,
   resolveQuickPositionQuantity,
   saveQuickPositions,
   type QuickPositionMode,
   type QuickPositionPreset,
 } from "./quickPositions";
-import { SHARES_PER_LOT } from "./tradeFunds";
 
 type QuickPositionControlsProps = {
   availableCash: number;
@@ -26,6 +27,12 @@ type QuickPositionControlsProps = {
   price: number;
   side: "buy" | "sell";
   onApplyQuantity: (quantity: number) => void;
+};
+
+type EditorDraft = {
+  id: string;
+  mode: QuickPositionMode;
+  valueText: string;
 };
 
 export function QuickPositionControls({
@@ -66,17 +73,20 @@ export function QuickPositionControls({
     <>
       <div className="quick-position-bar" role="group" aria-label="快捷仓位">
         <div className="quick-position-buttons">
-          {presets.map((preset) => (
-            <button
-              className="quick-position-chip"
-              key={preset.id}
-              onClick={() => handleApply(preset)}
-              type="button"
-              title={presetLabelHint(preset)}
-            >
-              {preset.name}
-            </button>
-          ))}
+          {presets.map((preset) => {
+            const label = formatQuickPositionLabel(preset);
+            return (
+              <button
+                className="quick-position-chip"
+                key={preset.id}
+                onClick={() => handleApply(preset)}
+                type="button"
+                title={label}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
         <button
           aria-label="快捷仓位设置"
@@ -100,16 +110,6 @@ export function QuickPositionControls({
   );
 }
 
-function presetLabelHint(preset: QuickPositionPreset) {
-  if (preset.mode === "fraction") {
-    return preset.denominator <= 1 ? "全仓（可买/可卖）" : `可买/可卖的 1/${preset.denominator}`;
-  }
-  if (preset.mode === "fixedShares") {
-    return `固定 ${preset.shares.toLocaleString("zh-CN")} 股`;
-  }
-  return `固定 ${preset.amount.toLocaleString("zh-CN")} 元`;
-}
-
 function QuickPositionSettingsDialog({
   initialPresets,
   onClose,
@@ -120,7 +120,7 @@ function QuickPositionSettingsDialog({
   onSave: (presets: QuickPositionPreset[]) => void;
 }) {
   const titleId = useId();
-  const [draft, setDraft] = useState(() => initialPresets.map((item) => ({ ...item })));
+  const [draft, setDraft] = useState<EditorDraft[]>(() => initialPresets.map(presetToDraft));
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -131,7 +131,7 @@ function QuickPositionSettingsDialog({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  function updateItem(id: string, patch: Partial<QuickPositionPreset>) {
+  function updateItem(id: string, patch: Partial<EditorDraft>) {
     setDraft((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
@@ -140,7 +140,7 @@ function QuickPositionSettingsDialog({
       showInfo(`最多配置 ${QUICK_POSITION_MAX} 个快捷仓位。`);
       return;
     }
-    setDraft((items) => [...items, createEmptyQuickPosition()]);
+    setDraft((items) => [...items, createEmptyQuickPositionDraft()]);
   }
 
   function removeItem(id: string) {
@@ -168,20 +168,20 @@ function QuickPositionSettingsDialog({
   }
 
   function handleSaveClick() {
-    const cleaned = draft
-      .map((item) => ({
-        ...item,
-        name: item.name.trim() || "快捷仓位",
-        denominator: Math.max(1, Math.floor(item.denominator) || 1),
-        shares: Math.max(SHARES_PER_LOT, item.shares),
-        amount: Math.max(0.01, item.amount),
-      }))
-      .slice(0, QUICK_POSITION_MAX);
+    const cleaned: QuickPositionPreset[] = [];
+    for (const item of draft) {
+      const preset = draftToPreset(item);
+      if (!preset) {
+        showInfo("请完整填写每一行的数量参数。");
+        return;
+      }
+      cleaned.push(preset);
+    }
     if (!cleaned.length) {
       showInfo("请至少保留一个快捷仓位。");
       return;
     }
-    onSave(cleaned);
+    onSave(cleaned.slice(0, QUICK_POSITION_MAX));
   }
 
   return (
@@ -206,8 +206,15 @@ function QuickPositionSettingsDialog({
         </div>
 
         <p className="quick-position-dialog-hint">
-          拖拽左侧手柄调整顺序；点击保存后才会生效。最多 {QUICK_POSITION_MAX} 个。
+          拖拽左侧手柄调整顺序；按钮名称由计算方式自动生成。最多 {QUICK_POSITION_MAX} 个。
         </p>
+
+        <div className="quick-position-editor-columns" aria-hidden="true">
+          <span />
+          <span>计算方式</span>
+          <span>数量</span>
+          <span />
+        </div>
 
         <div className="quick-position-editor-list">
           {draft.map((item, index) => (
@@ -227,63 +234,75 @@ function QuickPositionSettingsDialog({
                 <GripVertical size={16} />
               </span>
 
-              <label className="quick-position-field">
-                名称
-                <input
-                  onChange={(event) => updateItem(item.id, { name: event.target.value })}
-                  type="text"
-                  value={item.name}
-                />
-              </label>
-
-              <label className="quick-position-field">
-                计算方式
+              <div className="quick-position-mode">
                 <AppSelect
-                  onChange={(value) => updateItem(item.id, { mode: value as QuickPositionMode })}
+                  aria-label="计算方式"
+                  onChange={(value) => updateItem(item.id, { mode: value as QuickPositionMode, valueText: "" })}
                   options={[
-                    { label: "1/N 仓", value: "fraction" },
-                    { label: "固定股数", value: "fixedShares" },
-                    { label: "固定金额", value: "fixedAmount" },
+                    { label: "仓位", value: "fraction" },
+                    { label: "数量", value: "fixedShares" },
+                    { label: "金额", value: "fixedAmount" },
                   ]}
                   value={item.mode}
                 />
-              </label>
+              </div>
 
-              <div className="quick-position-param">
+              <div className="quick-position-value">
                 {item.mode === "fraction" ? (
-                  <AppNumberStepper
-                    label="N（1=全仓）"
-                    min={1}
-                    onChange={(value) => updateItem(item.id, { denominator: value ?? 1 })}
-                    step={1}
-                    value={item.denominator}
-                  />
+                  <div className="quick-position-value-input quick-position-value-input--fraction">
+                    <span className="quick-position-value-prefix" aria-hidden="true">
+                      1/
+                    </span>
+                    <input
+                      aria-label="仓位分母"
+                      inputMode="numeric"
+                      onChange={(event) => updateItem(item.id, { valueText: event.target.value.replace(/[^\d]/g, "") })}
+                      placeholder="输入"
+                      type="text"
+                      value={item.valueText}
+                    />
+                  </div>
                 ) : null}
 
                 {item.mode === "fixedShares" ? (
-                  <AppNumberStepper
-                    label="股数"
-                    min={SHARES_PER_LOT}
-                    normalizeToStep
-                    onChange={(value) => updateItem(item.id, { shares: value ?? SHARES_PER_LOT })}
-                    step={SHARES_PER_LOT}
-                    value={item.shares}
-                  />
+                  <div className="quick-position-value-input">
+                    <input
+                      aria-label="股数"
+                      inputMode="numeric"
+                      onChange={(event) => updateItem(item.id, { valueText: event.target.value.replace(/[^\d]/g, "") })}
+                      placeholder="输入"
+                      type="text"
+                      value={item.valueText}
+                    />
+                    <span className="quick-position-value-suffix" aria-hidden="true">
+                      股
+                    </span>
+                  </div>
                 ) : null}
 
                 {item.mode === "fixedAmount" ? (
-                  <AppNumberStepper
-                    label="金额（元）"
-                    min={0.01}
-                    onChange={(value) => updateItem(item.id, { amount: value ?? 0.01 })}
-                    step={100}
-                    value={item.amount}
-                  />
+                  <div className="quick-position-value-input">
+                    <input
+                      aria-label="金额"
+                      inputMode="decimal"
+                      onChange={(event) =>
+                        updateItem(item.id, {
+                          valueText: event.target.value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"),
+                        })
+                      }
+                      placeholder="输入"
+                      type="text"
+                      value={item.valueText}
+                    />
+                    <span className="quick-position-value-suffix" aria-hidden="true">
+                      元
+                    </span>
+                  </div>
                 ) : null}
               </div>
 
               <button
-                aria-label={`删除 ${item.name}`}
+                aria-label="删除快捷仓位"
                 className="icon-button danger-button quick-position-remove"
                 disabled={draft.length <= 1}
                 onClick={() => removeItem(item.id)}

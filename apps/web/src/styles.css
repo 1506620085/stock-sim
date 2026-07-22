@@ -4961,22 +4961,33 @@ textarea {
   line-height: 1.45;
 }
 
+.quick-position-editor-columns {
+  display: grid;
+  grid-template-columns: 24px minmax(110px, 0.9fr) minmax(140px, 1.2fr) 36px;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .quick-position-editor-list {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   gap: 10px;
   min-height: 0;
-  margin-top: 14px;
+  margin-top: 8px;
   overflow: auto;
   padding-right: 2px;
 }
 
 .quick-position-editor-item {
   display: grid;
-  grid-template-columns: 24px minmax(90px, 1.1fr) minmax(110px, 1.2fr) minmax(110px, 1fr) 36px;
+  grid-template-columns: 24px minmax(110px, 0.9fr) minmax(140px, 1.2fr) 36px;
   gap: 8px;
-  align-items: end;
+  align-items: center;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -4997,43 +5008,65 @@ textarea {
   cursor: grab;
 }
 
-.quick-position-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.quick-position-mode,
+.quick-position-value {
   min-width: 0;
-  color: var(--muted);
-  font-size: 12px;
 }
 
-.quick-position-field > input {
+.quick-position-mode .app-select {
+  width: 100%;
+}
+
+.quick-position-value-input {
+  display: flex;
+  align-items: center;
   width: 100%;
   min-height: 38px;
-  margin: 0;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #ffffff;
-  color: var(--ink);
-  font-size: 13px;
+  box-sizing: border-box;
 }
 
-.quick-position-param {
-  min-width: 0;
+.quick-position-value-input--fraction {
+  padding-left: 8px;
 }
 
-.quick-position-field .app-select,
-.quick-position-editor-item .app-number-stepper-field {
+.quick-position-value-input > input {
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  outline: none;
 }
 
-.quick-position-editor-item .app-number-stepper-field > label {
-  font-size: 12px;
+.quick-position-value-input > input::placeholder {
+  color: var(--muted);
+  opacity: 0.45;
 }
 
-.quick-position-editor-item .trade-qty-stepper {
-  margin-top: 6px;
+.quick-position-value-prefix {
+  flex: 0 0 auto;
+  margin-right: 2px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.quick-position-value-suffix {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.45;
 }
 
 .quick-position-remove {
@@ -5048,12 +5081,13 @@ textarea {
 }
 
 @media (max-width: 720px) {
+  .quick-position-editor-columns,
   .quick-position-editor-item {
     grid-template-columns: 24px 1fr 36px;
   }
 
-  .quick-position-editor-item .quick-position-field:nth-child(3),
-  .quick-position-editor-item .app-number-stepper-field {
+  .quick-position-editor-columns > span:nth-child(3),
+  .quick-position-value {
     grid-column: 2 / 3;
   }
 
@@ -5062,7 +5096,6 @@ textarea {
     grid-row: 1;
   }
 }
-
 
 .trade-fund-field {
   display: flex;
