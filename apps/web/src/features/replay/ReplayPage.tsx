@@ -625,8 +625,37 @@ export function ReplayPage() {
                 {activeInstrument.code} {activeInstrument.name}
               </h2>
             </div>
-            <div className="chart-toolbar-right">
             <div className="day-controls">
+              <TooltipWrap placement="bottom" tip="导出当前会话的买卖记录与复盘记录为 Excel">
+                <button
+                  aria-label="导出 Excel"
+                  className="text-button"
+                  disabled={excelBusy || !replaySession || !activeInstrument}
+                  onClick={() => void handleExportExcel()}
+                  type="button"
+                >
+                  <FileDown size={18} />
+                </button>
+              </TooltipWrap>
+              <TooltipWrap placement="bottom" tip="从 Excel 导入买卖记录与复盘记录（将覆盖当前会话）">
+                <button
+                  aria-label="导入 Excel"
+                  className="text-button"
+                  disabled={excelBusy || !replaySession || !activeInstrument}
+                  onClick={handleImportExcelClick}
+                  type="button"
+                >
+                  <FileUp size={18} />
+                </button>
+              </TooltipWrap>
+              <input
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                hidden
+                onChange={(event) => void handleExcelFileSelected(event.target.files?.[0] ?? null)}
+                ref={excelFileInputRef}
+                type="file"
+              />
+              <span aria-hidden="true" className="day-controls-divider" />
               <TooltipWrap placement="bottom" tip="从 AKShare 同步 K 线到数据库">
                 <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步 K 线">
                   <CloudCog size={18} className={syncingBars ? "spinning" : undefined} />
@@ -669,34 +698,6 @@ export function ReplayPage() {
                   <span>隐藏未来</span>
                 </div>
               </TooltipWrap>
-            </div>
-            <div className="replay-excel-actions">
-              <button
-                className="replay-excel-button"
-                disabled={excelBusy || !replaySession || !activeInstrument}
-                onClick={() => void handleExportExcel()}
-                type="button"
-              >
-                <FileDown size={15} />
-                导出 Excel
-              </button>
-              <button
-                className="replay-excel-button"
-                disabled={excelBusy || !replaySession || !activeInstrument}
-                onClick={handleImportExcelClick}
-                type="button"
-              >
-                <FileUp size={15} />
-                导入 Excel
-              </button>
-              <input
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                hidden
-                onChange={(event) => void handleExcelFileSelected(event.target.files?.[0] ?? null)}
-                ref={excelFileInputRef}
-                type="file"
-              />
-            </div>
             </div>
           </div>
 

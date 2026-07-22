@@ -4130,49 +4130,15 @@ textarea {
   gap: 8px;
 }
 
-.chart-toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-  flex-shrink: 0;
+.day-controls-divider {
+  display: inline-block;
+  width: 1px;
+  height: 22px;
+  margin: 0 2px;
+  background: var(--line);
+  flex: 0 0 auto;
 }
 
-.replay-excel-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.replay-excel-button {
-  display: inline-flex !important;
-  width: auto !important;
-  min-width: 0;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 12px !important;
-  border: 1px solid var(--accent-line) !important;
-  border-radius: 6px;
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: none;
-}
-
-.replay-excel-button:hover:not(:disabled) {
-  border-color: var(--accent) !important;
-  background: #e1f2f8 !important;
-}
-
-.replay-excel-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
 
 .kline-period-switch {
   display: inline-flex;
