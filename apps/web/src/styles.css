@@ -4855,6 +4855,8 @@ textarea {
 }
 .quick-position-row {
   margin: 0 0 12px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .quick-position-bar {
@@ -4863,18 +4865,66 @@ textarea {
   gap: 6px;
   margin-top: 0;
   min-width: 0;
+  max-width: 100%;
+}
+
+.quick-position-scroll {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.quick-position-scroll::before,
+.quick-position-scroll::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 28px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.quick-position-scroll::before {
+  left: 0;
+  background: linear-gradient(to right, var(--panel) 35%, transparent);
+}
+
+.quick-position-scroll::after {
+  right: 0;
+  background: linear-gradient(to left, var(--panel) 35%, transparent);
+}
+
+.quick-position-scroll.has-left::before,
+.quick-position-scroll.has-right::after {
+  opacity: 1;
 }
 
 .quick-position-buttons {
   display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  width: 100%;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-x;
+}
+
+.quick-position-buttons::-webkit-scrollbar {
+  display: none;
 }
 
 .quick-position-chip {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   min-height: 28px;

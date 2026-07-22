@@ -2,7 +2,7 @@
  * QuickPositionControls
  * 模拟交易数量快捷仓位条与本地配置对话框。
  */
-import { useEffect, useId, useState, type DragEvent } from "react";
+import { useEffect, useId, useRef, useState, type DragEvent, type UIEvent } from "react";
 import { GripVertical, Plus, Settings, Trash2 } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
@@ -45,6 +45,63 @@ export function QuickPositionControls({
 }: QuickPositionControlsProps) {
   const [presets, setPresets] = useState<QuickPositionPreset[]>(() => loadQuickPositions());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollWrapRef = useRef<HTMLDivElement | null>(null);
+
+  function updateScrollHints() {
+    const node = scrollRef.current;
+    if (!node) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    const maxScroll = Math.max(0, node.scrollWidth - node.clientWidth);
+    setCanScrollLeft(node.scrollLeft > 1);
+    setCanScrollRight(maxScroll - node.scrollLeft > 1);
+  }
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    const wrap = scrollWrapRef.current;
+    if (!node) return;
+
+    const scheduleUpdate = () => {
+      requestAnimationFrame(updateScrollHints);
+    };
+    scheduleUpdate();
+
+    const onWheel = (event: WheelEvent) => {
+      if (node.scrollWidth <= node.clientWidth + 1) return;
+      const delta =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      if (delta === 0) return;
+      const maxScroll = node.scrollWidth - node.clientWidth;
+      const next = Math.min(maxScroll, Math.max(0, node.scrollLeft + delta));
+      if (next === node.scrollLeft) return;
+      event.preventDefault();
+      node.scrollLeft = next;
+      updateScrollHints();
+    };
+
+    node.addEventListener("wheel", onWheel, { passive: false });
+
+    const observers: ResizeObserver[] = [];
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(scheduleUpdate);
+      observer.observe(node);
+      if (wrap) observer.observe(wrap);
+      observers.push(observer);
+    }
+
+    window.addEventListener("resize", scheduleUpdate);
+    return () => {
+      node.removeEventListener("wheel", onWheel);
+      window.removeEventListener("resize", scheduleUpdate);
+      observers.forEach((observer) => observer.disconnect());
+    };
+  }, [presets]);
 
   function handleApply(preset: QuickPositionPreset) {
     const quantity = resolveQuickPositionQuantity({
@@ -69,24 +126,42 @@ export function QuickPositionControls({
     showSuccess("快捷仓位已保存");
   }
 
+  function handleScroll(event: UIEvent<HTMLDivElement>) {
+    const node = event.currentTarget;
+    const maxScroll = Math.max(0, node.scrollWidth - node.clientWidth);
+    setCanScrollLeft(node.scrollLeft > 1);
+    setCanScrollRight(maxScroll - node.scrollLeft > 1);
+  }
+
   return (
     <>
       <div className="quick-position-bar" role="group" aria-label="快捷仓位">
-        <div className="quick-position-buttons">
-          {presets.map((preset) => {
-            const label = formatQuickPositionLabel(preset);
-            return (
-              <button
-                className="quick-position-chip"
-                key={preset.id}
-                onClick={() => handleApply(preset)}
-                type="button"
-                title={label}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div
+          className={[
+            "quick-position-scroll",
+            canScrollLeft ? "has-left" : "",
+            canScrollRight ? "has-right" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          ref={scrollWrapRef}
+        >
+          <div className="quick-position-buttons" onScroll={handleScroll} ref={scrollRef}>
+            {presets.map((preset) => {
+              const label = formatQuickPositionLabel(preset);
+              return (
+                <button
+                  className="quick-position-chip"
+                  key={preset.id}
+                  onClick={() => handleApply(preset)}
+                  type="button"
+                  title={label}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <button
           aria-label="快捷仓位设置"
