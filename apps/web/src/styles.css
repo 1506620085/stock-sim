@@ -5063,10 +5063,10 @@ textarea {
 .quick-position-value-suffix {
   flex: 0 0 auto;
   margin-left: 4px;
-  color: var(--muted);
+  color: var(--ink);
   font-size: 13px;
   line-height: 1;
-  opacity: 0.45;
+  opacity: 1;
 }
 
 .quick-position-remove {

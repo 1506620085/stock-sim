@@ -270,7 +270,7 @@ function QuickPositionSettingsDialog({
                       aria-label="股数"
                       inputMode="numeric"
                       onChange={(event) => updateItem(item.id, { valueText: event.target.value.replace(/[^\d]/g, "") })}
-                      placeholder="输入"
+                      placeholder="输入数量"
                       type="text"
                       value={item.valueText}
                     />
@@ -290,7 +290,7 @@ function QuickPositionSettingsDialog({
                           valueText: event.target.value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"),
                         })
                       }
-                      placeholder="输入"
+                      placeholder="输入金额"
                       type="text"
                       value={item.valueText}
                     />
