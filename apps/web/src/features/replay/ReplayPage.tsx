@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, LocateFixed, CloudCog, FileDown, FileUp } from "lucide-react";
 import { showError, showInfo, showSuccess } from "../../components/ToastProvider";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppSwitch } from "../../components/AppSwitch";
-import { createReplaySession, createSessionTrade, createTradeReview, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
+import { createReplaySession, createSessionTrade, createTradeReview, importSessionRecords, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { QuoteSummary } from "./QuoteSummary";
 import { aggregateKlines, findBarIndexByDate, resolveChartReplayDate } from "./aggregateKlines";
@@ -15,6 +15,15 @@ import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, resolveBarPrice, replayPriceBasisLabel, toTradePriceRule, type FeeTemplate, type ReplayPriceBasis } from "../settings/api";
 import { calculateTradeFee } from "../calculators/calculations";
 import { QuickPositionControls } from "./QuickPositionControls";
+import { AppConfirmDialog } from "../../components/AppDialog";
+import {
+  buildReplayExcelBlob,
+  buildReplayExcelFilename,
+  downloadBlob,
+  parseReplayExcelFile,
+  type ReplayExcelPayload,
+} from "./tradeExcel";
+
 import {
   calculateAvailableCash,
   calculateMaxBuyableShares,
@@ -58,6 +67,9 @@ export function ReplayPage() {
   const [note, setNote] = useState("");
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [tradeReviews, setTradeReviews] = useState<TradeReview[]>([]);
+  const [excelBusy, setExcelBusy] = useState(false);
+  const [pendingImport, setPendingImport] = useState<ReplayExcelPayload | null>(null);
+  const excelFileInputRef = useRef<HTMLInputElement | null>(null);
   const [bars, setBars] = useState<KLineBar[]>([]);
   const [replaySession, setReplaySession] = useState<ReplaySession | null>(null);
   const [jumpDate, setJumpDate] = useState("");
@@ -236,6 +248,90 @@ export function ReplayPage() {
       syncReplaySession(replaySession.id, { feeTemplateId: templateId });
     }
   }
+
+
+  async function refreshSessionRecords() {
+    if (!replaySession || !activeInstrument?.id) return;
+    const [sessionTrades, reviews] = await Promise.all([
+      loadSessionTrades(replaySession.id, activeCode),
+      loadTradeReviews(replaySession.id),
+    ]);
+    const indexedTrades = sessionTrades.map((trade) => ({
+      ...trade,
+      index: findBarIndexByDate(bars, trade.date),
+    }));
+    setTrades((current) => [...current.filter((trade) => trade.sessionId !== replaySession.id), ...indexedTrades]);
+    setTradeReviews(reviews);
+  }
+
+  async function handleExportExcel() {
+    if (!activeInstrument || !replaySession) {
+      showInfo("请先选择标的并进入复盘会话。");
+      return;
+    }
+    setExcelBusy(true);
+    try {
+      const sessionTrades = trades.filter((trade) => trade.sessionId === replaySession.id);
+      const blob = await buildReplayExcelBlob({
+        instrument: activeInstrument,
+        sessionId: replaySession.id,
+        trades: sessionTrades,
+        reviews: tradeReviews,
+      });
+      downloadBlob(blob, buildReplayExcelFilename(activeInstrument.code));
+      showSuccess(`已导出 ${sessionTrades.length} 条买卖、${tradeReviews.length} 条复盘记录`);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "导出 Excel 失败");
+    } finally {
+      setExcelBusy(false);
+    }
+  }
+
+  function handleImportExcelClick() {
+    if (!activeInstrument || !replaySession) {
+      showInfo("请先选择标的并进入复盘会话。");
+      return;
+    }
+    excelFileInputRef.current?.click();
+  }
+
+  async function handleExcelFileSelected(file: File | null) {
+    if (!file || !replaySession) return;
+    setExcelBusy(true);
+    try {
+      const payload = await parseReplayExcelFile(file);
+      if (!payload.trades.length && !payload.reviews.length) {
+        showInfo("Excel 中没有可导入的买卖或复盘记录。");
+        return;
+      }
+      setPendingImport(payload);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "解析 Excel 失败");
+    } finally {
+      setExcelBusy(false);
+      if (excelFileInputRef.current) excelFileInputRef.current.value = "";
+    }
+  }
+
+  async function confirmImportExcel() {
+    if (!replaySession || !pendingImport) return;
+    setExcelBusy(true);
+    try {
+      const result = await importSessionRecords(replaySession.id, {
+        replace: true,
+        trades: pendingImport.trades,
+        reviews: pendingImport.reviews,
+      });
+      await refreshSessionRecords();
+      setPendingImport(null);
+      showSuccess(`已导入 ${result.importedTrades} 条买卖、${result.importedReviews} 条复盘记录`);
+    } catch {
+      // apiFetch 已弹出错误提示
+    } finally {
+      setExcelBusy(false);
+    }
+  }
+
 
   useEffect(() => {
     let cancelled = false;
@@ -529,6 +625,7 @@ export function ReplayPage() {
                 {activeInstrument.code} {activeInstrument.name}
               </h2>
             </div>
+            <div className="chart-toolbar-right">
             <div className="day-controls">
               <TooltipWrap placement="bottom" tip="从 AKShare 同步 K 线到数据库">
                 <button className="text-button" disabled={syncingBars || loadingBars} onClick={() => void syncCurrentInstrument()} type="button" aria-label="同步 K 线">
@@ -572,6 +669,34 @@ export function ReplayPage() {
                   <span>隐藏未来</span>
                 </div>
               </TooltipWrap>
+            </div>
+            <div className="replay-excel-actions">
+              <button
+                className="replay-excel-button"
+                disabled={excelBusy || !replaySession || !activeInstrument}
+                onClick={() => void handleExportExcel()}
+                type="button"
+              >
+                <FileDown size={15} />
+                导出 Excel
+              </button>
+              <button
+                className="replay-excel-button"
+                disabled={excelBusy || !replaySession || !activeInstrument}
+                onClick={handleImportExcelClick}
+                type="button"
+              >
+                <FileUp size={15} />
+                导入 Excel
+              </button>
+              <input
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                hidden
+                onChange={(event) => void handleExcelFileSelected(event.target.files?.[0] ?? null)}
+                ref={excelFileInputRef}
+                type="file"
+              />
+            </div>
             </div>
           </div>
 
@@ -663,6 +788,22 @@ export function ReplayPage() {
           onSubmit={submitTrade}
         />
         <PnlPanel position={position} />
+      <AppConfirmDialog
+        danger
+        confirmLabel={excelBusy ? "导入中…" : "确认导入"}
+        message={
+          pendingImport
+            ? `将覆盖当前会话已有记录，导入买卖 ${pendingImport.trades.length} 条、复盘 ${pendingImport.reviews.length} 条。此操作不可撤销。`
+            : ""
+        }
+        onCancel={() => {
+          if (!excelBusy) setPendingImport(null);
+        }}
+        onConfirm={() => void confirmImportExcel()}
+        open={pendingImport != null}
+        title="导入 Excel"
+      />
+
       </aside>
     </section>
   );
@@ -912,6 +1053,7 @@ function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition>
           <em>买入后会显示每日低点压力曲线</em>
         )}
       </div>
+
     </section>
   );
 }

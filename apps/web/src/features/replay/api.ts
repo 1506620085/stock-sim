@@ -194,6 +194,66 @@ export async function loadSessionTrades(sessionId: number, code: string): Promis
   return items.map((item) => toTradeRecord(item, code));
 }
 
+export async function importSessionRecords(
+  sessionId: number,
+  payload: {
+    replace?: boolean;
+    trades: Array<{
+      exportId: number | null;
+      tradeDate: string;
+      side: TradeSide;
+      price: number;
+      quantity: number;
+      fee: number;
+      priceRule: string;
+      emotionScore: number | null;
+      note: string | null;
+    }>;
+    reviews: Array<{
+      title: string;
+      note: string | null;
+      tags: string[];
+      metricsSnapshot: Record<string, unknown>;
+      startExportId: number | null;
+      endExportId: number | null;
+    }>;
+  },
+): Promise<{ importedTrades: number; importedReviews: number }> {
+  const result = await apiJson<{ imported_trades: number; imported_reviews: number }>(
+    `${API_BASE}/api/replay-sessions/${sessionId}/import`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        replace: payload.replace ?? true,
+        trades: payload.trades.map((trade) => ({
+          export_id: trade.exportId,
+          trade_date: trade.tradeDate,
+          side: trade.side,
+          price: trade.price,
+          quantity: trade.quantity,
+          fee: trade.fee,
+          price_rule: trade.priceRule,
+          emotion_score: trade.emotionScore,
+          note: trade.note,
+        })),
+        reviews: payload.reviews.map((review) => ({
+          title: review.title,
+          note: review.note,
+          tags: review.tags,
+          metrics_snapshot: review.metricsSnapshot,
+          start_export_id: review.startExportId,
+          end_export_id: review.endExportId,
+        })),
+      }),
+    },
+  );
+  return {
+    importedTrades: Number(result.imported_trades ?? 0),
+    importedReviews: Number(result.imported_reviews ?? 0),
+  };
+}
+
 export async function createSessionTrade(
   sessionId: number,
   code: string,

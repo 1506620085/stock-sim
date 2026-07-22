@@ -200,6 +200,39 @@ class TradeReviewRead(TradeReviewCreate):
     updated_at: datetime
 
 
+class TradeImportItem(SQLModel):
+    export_id: int | None = None
+    trade_date: date
+    side: str
+    quantity: Decimal
+    price: Decimal
+    price_rule: str = "import"
+    fee: Decimal = Decimal("0")
+    note: str | None = None
+    emotion_score: int | None = None
+
+
+class ReviewImportItem(SQLModel):
+    title: str
+    note: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    metrics_snapshot: dict[str, Any] = Field(default_factory=dict)
+    start_export_id: int | None = None
+    end_export_id: int | None = None
+
+
+class SessionImportRequest(SQLModel):
+    replace: bool = True
+    trades: list[TradeImportItem] = Field(default_factory=list)
+    reviews: list[ReviewImportItem] = Field(default_factory=list)
+
+
+class SessionImportResult(SQLModel):
+    imported_trades: int = 0
+    imported_reviews: int = 0
+    id_map: dict[str, int] = Field(default_factory=dict)
+
+
 class StatsSummaryRead(SQLModel):
     total_sessions: int
     total_trades: int

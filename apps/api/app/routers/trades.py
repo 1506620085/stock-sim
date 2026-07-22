@@ -9,6 +9,8 @@ from app.schemas import (
     AccountResetRequest,
     AccountResetResult,
     PnlSummaryRead,
+    SessionImportRequest,
+    SessionImportResult,
     TradeCreate,
     TradeRead,
     TradeReviewCreate,
@@ -86,6 +88,121 @@ def reset_account(payload: AccountResetRequest, session: Session = Depends(get_s
         session.commit()
 
     return AccountResetResult(cleared_trades=cleared_trades, cleared_reviews=cleared_reviews)
+
+
+@router.post("/api/replay-sessions/{session_id}/import", response_model=SessionImportResult)
+def import_session_records(
+    session_id: int,
+    payload: SessionImportRequest,
+    session: Session = Depends(get_session),
+) -> SessionImportResult:
+    replay_session = ensure_replay_session(session_id, session)
+
+    if payload.replace:
+        existing_reviews = list(session.exec(select(TradeReview).where(TradeReview.session_id == session_id)).all())
+        for review in existing_reviews:
+            session.delete(review)
+        existing_trades = list(session.exec(select(Trade).where(Trade.session_id == session_id)).all())
+        for trade in existing_trades:
+            session.delete(trade)
+        session.flush()
+
+    ordered_trades = sorted(
+        payload.trades,
+        key=lambda item: (item.trade_date, item.export_id if item.export_id is not None else 0),
+    )
+    id_map: dict[str, int] = {}
+    open_quantity = Decimal("0")
+    if not payload.replace:
+        existing = list(
+            session.exec(select(Trade).where(Trade.session_id == session_id).order_by(Trade.trade_date, Trade.id)).all()
+        )
+        open_quantity = Decimal(str(calculate_fifo_position(existing).quantity))
+
+    for item in ordered_trades:
+        side = item.side.lower().strip()
+        if side in {"买入", "buy"}:
+            side = "buy"
+        elif side in {"卖出", "sell"}:
+            side = "sell"
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"unsupported trade side: {item.side}")
+        if item.quantity <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="quantity must be greater than 0")
+        if item.price < 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="price must not be negative")
+        if item.fee < 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="fee must not be negative")
+
+        if side == "buy":
+            open_quantity += item.quantity
+        else:
+            if item.quantity > open_quantity:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"sell quantity exceeds position on {item.trade_date}",
+                )
+            open_quantity -= item.quantity
+
+        price_rule = (item.price_rule or "").strip() or f"{side}_import"
+        trade = Trade(
+            session_id=replay_session.id,
+            instrument_id=replay_session.instrument_id,
+            trade_date=item.trade_date,
+            side=side,
+            quantity=item.quantity,
+            price=item.price,
+            price_rule=price_rule,
+            fee=item.fee,
+            note=item.note,
+            emotion_score=item.emotion_score,
+        )
+        session.add(trade)
+        session.flush()
+        if item.export_id is not None:
+            id_map[str(item.export_id)] = int(trade.id)
+
+    imported_reviews = 0
+    for review_item in payload.reviews:
+        title = review_item.title.strip()
+        if not title:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="review title is required")
+        start_trade_id = map_export_id(id_map, review_item.start_export_id)
+        end_trade_id = map_export_id(id_map, review_item.end_export_id)
+        if start_trade_id is not None:
+            validate_review_trade(session_id, start_trade_id, session)
+        if end_trade_id is not None:
+            validate_review_trade(session_id, end_trade_id, session)
+        review = TradeReview(
+            session_id=session_id,
+            start_trade_id=start_trade_id,
+            end_trade_id=end_trade_id,
+            title=title,
+            note=review_item.note,
+            tags=review_item.tags,
+            metrics_snapshot=review_item.metrics_snapshot,
+        )
+        session.add(review)
+        imported_reviews += 1
+
+    session.commit()
+    return SessionImportResult(
+        imported_trades=len(ordered_trades),
+        imported_reviews=imported_reviews,
+        id_map=id_map,
+    )
+
+
+def map_export_id(id_map: dict[str, int], export_id: int | None) -> int | None:
+    if export_id is None:
+        return None
+    mapped = id_map.get(str(export_id))
+    if mapped is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"review references missing trade export_id={export_id}",
+        )
+    return mapped
 
 
 @router.get("/api/replay-sessions/{session_id}/trades", response_model=list[TradeRead])

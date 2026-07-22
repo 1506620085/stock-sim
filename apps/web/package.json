@@ -28,6 +28,7 @@
     "@tiptap/starter-kit": "^3.27.4",
     "antd": "^6.5.0",
     "dayjs": "^1.11.21",
+    "exceljs": "^4.4.0",
     "klinecharts": "^10.0.0-beta3",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
