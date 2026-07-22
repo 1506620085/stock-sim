@@ -245,20 +245,12 @@ export function SettingsPage() {
             <h2>模拟账户</h2>
             <Wallet size={18} />
           </div>
-          <p className="settings-hint">初始资产保存在本地；现有资产按初始资产与全部买卖记录推算。</p>
+          <p className="settings-hint">初始资产保存在本地，可通过「重置账户」修改；现有资产按初始资产与全部买卖记录推算。</p>
           <div className="settings-grid">
-            <AppNumberStepper
-              aria-label="初始资产"
-              label="初始资产（元）"
-              min={0}
-              onChange={(value) => {
-                if (value == null) return;
-                if (value === preferences.startingCash) return;
-                updatePreferences({ startingCash: value });
-              }}
-              step={1000}
-              value={preferences.startingCash}
-            />
+            <label>
+              初始资产
+              <input aria-label="初始资产" readOnly value={formatCurrency(preferences.startingCash)} />
+            </label>
             <label>
               现有资产
               <input aria-label="现有资产" readOnly value={formatCurrency(currentAssets)} />
