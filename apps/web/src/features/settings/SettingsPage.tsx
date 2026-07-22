@@ -5,7 +5,7 @@ import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
 import { loadAllTrades, resetAccount } from "../replay/api";
-import { calculateAvailableCash, formatCurrency } from "../replay/tradeFunds";
+import { calculateAccountEquity, formatCurrency } from "../replay/tradeFunds";
 import type { Instrument } from "../replay/types";
 import {
   createFeeTemplate,
@@ -60,9 +60,11 @@ export function SettingsPage() {
   const editingTemplateId = templateModal?.mode === "edit" ? templateModal.templateId : null;
   const templateGroups = groupFeeTemplatesByAssetType(feeTemplates);
   const currentAssets = useMemo(
-    () => calculateAvailableCash(accountTrades, preferences.startingCash),
+    () => calculateAccountEquity(accountTrades, preferences.startingCash),
     [accountTrades, preferences.startingCash],
   );
+  const totalPnl = currentAssets - preferences.startingCash;
+  const returnRate = preferences.startingCash > 0 ? (totalPnl / preferences.startingCash) * 100 : 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -245,16 +247,41 @@ export function SettingsPage() {
             <h2>模拟账户</h2>
             <Wallet size={18} />
           </div>
-          <p className="settings-hint">初始资产保存在本地，可通过「重置账户」修改；现有资产按初始资产与全部买卖记录推算。</p>
-          <div className="settings-grid">
-            <label>
-              初始资产
-              <input aria-label="初始资产" readOnly value={formatCurrency(preferences.startingCash)} />
-            </label>
-            <label>
-              现有资产
-              <input aria-label="现有资产" readOnly value={formatCurrency(currentAssets)} />
-            </label>
+          <p className="settings-hint">初始资产保存在本地，可通过「重置账户」修改；现有资产为可用资金加持仓账面成本。</p>
+          <div className="settings-account-grid">
+            <div className="settings-account-column">
+              <label>
+                初始资产
+                <input aria-label="初始资产" readOnly value={formatCurrency(preferences.startingCash)} />
+              </label>
+              <label>
+                现有资产
+                <input aria-label="现有资产" readOnly value={formatCurrency(currentAssets)} />
+              </label>
+            </div>
+            <div className="settings-account-column">
+              <label>
+                总盈亏
+                <input
+                  aria-label="总盈亏"
+                  className={totalPnl > 0 ? "positive" : totalPnl < 0 ? "negative" : undefined}
+                  readOnly
+                  value={formatCurrency(totalPnl)}
+                />
+              </label>
+              <label>
+                收益率
+                <input
+                  aria-label="收益率"
+                  className={returnRate > 0 ? "positive" : returnRate < 0 ? "negative" : undefined}
+                  readOnly
+                  value={`${returnRate.toLocaleString("zh-CN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}%`}
+                />
+              </label>
+            </div>
           </div>
           <div className="settings-account-actions">
             <button className="secondary-button danger-outline-button" onClick={openResetDialog} type="button">

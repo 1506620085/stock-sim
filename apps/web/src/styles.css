@@ -2311,6 +2311,30 @@ textarea {
   writing-mode: horizontal-tb;
 }
 
+.settings-account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.settings-account-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.settings-account-column > label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-account-column input {
+  margin-top: 6px;
+}
+
 .settings-account-actions {
   display: flex;
   justify-content: flex-start;
