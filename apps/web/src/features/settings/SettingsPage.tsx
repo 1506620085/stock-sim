@@ -303,61 +303,6 @@ export function SettingsPage() {
           </div>
         </section>
 
-        <section className="panel settings-panel">
-          <div className="section-header">
-            <h2>复盘成交价</h2>
-          </div>
-          <p className="settings-hint">模拟买卖时按当日 K 线取价；中间价为当日最高与最低的均值。默认买最高、卖最低，便于保守训练。</p>
-          <div className="settings-grid">
-            <label>
-              买入成交价
-              <AppSelect
-                onChange={(value) => updatePreferences({ replayBuyPriceBasis: value })}
-                options={REPLAY_PRICE_BASIS_OPTIONS}
-                value={preferences.replayBuyPriceBasis}
-              />
-            </label>
-            <label>
-              卖出成交价
-              <AppSelect
-                onChange={(value) => updatePreferences({ replaySellPriceBasis: value })}
-                options={REPLAY_PRICE_BASIS_OPTIONS}
-                value={preferences.replaySellPriceBasis}
-              />
-            </label>
-          </div>
-          <div className="settings-summary">
-            <span>买入：{replayPriceBasisLabel(preferences.replayBuyPriceBasis)}</span>
-            <span>卖出：{replayPriceBasisLabel(preferences.replaySellPriceBasis)}</span>
-          </div>
-        </section>
-
-        <section className="panel settings-panel">
-          <div className="section-header">
-            <h2>数据质量</h2>
-            <button className="text-button" onClick={handleSync} type="button">
-              <RefreshCw size={15} />
-              重新同步
-            </button>
-          </div>
-          <label>
-            标的
-            <AppSelect
-              onChange={(value) => setSelectedInstrumentId(Number(value))}
-              options={instruments
-                .filter((instrument) => instrument.id != null)
-                .map((instrument) => ({
-                  label: `${instrument.code} ${instrument.name}`,
-                  value: instrument.id as number,
-                }))}
-              placeholder="请选择"
-              searchable
-              value={selectedInstrumentId}
-            />
-          </label>
-          <DataQualityView quality={dataQuality} />
-        </section>
-
         <section className="panel settings-panel settings-template-list">
           <div className="section-header">
             <h2>费率模板</h2>
@@ -390,7 +335,62 @@ export function SettingsPage() {
             )}
           </div>
         </section>
-      </div>
+<section className="panel settings-panel">
+          <div className="section-header">
+            <h2>数据质量</h2>
+            <button className="text-button" onClick={handleSync} type="button">
+              <RefreshCw size={15} />
+              重新同步
+            </button>
+          </div>
+          <label>
+            标的
+            <AppSelect
+              onChange={(value) => setSelectedInstrumentId(Number(value))}
+              options={instruments
+                .filter((instrument) => instrument.id != null)
+                .map((instrument) => ({
+                  label: `${instrument.code} ${instrument.name}`,
+                  value: instrument.id as number,
+                }))}
+              placeholder="请选择"
+              searchable
+              value={selectedInstrumentId}
+            />
+          </label>
+          <DataQualityView quality={dataQuality} />
+        </section>
+
+        <section className="panel settings-panel">
+          <div className="section-header">
+            <h2>复盘成交价</h2>
+          </div>
+          <p className="settings-hint">模拟买卖时按当日 K 线取价；中间价为当日最高与最低的均值。默认买最高、卖最低，便于保守训练。</p>
+          <div className="settings-grid">
+            <label>
+              买入成交价
+              <AppSelect
+                onChange={(value) => updatePreferences({ replayBuyPriceBasis: value })}
+                options={REPLAY_PRICE_BASIS_OPTIONS}
+                value={preferences.replayBuyPriceBasis}
+              />
+            </label>
+            <label>
+              卖出成交价
+              <AppSelect
+                onChange={(value) => updatePreferences({ replaySellPriceBasis: value })}
+                options={REPLAY_PRICE_BASIS_OPTIONS}
+                value={preferences.replaySellPriceBasis}
+              />
+            </label>
+          </div>
+          <div className="settings-summary">
+            <span>买入：{replayPriceBasisLabel(preferences.replayBuyPriceBasis)}</span>
+            <span>卖出：{replayPriceBasisLabel(preferences.replaySellPriceBasis)}</span>
+          </div>
+        </section>
+
+              </div>
 
       {templateModal ? (
         <div className="settings-modal-backdrop" role="presentation">
