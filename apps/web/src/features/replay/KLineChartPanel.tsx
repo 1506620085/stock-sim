@@ -55,11 +55,10 @@ const chartEdgeDragThresholdPx = 6;
 const mainIndicatorLegendGapPx = 6;
 /** 测量前的兜底预留宽度 */
 const mainIndicatorTriggerReservePx = 76;
-/** 与 klinecharts candle/indicator tooltip 默认值对齐，用于按钮垂直居中 */
+/** 与 klinecharts 主图指标图例垂直度量对齐 */
 const mainIndicatorTooltipOffsetTop = 6;
 const mainIndicatorTooltipTitleMarginTop = 4;
 const mainIndicatorTooltipTitleSize = 12;
-const mainIndicatorTriggerHeightPx = 20;
 const mainIndicatorTriggerInsetLeftPx = 4;
 
 type TradeOverlaySpec = {
@@ -132,14 +131,12 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   const mainIndicatorSwitcherPosition = useMemo(() => {
     const paneTop = tradeOverlayLayout.pane?.top ?? 0;
     const paneLeft = tradeOverlayLayout.pane?.left ?? 0;
-    const textCenterY =
-      paneTop +
-      mainIndicatorTooltipOffsetTop +
-      mainIndicatorTooltipTitleMarginTop +
-      mainIndicatorTooltipTitleSize / 2;
+    // 锚点对齐图例文字顶边，高度=字号；按钮用 flex 在该文字行内上下居中
+    const textTop = paneTop + mainIndicatorTooltipOffsetTop + mainIndicatorTooltipTitleMarginTop;
     return {
-      top: textCenterY - mainIndicatorTriggerHeightPx / 2,
+      top: textTop,
       left: paneLeft + mainIndicatorTriggerInsetLeftPx,
+      height: mainIndicatorTooltipTitleSize,
     };
   }, [tradeOverlayLayout.pane?.left, tradeOverlayLayout.pane?.top]);
 
@@ -334,7 +331,11 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       <div
         className="main-indicator-switcher-anchor"
         ref={switcherAnchorRef}
-        style={{ top: `${mainIndicatorSwitcherPosition.top}px`, left: `${mainIndicatorSwitcherPosition.left}px` }}
+        style={{
+          top: `${mainIndicatorSwitcherPosition.top}px`,
+          left: `${mainIndicatorSwitcherPosition.left}px`,
+          height: `${mainIndicatorSwitcherPosition.height}px`,
+        }}
       >
         <MainIndicatorSwitcher onChange={onMainIndicatorChange} value={mainIndicator} />
       </div>
