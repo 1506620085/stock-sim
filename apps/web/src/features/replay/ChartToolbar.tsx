@@ -133,42 +133,8 @@ export function ChartToolbar({
 
               <div className="chart-settings-divider" />
 
-              <p className="chart-settings-subtitle">指标设置</p>
+              <p className="chart-settings-subtitle">副图指标</p>
 
-              <div className="chart-settings-ma-grid">
-                <label className="chart-settings-ma-field">
-                  <span>MA1</span>
-                  <input
-                    max={250}
-                    min={2}
-                    onChange={(event) => onIndicatorChange("maFast", Number(event.target.value))}
-                    type="number"
-                    value={indicators.maFast}
-                  />
-                </label>
-                <label className="chart-settings-ma-field">
-                  <span>MA2</span>
-                  <input
-                    max={250}
-                    min={2}
-                    onChange={(event) => onIndicatorChange("maMid", Number(event.target.value))}
-                    type="number"
-                    value={indicators.maMid}
-                  />
-                </label>
-                <label className="chart-settings-ma-field">
-                  <span>MA3</span>
-                  <input
-                    max={250}
-                    min={2}
-                    onChange={(event) => onIndicatorChange("maSlow", Number(event.target.value))}
-                    type="number"
-                    value={indicators.maSlow}
-                  />
-                </label>
-              </div>
-
-              <SettingToggle checked={indicators.showMa} label="MA" onChange={(checked) => onIndicatorChange("showMa", checked)} />
               <SettingToggle checked={indicators.showBoll} label="BOLL" onChange={(checked) => onIndicatorChange("showBoll", checked)} />
               <SettingToggle checked={indicators.showKdj} label="KDJ" onChange={(checked) => onIndicatorChange("showKdj", checked)} />
               <SettingToggle checked={indicators.showMacd} label="MACD" onChange={(checked) => onIndicatorChange("showMacd", checked)} />

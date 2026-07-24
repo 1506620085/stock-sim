@@ -4808,6 +4808,132 @@ textarea {
   isolation: isolate;
 }
 
+.main-indicator-switcher-anchor {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 6;
+  pointer-events: auto;
+}
+
+.main-indicator-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(23, 32, 28, 0.12);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgba(23, 32, 28, 0.06);
+  color: #1f2a25;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.main-indicator-trigger:hover {
+  border-color: rgba(23, 32, 28, 0.22);
+  background: #ffffff;
+}
+
+.main-indicator-switch-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.main-indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.main-indicator-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: stretch;
+  min-height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f9f8;
+  overflow: hidden;
+}
+
+.main-indicator-option.active {
+  border-color: #1f6feb;
+  background: #eff5ff;
+  box-shadow: inset 0 0 0 1px rgba(31, 111, 235, 0.18);
+}
+
+.main-indicator-option-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.main-indicator-option-name {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.main-indicator-option-code {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.main-indicator-option.active .main-indicator-option-code {
+  color: #1f6feb;
+}
+
+.main-indicator-option-gear,
+.main-indicator-option-gear-spacer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  border: 0;
+  border-left: 1px solid rgba(23, 32, 28, 0.08);
+  background: transparent;
+  color: #68736e;
+}
+
+.main-indicator-option-gear {
+  cursor: pointer;
+}
+
+.main-indicator-option-gear:hover {
+  background: rgba(23, 32, 28, 0.04);
+  color: var(--ink);
+}
+
+.main-indicator-params-dialog {
+  width: min(360px, calc(100vw - 32px));
+}
+
+.main-indicator-params-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.main-indicator-params-actions {
+  margin-top: 18px;
+}
+
 .quote-summary-price-block {
   display: flex;
   flex-direction: column;

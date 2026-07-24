@@ -33,6 +33,7 @@ import {
   normalizeTradeQuantity,
   SHARES_PER_LOT,
 } from "./tradeFunds";
+import { loadMainIndicatorState, normalizeMainIndicatorState, saveMainIndicatorState, type MainIndicatorState } from "./mainIndicators";
 import type { ChartDisplaySettings, Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
@@ -59,6 +60,7 @@ export function ReplayPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hideFuture, setHideFuture] = useState(true);
   const [indicators, setIndicators] = useState(defaultIndicators);
+  const [mainIndicator, setMainIndicator] = useState<MainIndicatorState>(() => loadMainIndicatorState());
   const [tradeSide, setTradeSide] = useState<TradeSide>("buy");
   const [quantity, setQuantity] = useState(SHARES_PER_LOT * 10);
   const [fee, setFee] = useState(5);
@@ -449,6 +451,12 @@ export function ReplayPage() {
     }
   }
 
+  function updateMainIndicator(next: MainIndicatorState) {
+    const normalized = normalizeMainIndicatorState(next);
+    setMainIndicator(normalized);
+    saveMainIndicatorState(normalized);
+  }
+
   function updateHideFuture(checked: boolean) {
     setHideFuture(checked);
     if (replaySession) {
@@ -736,6 +744,8 @@ export function ReplayPage() {
               chartDisplay={chartDisplay}
               code={activeCode}
               indicators={indicators}
+              mainIndicator={mainIndicator}
+              onMainIndicatorChange={updateMainIndicator}
               onHoveredBarIndexChange={setHoveredBarIndex}
               period={klinePeriod}
               painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}

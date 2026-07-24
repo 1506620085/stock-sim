@@ -4,6 +4,8 @@ import { showInfo } from "../../components/ToastProvider";
 import { periodToChartSetting, findBarIndexByDate } from "./aggregateKlines";
 import { resolveDirection } from "./marketQuote";
 import { resolveEffectiveSubCharts, type EffectiveSubCharts } from "./chartDisplay";
+import { MainIndicatorSwitcher } from "./MainIndicatorSwitcher";
+import type { MainIndicatorState } from "./mainIndicators";
 import { registerCustomIndicators } from "./registerCustomIndicators";
 import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 
@@ -13,6 +15,8 @@ type Props = {
   bars: KLineBar[];
   code: string;
   indicators: IndicatorSettings;
+  mainIndicator: MainIndicatorState;
+  onMainIndicatorChange: (next: MainIndicatorState) => void;
   chartDisplay: ChartDisplaySettings;
   period?: KlinePeriod;
   selectedDate?: string;
@@ -71,7 +75,7 @@ const emptyTradeOverlayLayout: TradeOverlayLayout = {
   painPoint: null,
 };
 
-export function KLineChartPanel({ bars, code, indicators, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], avgCost = null, painPoint, onHoveredBarIndexChange }: Props) {
+export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainIndicatorChange, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], avgCost = null, painPoint, onHoveredBarIndexChange }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const replayLabelLayerRef = useRef<HTMLDivElement | null>(null);
@@ -245,14 +249,14 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
     });
     chart.resetData();
     applyChartScrollLimits(chart);
-    syncIndicators(chart, indicators, effectiveSubCharts);
+    syncIndicators(chart, indicators, effectiveSubCharts, mainIndicator);
     chart.setStyles(buildChartStyles(chartDisplay, bars));
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
     updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDate);
     syncTradeOverlayLayout();
-  }, [chartData, code, indicators, effectiveSubCharts, period, selectedDate]);
+  }, [chartData, code, indicators, effectiveSubCharts, mainIndicator, period, selectedDate]);
 
   useEffect(() => {
     syncTradeOverlayLayout();
@@ -291,6 +295,9 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
 
   return (
     <div className="kline-chart-wrap">
+      <div className="main-indicator-switcher-anchor">
+        <MainIndicatorSwitcher onChange={onMainIndicatorChange} value={mainIndicator} />
+      </div>
       <div className="kline-chart" ref={containerRef} style={{ height: chartHeight }} />
       <div
         className="trade-overlay-layer"
@@ -604,13 +611,15 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = []) 
   };
 }
 
-function syncIndicators(chart: Chart, indicators: IndicatorSettings, subCharts: EffectiveSubCharts) {
+function syncIndicators(
+  chart: Chart,
+  indicators: IndicatorSettings,
+  subCharts: EffectiveSubCharts,
+  mainIndicator: MainIndicatorState,
+) {
   chart.removeIndicator();
   chart.setPaneOptions({ id: candlePaneId, height: mainPaneHeight, minHeight: 300 });
-
-  if (indicators.showMa) {
-    chart.createIndicator({ name: "MA", calcParams: [indicators.maFast, indicators.maMid, indicators.maSlow] }, { isStack: true, pane: { id: candlePaneId } });
-  }
+  createMainPaneIndicator(chart, mainIndicator);
 
   if (subCharts.showVolume) {
     chart.createIndicator(
@@ -644,6 +653,48 @@ function syncIndicators(chart: Chart, indicators: IndicatorSettings, subCharts: 
   if (subCharts.showMacd) {
     chart.createIndicator("MACD", { pane: { id: indicatorPaneIds[3], height: oscillatorPaneHeight, minHeight: 108 } });
   }
+}
+
+function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState) {
+  const { active, params } = mainIndicator;
+  if (active === "none") return;
+
+  const stackOptions = { isStack: true, pane: { id: candlePaneId } } as const;
+
+  if (active === "MA") {
+    chart.createIndicator({ name: "MA", calcParams: [...params.MA.periods] }, stackOptions);
+    return;
+  }
+  if (active === "BOLL") {
+    chart.createIndicator(
+      { name: "BOLL", calcParams: [params.BOLL.period, params.BOLL.multiplier], precision: 3 },
+      stackOptions,
+    );
+    return;
+  }
+  if (active === "BBI") {
+    chart.createIndicator({ name: "BBI", calcParams: [...params.BBI.periods], precision: 3 }, stackOptions);
+    return;
+  }
+  if (active === "EXPMA") {
+    chart.createIndicator({ name: "EXPMA", calcParams: [...params.EXPMA.periods], precision: 3 }, stackOptions);
+    return;
+  }
+  if (active === "ENE") {
+    chart.createIndicator(
+      {
+        name: "ENE",
+        calcParams: [params.ENE.period, params.ENE.upperPercent, params.ENE.lowerPercent],
+        precision: 3,
+      },
+      stackOptions,
+    );
+    return;
+  }
+  chart.createIndicator(
+    { name: "DKX", calcParams: [params.DKX.midPeriod, params.DKX.maPeriod], precision: 3 },
+    stackOptions,
+  );
 }
 
 function getChartHeight(subCharts: EffectiveSubCharts) {
