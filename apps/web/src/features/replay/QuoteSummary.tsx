@@ -1,3 +1,4 @@
+import { FieldHelpTip } from "../../components/FieldHelpTip";
 import {
   buildMarketQuote,
   formatCompactNumber,
@@ -50,6 +51,32 @@ export function QuoteSummary({ bars, barIndex }: Props) {
             <span className="quote-summary-value">{metric.value}</span>
           </div>
         ))}
+      </div>
+
+      <div className="quote-summary-help">
+        <FieldHelpTip
+          aria-label="买卖点标记说明"
+          mode="click"
+          placement="top-left"
+          size={15}
+          tip={
+            <div className="marker-legend">
+              <p className="marker-legend-title">K 线标记说明</p>
+              <div className="marker-legend-row">
+                <span className="trade-marker-tag buy">B</span>
+                <span>买入标记，红色，显示在对应 K 线下方</span>
+              </div>
+              <div className="marker-legend-row">
+                <span className="trade-marker-tag sell">S</span>
+                <span>卖出标记，蓝色，显示在对应 K 线上方</span>
+              </div>
+              <div className="marker-legend-row">
+                <span className="trade-marker-tag pain">L</span>
+                <span>最差低点，青色，标记持仓期间最低价</span>
+              </div>
+            </div>
+          }
+        />
       </div>
     </section>
   );
