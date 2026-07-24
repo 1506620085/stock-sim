@@ -20,6 +20,8 @@ type Props = {
   viewScrollDate?: string;
   viewScrollToken?: number;
   trades?: TradeRecord[];
+  /** 当前平均持仓成本；无持仓时传 null/undefined，不绘制成本线 */
+  avgCost?: number | null;
   painPoint?: { date?: string; price?: number };
   onHoveredBarIndexChange?: (index: number | null) => void;
 };
@@ -27,6 +29,12 @@ type Props = {
 const candlePaneId = "candle_pane";
 const indicatorPaneIds = ["volume-pane", "boll-pane", "kdj-pane", "macd-pane"];
 const replayDayLineOverlayId = "replay-day-line";
+/** B/S 标签固定尺寸（与 CSS 保持一致） */
+const TRADE_MARKER_TAG_W = 22;
+const TRADE_MARKER_TAG_H = 18;
+/** 标签与 K 线锚点之间的固定虚线长度 */
+const TRADE_MARKER_STEM_H = 18;
+const TRADE_MARKER_STACK_GAP = 4;
 const candleUpColor = "#d83a31";
 const candleDownColor = "#15845f";
 const candleNoChangeColor = "#68736e";
@@ -41,15 +49,17 @@ const chartEdgeHintCooldownMs = 1500;
 const chartEdgeDragThresholdPx = 6;
 
 type TradeOverlaySpec = {
-  markers: Array<{ trade: TradeRecord; dataIndex: number; price: number }>;
+  markers: Array<{ trade: TradeRecord; dataIndex: number; anchorPrice: number }>;
   regions: Array<{ id: string; startIndex: number; endIndex: number; pnlPercent: number }>;
+  avgCost?: number;
   painPoint?: { dataIndex: number; price: number };
 };
 
 type TradeOverlayLayout = {
   pane: { left: number; top: number; width: number; height: number } | null;
-  markers: Array<{ trade: TradeRecord; x: number; y: number }>;
+  markers: Array<{ trade: TradeRecord; x: number; y: number; side: "buy" | "sell" }>;
   regions: Array<{ id: string; left: number; width: number; pnlPercent: number }>;
+  avgCost: { y: number; label: string } | null;
   painPoint: { x: number; y: number } | null;
 };
 
@@ -57,10 +67,11 @@ const emptyTradeOverlayLayout: TradeOverlayLayout = {
   pane: null,
   markers: [],
   regions: [],
+  avgCost: null,
   painPoint: null,
 };
 
-export function KLineChartPanel({ bars, code, indicators, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], painPoint, onHoveredBarIndexChange }: Props) {
+export function KLineChartPanel({ bars, code, indicators, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], avgCost = null, painPoint, onHoveredBarIndexChange }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const replayLabelLayerRef = useRef<HTMLDivElement | null>(null);
@@ -86,7 +97,7 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
   );
   const effectiveSubCharts = useMemo(() => resolveEffectiveSubCharts(chartDisplay, indicators), [chartDisplay, indicators]);
   const chartHeight = useMemo(() => getChartHeight(effectiveSubCharts), [effectiveSubCharts]);
-  const tradeOverlaySpec = useMemo(() => buildTradeOverlaySpec(bars, trades, painPoint), [bars, trades, painPoint]);
+  const tradeOverlaySpec = useMemo(() => buildTradeOverlaySpec(bars, trades, avgCost, painPoint), [avgCost, bars, trades, painPoint]);
   const tradeOverlaySpecRef = useRef(tradeOverlaySpec);
   const [tradeOverlayLayout, setTradeOverlayLayout] = useState<TradeOverlayLayout>(emptyTradeOverlayLayout);
 
@@ -304,18 +315,49 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
           </div>
         ))}
 
+        {tradeOverlayLayout.avgCost ? (
+          <>
+            <div aria-hidden="true" className="avg-cost-line" style={{ top: `${tradeOverlayLayout.avgCost.y}px` }} />
+            <div className="avg-cost-label" style={{ top: `${tradeOverlayLayout.avgCost.y}px` }}>
+              {tradeOverlayLayout.avgCost.label}
+            </div>
+          </>
+        ) : null}
+
         {tradeOverlayLayout.markers.map((marker) => (
-          <button
-            className={`trade-marker ${marker.trade.side}`}
+          <div
+            className={`trade-marker-wrap ${marker.side}`}
             key={marker.trade.id}
-            onClick={() => setActiveTrade(marker.trade)}
             style={{ left: `${marker.x}px`, top: `${marker.y}px` }}
-            title={marker.trade.side === "buy" ? "买入" : "卖出"}
-            type="button"
           >
-            <strong>{marker.trade.side === "buy" ? "B" : "S"}</strong>
-            <span>{marker.trade.side === "buy" ? "买入" : "卖出"}</span>
-          </button>
+            {marker.side === "sell" ? (
+              <>
+                <button
+                  aria-label="卖出标记"
+                  className="trade-marker-tag sell"
+                  onClick={() => setActiveTrade(marker.trade)}
+                  title={`卖出 ${formatPrice(marker.trade.price)} / ${marker.trade.quantity.toLocaleString("zh-CN")} 股`}
+                  type="button"
+                >
+                  S
+                </button>
+                <span aria-hidden="true" className="trade-marker-stem sell" />
+              </>
+            ) : (
+              <>
+                <span aria-hidden="true" className="trade-marker-stem buy" />
+                <button
+                  aria-label="买入标记"
+                  className="trade-marker-tag buy"
+                  onClick={() => setActiveTrade(marker.trade)}
+                  title={`买入 ${formatPrice(marker.trade.price)} / ${marker.trade.quantity.toLocaleString("zh-CN")} 股`}
+                  type="button"
+                >
+                  B
+                </button>
+              </>
+            )}
+          </div>
         ))}
 
         {tradeOverlayLayout.painPoint ? (
@@ -615,6 +657,7 @@ function round(value: number) {
 function buildTradeOverlaySpec(
   bars: KLineBar[],
   trades: TradeRecord[],
+  avgCost?: number | null,
   painPoint?: { date?: string; price?: number },
 ): TradeOverlaySpec {
   if (!bars.length) {
@@ -624,20 +667,27 @@ function buildTradeOverlaySpec(
   const indexedTrades = trades
     .map((trade) => ({ trade, index: resolveTradeBarIndex(bars, trade.date) }))
     .filter((item): item is { trade: TradeRecord; index: number } => item.index !== undefined)
-    .sort((a, b) => a.index - b.index);
+    .sort((a, b) => a.index - b.index || Number(a.trade.id) - Number(b.trade.id));
 
-  const markers = indexedTrades.map(({ trade, index }) => ({
-    trade,
-    dataIndex: index,
-    price: trade.price,
-  }));
+  // S 锚点取当日最高，B 锚点取当日最低，标签统一伸出等长虚线
+  const markers = indexedTrades.map(({ trade, index }) => {
+    const bar = bars[index];
+    return {
+      trade,
+      dataIndex: index,
+      anchorPrice: trade.side === "buy" ? bar.low : bar.high,
+    };
+  });
 
   const regions = buildHoldingRegions(indexedTrades, bars);
   const painIndex = painPoint?.date ? resolveTradeBarIndex(bars, painPoint.date) : undefined;
+  const resolvedAvgCost =
+    avgCost != null && Number.isFinite(avgCost) && avgCost > 0 ? avgCost : undefined;
 
   return {
     markers,
     regions,
+    avgCost: resolvedAvgCost,
     painPoint:
       painIndex !== undefined && painPoint?.price !== undefined
         ? { dataIndex: painIndex, price: painPoint.price }
@@ -666,17 +716,34 @@ function computeTradeOverlayLayout(chart: Chart, spec: TradeOverlaySpec): TradeO
     height: mainSize.height,
   };
 
+  const stackCounters = new Map<string, number>();
   const markers = spec.markers
     .map((marker) => {
-      const point = convertChartPoint(chart, paneId, marker.dataIndex, marker.price);
+      const point = convertChartPoint(chart, paneId, marker.dataIndex, marker.anchorPrice);
       if (!point || !Number.isFinite(point.y)) return null;
+
+      const side = marker.trade.side;
+      const stackKey = `${marker.dataIndex}:${side}`;
+      const stackIndex = stackCounters.get(stackKey) ?? 0;
+      stackCounters.set(stackKey, stackIndex + 1);
+      const stackOffset = stackIndex * (TRADE_MARKER_TAG_H + TRADE_MARKER_STACK_GAP);
+
+      // S 在 K 线上方，B 在下方；虚线长度固定，同侧多笔再等距外推
+      let y =
+        side === "sell"
+          ? point.y - TRADE_MARKER_STEM_H - TRADE_MARKER_TAG_H - stackOffset
+          : point.y + stackOffset;
+      const maxY = Math.max(0, pane.height - TRADE_MARKER_TAG_H - TRADE_MARKER_STEM_H);
+      y = Math.min(Math.max(0, y), maxY);
+
       return {
         trade: marker.trade,
         x: point.x,
-        y: point.y,
+        y,
+        side,
       };
     })
-    .filter((item): item is { trade: TradeRecord; x: number; y: number } => item !== null);
+    .filter((item): item is { trade: TradeRecord; x: number; y: number; side: "buy" | "sell" } => item !== null);
 
   const regions = spec.regions
     .map((region) => {
@@ -695,6 +762,20 @@ function computeTradeOverlayLayout(chart: Chart, spec: TradeOverlaySpec): TradeO
     })
     .filter((item): item is { id: string; left: number; width: number; pnlPercent: number } => item !== null);
 
+  let avgCostLayout: { y: number; label: string } | null = null;
+  if (spec.avgCost != null) {
+    // 取可见区间中点换算 y，保证与当前价格轴刻度对齐
+    const dataList = chart.getDataList();
+    const midIndex = dataList.length ? Math.floor(dataList.length / 2) : 0;
+    const point = convertChartPoint(chart, paneId, midIndex, spec.avgCost);
+    if (point && Number.isFinite(point.y)) {
+      avgCostLayout = {
+        y: Math.min(Math.max(0, point.y), pane.height),
+        label: `平均成本：${formatPrice(spec.avgCost)}`,
+      };
+    }
+  }
+
   let painLayout: { x: number; y: number } | null = null;
   if (spec.painPoint) {
     const point = convertChartPoint(chart, paneId, spec.painPoint.dataIndex, spec.painPoint.price);
@@ -703,7 +784,7 @@ function computeTradeOverlayLayout(chart: Chart, spec: TradeOverlaySpec): TradeO
     }
   }
 
-  return { pane, markers, regions, painPoint: painLayout };
+  return { pane, markers, regions, avgCost: avgCostLayout, painPoint: painLayout };
 }
 
 function convertChartPoint(chart: Chart, paneId: string, dataIndex: number, value?: number) {

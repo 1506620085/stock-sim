@@ -4832,6 +4832,7 @@ textarea {
   border-radius: 6px;
   background: rgba(23, 108, 143, 0.08);
   pointer-events: none;
+  z-index: 1;
 }
 
 .holding-region.profit {
@@ -4859,50 +4860,104 @@ textarea {
   white-space: nowrap;
 }
 
-.trade-marker {
+.avg-cost-line {
   position: absolute;
-  display: grid;
-  min-width: 42px;
-  transform: translate(-50%, -100%);
-  margin-top: -6px;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  box-shadow: 0 8px 18px rgba(22, 36, 31, 0.16);
-  cursor: pointer;
-  line-height: 1;
-  padding: 4px 6px;
-  pointer-events: auto;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 0;
+  border-top: 1px dashed #e67e22;
+  pointer-events: none;
 }
 
-.trade-marker strong,
-.trade-marker span {
-  display: block;
-}
-
-.trade-marker strong {
-  font-size: 14px;
-}
-
-.trade-marker span {
-  margin-top: 2px;
+.avg-cost-label {
+  position: absolute;
+  right: 6px;
+  z-index: 4;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: #e67e22;
+  color: #ffffff;
   font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  padding: 4px 7px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(230, 126, 34, 0.28);
 }
 
-.trade-marker.buy {
-  border-color: #f0b3ad;
-  background: #fff4f2;
-  color: #b52821;
+.trade-marker-wrap {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  width: 22px;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
-.trade-marker.sell {
-  border-color: #9fd6c4;
-  background: #effaf5;
-  color: #126d50;
+.trade-marker-stem {
+  display: block;
+  width: 0;
+  height: 18px;
+  flex: 0 0 18px;
+  border-left: 1px dashed currentColor;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.trade-marker-stem.buy {
+  color: #d83a31;
+}
+
+.trade-marker-stem.sell {
+  color: #2f6fed;
+}
+
+.trade-marker-tag {
+  display: grid;
+  width: 22px;
+  height: 18px;
+  flex: 0 0 auto;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  pointer-events: auto;
+  box-shadow: 0 1px 3px rgba(16, 24, 20, 0.18);
+}
+
+.trade-marker-tag.buy {
+  background: #d83a31;
+}
+
+.trade-marker-tag.sell {
+  background: #2f6fed;
+}
+
+.trade-marker-tag:hover {
+  filter: brightness(1.06);
+}
+
+.trade-marker-tag:focus-visible {
+  outline: 2px solid rgba(23, 108, 143, 0.45);
+  outline-offset: 1px;
 }
 
 .pain-point-marker {
   position: absolute;
+  z-index: 4;
   transform: translateX(-50%);
   border: 1px solid #91c9b6;
   border-radius: 999px;

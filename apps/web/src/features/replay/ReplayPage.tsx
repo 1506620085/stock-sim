@@ -739,6 +739,7 @@ export function ReplayPage() {
               onHoveredBarIndexChange={setHoveredBarIndex}
               period={klinePeriod}
               painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
+              avgCost={position.quantity > 0 ? position.avgCost : null}
               recenterToken={recenterToken}
               viewScrollDate={viewScrollDate}
               viewScrollToken={viewScrollToken}
