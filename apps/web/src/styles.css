@@ -2228,10 +2228,37 @@ textarea {
   box-sizing: border-box;
 }
 
+.app-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .app-dialog-title {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
+  color: var(--ink);
+}
+
+.app-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px -6px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.app-dialog-close:hover {
+  background: rgba(23, 32, 28, 0.06);
   color: var(--ink);
 }
 

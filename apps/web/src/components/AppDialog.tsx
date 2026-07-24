@@ -3,6 +3,7 @@
  * 通用确认 / 输入对话框：遮罩、Esc 关闭、取消与确认操作，供各业务页复用。
  */
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
 
 type AppDialogShellProps = {
   open: boolean;
@@ -11,9 +12,22 @@ type AppDialogShellProps = {
   children: ReactNode;
   confirm?: boolean;
   className?: string;
+  /** 点击遮罩是否关闭，默认 true */
+  closeOnBackdrop?: boolean;
+  /** 标题栏右侧是否显示关闭按钮，默认 false */
+  showCloseButton?: boolean;
 };
 
-export function AppDialogShell({ open, title, onClose, children, confirm = false, className = "" }: AppDialogShellProps) {
+export function AppDialogShell({
+  open,
+  title,
+  onClose,
+  children,
+  confirm = false,
+  className = "",
+  closeOnBackdrop = true,
+  showCloseButton = false,
+}: AppDialogShellProps) {
   const titleId = useId();
 
   useEffect(() => {
@@ -28,7 +42,11 @@ export function AppDialogShell({ open, title, onClose, children, confirm = false
   if (!open) return null;
 
   return (
-    <div className="app-dialog-backdrop" onClick={onClose} role="presentation">
+    <div
+      className="app-dialog-backdrop"
+      onClick={closeOnBackdrop ? onClose : undefined}
+      role="presentation"
+    >
       <div
         aria-labelledby={titleId}
         aria-modal="true"
@@ -36,9 +54,16 @@ export function AppDialogShell({ open, title, onClose, children, confirm = false
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <h2 className="app-dialog-title" id={titleId}>
-          {title}
-        </h2>
+        <div className="app-dialog-header">
+          <h2 className="app-dialog-title" id={titleId}>
+            {title}
+          </h2>
+          {showCloseButton ? (
+            <button aria-label="关闭" className="app-dialog-close" onClick={onClose} type="button">
+              <X aria-hidden="true" size={18} strokeWidth={2} />
+            </button>
+          ) : null}
+        </div>
         {children}
       </div>
     </div>

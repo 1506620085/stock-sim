@@ -74,8 +74,10 @@ export function MainIndicatorSwitcher({ value, onChange }: Props) {
 
       <AppDialogShell
         className="main-indicator-switch-dialog"
+        closeOnBackdrop={false}
         onClose={() => setSwitchOpen(false)}
         open={switchOpen}
+        showCloseButton
         title="指标切换"
       >
         <div className="main-indicator-grid" role="listbox" aria-label="主图指标">
