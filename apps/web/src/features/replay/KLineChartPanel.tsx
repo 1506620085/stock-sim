@@ -361,8 +361,15 @@ export function KLineChartPanel({ bars, code, indicators, chartDisplay, period =
         ))}
 
         {tradeOverlayLayout.painPoint ? (
-          <div className="pain-point-marker" style={{ left: `${tradeOverlayLayout.painPoint.x}px`, top: `${tradeOverlayLayout.painPoint.y}px` }}>
-            最差低点
+          <div
+            className="trade-marker-wrap pain"
+            style={{ left: `${tradeOverlayLayout.painPoint.x}px`, top: `${tradeOverlayLayout.painPoint.y}px` }}
+            title="最差低点"
+          >
+            <span aria-hidden="true" className="trade-marker-stem pain" />
+            <span aria-label="最差低点" className="trade-marker-tag pain">
+              L
+            </span>
           </div>
         ) : null}
 
@@ -780,7 +787,11 @@ function computeTradeOverlayLayout(chart: Chart, spec: TradeOverlaySpec): TradeO
   if (spec.painPoint) {
     const point = convertChartPoint(chart, paneId, spec.painPoint.dataIndex, spec.painPoint.price);
     if (point) {
-      painLayout = { x: point.x, y: point.y + 28 };
+      // 与 B 一致：固定虚线伸出到 K 线下方，字母标签尺寸统一
+      let y = point.y;
+      const maxY = Math.max(0, pane.height - TRADE_MARKER_TAG_H - TRADE_MARKER_STEM_H);
+      y = Math.min(Math.max(0, y), maxY);
+      painLayout = { x: point.x, y };
     }
   }
 

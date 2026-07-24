@@ -4955,20 +4955,14 @@ textarea {
   outline-offset: 1px;
 }
 
-.pain-point-marker {
-  position: absolute;
-  z-index: 4;
-  transform: translateX(-50%);
-  border: 1px solid #91c9b6;
-  border-radius: 999px;
-  background: rgba(239, 250, 245, 0.96);
-  color: #126d50;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 5px 7px;
+.trade-marker-stem.pain {
+  color: #0f766e;
+}
+
+.trade-marker-tag.pain {
+  background: #0f766e;
+  cursor: default;
   pointer-events: none;
-  white-space: nowrap;
 }
 
 .trade-note-popover {
