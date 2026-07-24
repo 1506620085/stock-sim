@@ -4810,8 +4810,6 @@ textarea {
 
 .main-indicator-switcher-anchor {
   position: absolute;
-  top: 6px;
-  left: 4px;
   z-index: 6;
   pointer-events: auto;
 }
@@ -4821,8 +4819,8 @@ textarea {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  min-height: 22px;
-  height: 22px;
+  height: 20px;
+  min-height: 20px;
   padding: 0 8px;
   border: 1px solid rgba(23, 32, 28, 0.14);
   border-radius: 4px;

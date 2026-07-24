@@ -55,6 +55,12 @@ const chartEdgeDragThresholdPx = 6;
 const mainIndicatorLegendGapPx = 6;
 /** 测量前的兜底预留宽度 */
 const mainIndicatorTriggerReservePx = 76;
+/** 与 klinecharts candle/indicator tooltip 默认值对齐，用于按钮垂直居中 */
+const mainIndicatorTooltipOffsetTop = 6;
+const mainIndicatorTooltipTitleMarginTop = 4;
+const mainIndicatorTooltipTitleSize = 12;
+const mainIndicatorTriggerHeightPx = 20;
+const mainIndicatorTriggerInsetLeftPx = 4;
 
 type TradeOverlaySpec = {
   markers: Array<{ trade: TradeRecord; dataIndex: number; anchorPrice: number }>;
@@ -116,10 +122,26 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   useLayoutEffect(() => {
     const anchor = switcherAnchorRef.current;
     const trigger = anchor?.querySelector("button");
+    const paneLeft = tradeOverlayLayout.pane?.left ?? 0;
     if (!anchor || !trigger) return;
-    const next = Math.ceil(anchor.offsetLeft + trigger.offsetWidth + mainIndicatorLegendGapPx);
+    // offsetLeft 相对主图 pane，需去掉 pane.left
+    const next = Math.ceil(anchor.offsetLeft - paneLeft + trigger.offsetWidth + mainIndicatorLegendGapPx);
     setLegendOffsetLeft((prev) => (prev === next ? prev : next));
-  }, [mainIndicator.active]);
+  }, [mainIndicator.active, tradeOverlayLayout.pane?.left]);
+
+  const mainIndicatorSwitcherPosition = useMemo(() => {
+    const paneTop = tradeOverlayLayout.pane?.top ?? 0;
+    const paneLeft = tradeOverlayLayout.pane?.left ?? 0;
+    const textCenterY =
+      paneTop +
+      mainIndicatorTooltipOffsetTop +
+      mainIndicatorTooltipTitleMarginTop +
+      mainIndicatorTooltipTitleSize / 2;
+    return {
+      top: textCenterY - mainIndicatorTriggerHeightPx / 2,
+      left: paneLeft + mainIndicatorTriggerInsetLeftPx,
+    };
+  }, [tradeOverlayLayout.pane?.left, tradeOverlayLayout.pane?.top]);
 
   const syncTradeOverlayLayout = () => {
     const chart = chartRef.current;
@@ -309,7 +331,11 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
 
   return (
     <div className="kline-chart-wrap">
-      <div className="main-indicator-switcher-anchor" ref={switcherAnchorRef}>
+      <div
+        className="main-indicator-switcher-anchor"
+        ref={switcherAnchorRef}
+        style={{ top: `${mainIndicatorSwitcherPosition.top}px`, left: `${mainIndicatorSwitcherPosition.left}px` }}
+      >
         <MainIndicatorSwitcher onChange={onMainIndicatorChange} value={mainIndicator} />
       </div>
       <div className="kline-chart" ref={containerRef} style={{ height: chartHeight }} />
@@ -604,7 +630,7 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
         showRule: "none" as const,
         // 主图叠加指标图例的起点，紧挨切换按钮右侧
         offsetLeft: legendOffsetLeft,
-        offsetTop: 6,
+        offsetTop: mainIndicatorTooltipOffsetTop,
         title: {
           show: false,
         },
@@ -614,9 +640,13 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
       tooltip: {
         title: {
           marginLeft: 4,
+          marginTop: mainIndicatorTooltipTitleMarginTop,
+          size: mainIndicatorTooltipTitleSize,
         },
         legend: {
           marginLeft: 6,
+          marginTop: mainIndicatorTooltipTitleMarginTop,
+          size: mainIndicatorTooltipTitleSize,
         },
       },
     },
