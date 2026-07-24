@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { dispose, init, type Chart, type Crosshair, type KLineData } from "klinecharts";
 import { showInfo } from "../../components/ToastProvider";
 import { periodToChartSetting, findBarIndexByDate } from "./aggregateKlines";
@@ -51,6 +51,10 @@ const earliestBarHintMessage = "已显示最早的K线";
 const latestBarHintMessage = "已显示最新的K线";
 const chartEdgeHintCooldownMs = 1500;
 const chartEdgeDragThresholdPx = 6;
+/** 主图指标切换按钮与图例之间的间距 */
+const mainIndicatorLegendGapPx = 6;
+/** 测量前的兜底预留宽度 */
+const mainIndicatorTriggerReservePx = 76;
 
 type TradeOverlaySpec = {
   markers: Array<{ trade: TradeRecord; dataIndex: number; anchorPrice: number }>;
@@ -78,10 +82,12 @@ const emptyTradeOverlayLayout: TradeOverlayLayout = {
 export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainIndicatorChange, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], avgCost = null, painPoint, onHoveredBarIndexChange }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
+  const switcherAnchorRef = useRef<HTMLDivElement | null>(null);
   const replayLabelLayerRef = useRef<HTMLDivElement | null>(null);
   const replayDayLabelRef = useRef<HTMLSpanElement | null>(null);
   const selectedDateRef = useRef(selectedDate);
   const onHoveredBarIndexChangeRef = useRef(onHoveredBarIndexChange);
+  const [legendOffsetLeft, setLegendOffsetLeft] = useState(mainIndicatorTriggerReservePx);
   const [activeTrade, setActiveTrade] = useState<TradeRecord | null>(null);
 
   selectedDateRef.current = selectedDate;
@@ -107,6 +113,14 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
 
   tradeOverlaySpecRef.current = tradeOverlaySpec;
 
+  useLayoutEffect(() => {
+    const anchor = switcherAnchorRef.current;
+    const trigger = anchor?.querySelector("button");
+    if (!anchor || !trigger) return;
+    const next = Math.ceil(anchor.offsetLeft + trigger.offsetWidth + mainIndicatorLegendGapPx);
+    setLegendOffsetLeft((prev) => (prev === next ? prev : next));
+  }, [mainIndicator.active]);
+
   const syncTradeOverlayLayout = () => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -117,7 +131,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     if (!containerRef.current || chartRef.current) return;
 
     const chart = init(containerRef.current, {
-      styles: buildChartStyles(chartDisplay, bars),
+      styles: buildChartStyles(chartDisplay, bars, legendOffsetLeft),
     });
 
     if (!chart) return;
@@ -250,13 +264,13 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     chart.resetData();
     applyChartScrollLimits(chart);
     syncIndicators(chart, indicators, effectiveSubCharts, mainIndicator);
-    chart.setStyles(buildChartStyles(chartDisplay, bars));
+    chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft));
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
     updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDate);
     syncTradeOverlayLayout();
-  }, [chartData, code, indicators, effectiveSubCharts, mainIndicator, period, selectedDate]);
+  }, [chartData, code, indicators, effectiveSubCharts, mainIndicator, period, selectedDate, legendOffsetLeft]);
 
   useEffect(() => {
     syncTradeOverlayLayout();
@@ -265,8 +279,8 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.setStyles(buildChartStyles(chartDisplay, bars));
-  }, [chartDisplay, bars]);
+    chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft));
+  }, [chartDisplay, bars, legendOffsetLeft]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -295,7 +309,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
 
   return (
     <div className="kline-chart-wrap">
-      <div className="main-indicator-switcher-anchor">
+      <div className="main-indicator-switcher-anchor" ref={switcherAnchorRef}>
         <MainIndicatorSwitcher onChange={onMainIndicatorChange} value={mainIndicator} />
       </div>
       <div className="kline-chart" ref={containerRef} style={{ height: chartHeight }} />
@@ -564,7 +578,7 @@ function buildLastPriceMarkStyle(lastBar?: KLineBar, prevClose?: number) {
   };
 }
 
-function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = []) {
+function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], legendOffsetLeft = mainIndicatorTriggerReservePx) {
   const lastIndex = bars.length - 1;
   const lastBar = bars[lastIndex];
   const prevClose = bars[lastIndex - 1]?.close ?? lastBar?.open;
@@ -588,8 +602,21 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = []) 
       },
       tooltip: {
         showRule: "none" as const,
+        // 主图叠加指标图例的起点，紧挨切换按钮右侧
+        offsetLeft: legendOffsetLeft,
+        offsetTop: 6,
         title: {
           show: false,
+        },
+      },
+    },
+    indicator: {
+      tooltip: {
+        title: {
+          marginLeft: 4,
+        },
+        legend: {
+          marginLeft: 6,
         },
       },
     },

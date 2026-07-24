@@ -4810,8 +4810,8 @@ textarea {
 
 .main-indicator-switcher-anchor {
   position: absolute;
-  top: 8px;
-  left: 10px;
+  top: 6px;
+  left: 4px;
   z-index: 6;
   pointer-events: auto;
 }
@@ -4820,18 +4820,21 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
-  padding: 0 10px;
-  border: 1px solid rgba(23, 32, 28, 0.12);
+  box-sizing: border-box;
+  min-height: 22px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(23, 32, 28, 0.14);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 1px 2px rgba(23, 32, 28, 0.06);
   color: #1f2a25;
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .main-indicator-trigger:hover {
