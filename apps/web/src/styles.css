@@ -567,6 +567,10 @@ textarea {
   gap: 16px;
 }
 
+.calculators-page {
+  gap: 10px;
+}
+
 .notes-page:has(.kb-shell) {
   min-height: 0;
   flex: 1;
@@ -2910,7 +2914,7 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .calculator-page-header {
@@ -3013,7 +3017,7 @@ textarea {
 .calculator-form {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 10px 16px;
   align-items: flex-start;
   justify-content: center;
 }
