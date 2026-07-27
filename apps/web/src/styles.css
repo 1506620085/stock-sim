@@ -2894,12 +2894,16 @@ textarea {
 
 .calculators-tabs {
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px;
+  box-sizing: border-box;
+  height: 56px;
+  min-height: 56px;
+  padding: 8px 12px;
 }
 
 .calculators-tabs button {
-  min-height: 38px;
+  min-height: 36px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
@@ -2926,6 +2930,14 @@ textarea {
   display: flex;
   gap: 6px;
   align-items: stretch;
+}
+
+.calculator-page-meta,
+.calculator-page-heading {
+  box-sizing: border-box;
+  height: 56px;
+  min-height: 56px;
+  padding: 8px 12px;
 }
 
 .calculator-page-meta {
@@ -3014,9 +3026,12 @@ textarea {
   min-width: 0;
   margin: 0;
   padding-top: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .calculator-form {
@@ -6489,6 +6504,8 @@ textarea {
   .calculator-page-heading {
     flex: 1 1 auto;
     width: 100%;
+    height: auto;
+    min-height: 56px;
   }
 
   .calculator-page-heading-main {
@@ -6498,6 +6515,15 @@ textarea {
 
   .calculator-page-heading-title {
     padding-bottom: 0;
+  }
+
+  .calculator-page-heading-desc {
+    white-space: normal;
+  }
+
+  .calculators-tabs {
+    height: auto;
+    min-height: 56px;
   }
 
   .calculators-tabs button {
