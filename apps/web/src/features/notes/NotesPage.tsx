@@ -29,21 +29,6 @@ const tabs: Array<{ id: NotesTab; label: string }> = [
   { id: "rules", label: "操作规则/总结笔记" },
 ];
 
-const tabMeta: Record<NotesTab, { title: string; description: string }> = {
-  journal: {
-    title: "实盘笔记",
-    description: "记录真实买卖时的思考：为什么买、为什么卖，以及当时情绪与计划。",
-  },
-  rules: {
-    title: "操作规则/总结笔记",
-    description: "树形目录管理规则与总结，富文本编辑并自动保存。",
-  },
-  period: {
-    title: "区间复盘",
-    description: "按日期区间汇总笔记数量、方向分布与标签。",
-  },
-};
-
 const sideOptions: Array<{ label: string; value: JournalSide }> = [
   { label: "买入", value: "buy" },
   { label: "卖出", value: "sell" },
@@ -102,24 +87,9 @@ function emptyJournalForm(): JournalEntryInput {
 
 export function NotesPage() {
   const [activeTab, setActiveTab] = useState<NotesTab>("journal");
-  const activeMeta = tabMeta[activeTab];
-  const showPageHeading = activeTab === "period";
 
   return (
     <section className="notes-page">
-      {showPageHeading ? (
-        <div className="panel calculator-page-heading">
-          <NotebookPen aria-hidden="true" size={28} />
-          <div className="calculator-page-heading-main">
-            <div className="calculator-page-heading-title">
-              <h2>{activeMeta.title}</h2>
-              <p className="eyebrow calculator-page-heading-eyebrow">Notes</p>
-            </div>
-            <p className="calculator-page-heading-desc">{activeMeta.description}</p>
-          </div>
-        </div>
-      ) : null}
-
       <div className="panel calculators-tabs" role="tablist" aria-label="笔记类型">
         {tabs.map((tab) => (
           <button
@@ -628,8 +598,17 @@ function PeriodPanel() {
   return (
     <section className="notes-panel">
       <div className="panel">
-        <div className="section-header">
-          <h2>区间汇总</h2>
+        <div className="section-header notes-journal-header">
+          <div className="calculator-page-heading notes-journal-heading">
+            <NotebookPen aria-hidden="true" size={28} />
+            <div className="calculator-page-heading-main">
+              <div className="calculator-page-heading-title">
+                <h2>区间复盘</h2>
+                <p className="eyebrow calculator-page-heading-eyebrow">Notes</p>
+              </div>
+              <p className="calculator-page-heading-desc">按日期区间汇总笔记数量、方向分布与标签。</p>
+            </div>
+          </div>
         </div>
         <div className="notes-filters notes-period-filters">
           <article className="notes-period-count">
