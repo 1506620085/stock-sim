@@ -2423,6 +2423,40 @@ textarea {
   box-shadow: 0 4px 12px rgba(153, 32, 24, 0.16);
 }
 
+.settings-clear-trades-button {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid #efbbb6;
+  border-radius: 8px;
+  background: #fff4f2;
+  color: #b52821;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-clear-trades-button:hover:not(:disabled) {
+  border-color: #e89a93;
+  background: #ffe8e4;
+}
+
+.settings-clear-trades-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.app-dialog-copy p {
+  margin: 0 0 10px;
+}
+
+.app-dialog-copy p:last-child {
+  margin-bottom: 0;
+}
+
 .danger-outline-button {
   border-color: #e2b4b4;
   color: #b42318;

@@ -189,6 +189,48 @@ export async function resetAccount(clearTrades: boolean): Promise<{ clearedTrade
   };
 }
 
+export async function clearSessionTrades(
+  sessionId: number,
+  sellPriceBasis: string,
+): Promise<{
+  clearedTrades: number;
+  clearedReviews: number;
+  settledQuantity: number;
+  settlePrice: number | null;
+  settleFee: number;
+  settleDate: string | null;
+  netCashDelta: number;
+  instrumentId: number;
+  sessionId: number;
+}> {
+  const result = await apiJson<{
+    cleared_trades: number;
+    cleared_reviews: number;
+    settled_quantity: number;
+    settle_price: number | null;
+    settle_fee: number;
+    settle_date: string | null;
+    net_cash_delta: number;
+    instrument_id: number;
+    session_id: number;
+  }>(`${API_BASE}/api/replay-sessions/${sessionId}/clear-trades`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sell_price_basis: sellPriceBasis }),
+  });
+  return {
+    clearedTrades: Number(result.cleared_trades ?? 0),
+    clearedReviews: Number(result.cleared_reviews ?? 0),
+    settledQuantity: Number(result.settled_quantity ?? 0),
+    settlePrice: result.settle_price == null ? null : Number(result.settle_price),
+    settleFee: Number(result.settle_fee ?? 0),
+    settleDate: result.settle_date ?? null,
+    netCashDelta: Number(result.net_cash_delta ?? 0),
+    instrumentId: Number(result.instrument_id),
+    sessionId: Number(result.session_id),
+  };
+}
+
 export async function loadSessionTrades(sessionId: number, code: string): Promise<TradeRecord[]> {
   const items = await apiJson<TradeItem[]>(`${API_BASE}/api/replay-sessions/${sessionId}/trades`, undefined, { silent: true });
   return items.map((item) => toTradeRecord(item, code));

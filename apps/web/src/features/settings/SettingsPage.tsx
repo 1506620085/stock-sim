@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Database, RefreshCw, RotateCcw, Save, Trash2, Wallet } from "lucide-react";
+import { Database, Eraser, RefreshCw, RotateCcw, Save, Trash2, Wallet } from "lucide-react";
 import { AppDialogCheck, AppDialogShell } from "../../components/AppDialog";
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
-import { loadAllTrades, resetAccount } from "../replay/api";
+import { clearSessionTrades, loadAllTrades, loadReplaySessions, resetAccount } from "../replay/api";
 import { calculateAccountEquity, formatCurrency } from "../replay/tradeFunds";
-import type { Instrument } from "../replay/types";
+import type { Instrument, ReplaySession } from "../replay/types";
 import {
   createFeeTemplate,
   deleteFeeTemplate,
@@ -56,6 +56,11 @@ export function SettingsPage() {
   const [resetStartingCash, setResetStartingCash] = useState(preferences.startingCash);
   const [resetClearTrades, setResetClearTrades] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [clearInstrumentId, setClearInstrumentId] = useState<number | null>(null);
+  const [clearSessions, setClearSessions] = useState<ReplaySession[]>([]);
+  const [clearSessionId, setClearSessionId] = useState<number | null>(null);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const editingTemplateId = templateModal?.mode === "edit" ? templateModal.templateId : null;
   const templateGroups = groupFeeTemplatesByAssetType(feeTemplates);
@@ -65,6 +70,15 @@ export function SettingsPage() {
   );
   const totalPnl = currentAssets - preferences.startingCash;
   const returnRate = preferences.startingCash > 0 ? (totalPnl / preferences.startingCash) * 100 : 0;
+
+  const clearInstrument = useMemo(
+    () => instruments.find((item) => item.id === clearInstrumentId) ?? null,
+    [clearInstrumentId, instruments],
+  );
+  const clearSession = useMemo(
+    () => clearSessions.find((item) => item.id === clearSessionId) ?? null,
+    [clearSessionId, clearSessions],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +90,7 @@ export function SettingsPage() {
         setAccountTrades(trades);
         if (instrumentItems[0]?.id) {
           setSelectedInstrumentId(instrumentItems[0].id);
+          setClearInstrumentId(instrumentItems[0].id);
         }
       })
       .catch(() => undefined);
@@ -84,6 +99,29 @@ export function SettingsPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!clearInstrumentId) {
+      setClearSessions([]);
+      setClearSessionId(null);
+      return;
+    }
+    let cancelled = false;
+    void loadReplaySessions(clearInstrumentId)
+      .then((sessions) => {
+        if (cancelled) return;
+        setClearSessions(sessions);
+        setClearSessionId(sessions[0]?.id ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setClearSessions([]);
+        setClearSessionId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clearInstrumentId]);
 
   useEffect(() => {
     if (!templateModal && !deleteConfirmTemplate) return;
@@ -149,6 +187,38 @@ export function SettingsPage() {
       // apiFetch 已弹出错误提示
     } finally {
       setResetting(false);
+    }
+  }
+
+  function openClearTradesDialog() {
+    if (!clearSessionId) {
+      showInfo("请先选择有复盘会话的股票。");
+      return;
+    }
+    setClearDialogOpen(true);
+  }
+
+  async function handleClearSessionTrades() {
+    if (!clearSessionId) return;
+    setClearing(true);
+    try {
+      const result = await clearSessionTrades(clearSessionId, preferences.replaySellPriceBasis);
+      const nextCash = Number((preferences.startingCash + result.netCashDelta).toFixed(2));
+      updatePreferences({ startingCash: nextCash }, { silent: true });
+      const trades = await loadAllTrades();
+      setAccountTrades(trades);
+      setClearDialogOpen(false);
+      const settleHint =
+        result.settledQuantity > 0 && result.settlePrice != null
+          ? `已按 ${result.settleDate ?? "当前复盘日"} / ${replayPriceBasisLabel(preferences.replaySellPriceBasis)} 卖出 ${result.settledQuantity.toLocaleString("zh-CN")} 股（成交价 ${result.settlePrice.toFixed(2)}）。`
+          : "当前无持仓，未产生结算卖出。";
+      showSuccess(
+        `已清除 ${result.clearedTrades} 条买卖记录、${result.clearedReviews} 条复盘记录。${settleHint}初始资产已按结算后资金变动调整为 ${formatCurrency(nextCash)}。`,
+      );
+    } catch {
+      // apiFetch 已弹出错误提示
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -295,6 +365,62 @@ export function SettingsPage() {
             <button className="settings-account-reset-button" onClick={openResetDialog} type="button">
               <RotateCcw size={16} />
               重置账户
+            </button>
+          </div>
+        </section>
+
+        <section className="panel settings-panel">
+          <div className="section-header">
+            <h2>清除复盘交易记录</h2>
+            <Eraser size={18} />
+          </div>
+          <p className="settings-hint">
+            去除指定复盘会话中该股票的买卖记录与复盘记录。若仍有持仓，将按当前复盘日与「复盘成交价」中的卖出设置全部卖出后再清除。
+          </p>
+          <div className="settings-grid">
+            <label>
+              股票 / ETF
+              <AppSelect
+                onChange={(value) => setClearInstrumentId(Number(value))}
+                options={instruments
+                  .filter((instrument) => instrument.id != null)
+                  .map((instrument) => ({
+                    label: `${instrument.code} ${instrument.name}`,
+                    value: instrument.id as number,
+                  }))}
+                placeholder="请选择"
+                searchable
+                value={clearInstrumentId}
+              />
+            </label>
+            <label>
+              复盘会话
+              <AppSelect
+                disabled={!clearSessions.length}
+                onChange={(value) => setClearSessionId(Number(value))}
+                options={clearSessions.map((session) => ({
+                  label: `${session.name}（复盘日 ${session.currentDate}）`,
+                  value: session.id,
+                }))}
+                placeholder={clearSessions.length ? "请选择" : "该股票暂无复盘会话"}
+                value={clearSessionId}
+              />
+            </label>
+          </div>
+          <div className="settings-summary">
+            <span>标的：{clearInstrument ? `${clearInstrument.code} ${clearInstrument.name}` : "-"}</span>
+            <span>复盘日：{clearSession?.currentDate ?? "-"}</span>
+            <span>卖出成交价：{replayPriceBasisLabel(preferences.replaySellPriceBasis)}</span>
+          </div>
+          <div className="settings-account-actions">
+            <button
+              className="settings-clear-trades-button"
+              disabled={!clearSessionId || clearing}
+              onClick={openClearTradesDialog}
+              type="button"
+            >
+              <Eraser size={16} />
+              清除该股票交易记录
             </button>
           </div>
         </section>
@@ -514,6 +640,42 @@ export function SettingsPage() {
             type="button"
           >
             {resetting ? "重置中…" : "确认重置"}
+          </button>
+        </div>
+      </AppDialogShell>
+
+      <AppDialogShell
+        confirm
+        onClose={() => {
+          if (!clearing) setClearDialogOpen(false);
+        }}
+        open={clearDialogOpen}
+        title="清除复盘交易记录"
+      >
+        <div className="app-dialog-copy">
+          <p>
+            即将清除
+            {clearInstrument ? `「${clearInstrument.code} ${clearInstrument.name}」` : "所选股票"}
+            {clearSession ? `复盘会话「${clearSession.name}」` : ""}
+            中的全部买卖记录与复盘记录。
+          </p>
+          <p>
+            已购入的股票不会原样返还，将以当前复盘日（{clearSession?.currentDate ?? "-"}）按「复盘成交价」卖出设置（
+            {replayPriceBasisLabel(preferences.replaySellPriceBasis)}）结算后平仓；交易记录与区间复盘记录会一并删除。若需保存，请先导出记录。
+          </p>
+          <p>此操作不可撤销，确定继续吗？</p>
+        </div>
+        <div className="app-dialog-actions">
+          <button className="secondary-button" disabled={clearing} onClick={() => setClearDialogOpen(false)} type="button">
+            取消
+          </button>
+          <button
+            className="primary-button danger-confirm-button"
+            disabled={clearing}
+            onClick={() => void handleClearSessionTrades()}
+            type="button"
+          >
+            {clearing ? "清除中…" : "确定清除"}
           </button>
         </div>
       </AppDialogShell>

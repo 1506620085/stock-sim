@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.core.database import get_session
-from app.models import KlineDaily, ReplaySession, Trade, TradeReview
+from app.models import FeeTemplate, Instrument, KlineDaily, ReplaySession, Trade, TradeReview
 from app.schemas import (
     AccountResetRequest,
     AccountResetResult,
     PnlSummaryRead,
+    SessionClearTradesRequest,
+    SessionClearTradesResult,
     SessionImportRequest,
     SessionImportResult,
     TradeCreate,
@@ -65,6 +67,34 @@ def normalize_price_rule(side: str, price_rule: str | None) -> tuple[str, str]:
     return f"{side}_{basis}", basis
 
 
+def calculate_template_trade_fee(side: str, price: Decimal, quantity: Decimal, template: FeeTemplate | None, asset_type: str) -> Decimal:
+    if template is None or quantity <= 0 or price <= 0:
+        return Decimal("0")
+    amount = price * quantity
+    config = template.config or {}
+    mode = str(config.get("commissionMode") or "rate")
+    if mode == "fixed":
+        commission = Decimal(str(config.get("fixedCommission") or 0))
+    else:
+        commission = amount * Decimal(template.commission_rate) / Decimal("100")
+        commission = max(commission, Decimal(template.min_commission))
+    transfer_fee = amount * Decimal(template.transfer_rate) / Decimal("100")
+    stamp_tax = (
+        amount * Decimal(template.stamp_tax_rate) / Decimal("100")
+        if side == "sell" and asset_type == "stock"
+        else Decimal("0")
+    )
+    return (commission + transfer_fee + stamp_tax).quantize(Decimal("0.01"))
+
+
+def trade_cash_delta(trade: Trade) -> Decimal:
+    gross = Decimal(trade.price) * Decimal(trade.quantity)
+    fee = Decimal(trade.fee)
+    if trade.side == "buy":
+        return -(gross + fee)
+    return gross - fee
+
+
 @router.get("/api/trades", response_model=list[TradeRead])
 def list_all_trades(session: Session = Depends(get_session)) -> list[Trade]:
     statement = select(Trade).order_by(Trade.trade_date, Trade.id)
@@ -88,6 +118,95 @@ def reset_account(payload: AccountResetRequest, session: Session = Depends(get_s
         session.commit()
 
     return AccountResetResult(cleared_trades=cleared_trades, cleared_reviews=cleared_reviews)
+
+
+@router.post("/api/replay-sessions/{session_id}/clear-trades", response_model=SessionClearTradesResult)
+def clear_session_trades(
+    session_id: int,
+    payload: SessionClearTradesRequest,
+    session: Session = Depends(get_session),
+) -> SessionClearTradesResult:
+    """
+    清除指定复盘会话的买卖记录与复盘记录。
+    若仍有持仓，先按当前复盘日与卖出成交价基准全部卖出结算，再删除记录；
+    返回 net_cash_delta 供前端并入本地初始资产，以保留结算后的资金结果。
+    """
+    replay_session = ensure_replay_session(session_id, session)
+    instrument = session.get(Instrument, replay_session.instrument_id)
+    if not instrument:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instrument not found")
+
+    basis = payload.sell_price_basis.strip().lower()
+    if basis not in PRICE_BASIS_OPTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="sell_price_basis must be one of high, low, open, close, mid",
+        )
+
+    existing_trades = list(
+        session.exec(select(Trade).where(Trade.session_id == session_id).order_by(Trade.trade_date, Trade.id)).all()
+    )
+    position = calculate_fifo_position(existing_trades)
+
+    settled_quantity = Decimal("0")
+    settle_price: Decimal | None = None
+    settle_fee = Decimal("0")
+    settle_date = None
+
+    if position.quantity > 0:
+        current_bar = get_current_bar(replay_session, session)
+        settle_price = resolve_trade_price(current_bar, basis)
+        settled_quantity = position.quantity
+        fee_template = (
+            session.get(FeeTemplate, replay_session.fee_template_id) if replay_session.fee_template_id else None
+        )
+        settle_fee = calculate_template_trade_fee(
+            "sell",
+            settle_price,
+            settled_quantity,
+            fee_template,
+            instrument.asset_type,
+        )
+        settlement = Trade(
+            session_id=replay_session.id,
+            instrument_id=replay_session.instrument_id,
+            trade_date=replay_session.current_date,
+            side="sell",
+            quantity=settled_quantity,
+            price=settle_price,
+            price_rule=f"sell_{basis}",
+            fee=settle_fee,
+            note="系统结算：清除交易记录前平仓",
+            emotion_score=None,
+        )
+        session.add(settlement)
+        session.flush()
+        existing_trades.append(settlement)
+        settle_date = replay_session.current_date
+
+    net_cash_delta = sum((trade_cash_delta(trade) for trade in existing_trades), Decimal("0"))
+
+    reviews = list(session.exec(select(TradeReview).where(TradeReview.session_id == session_id)).all())
+    for review in reviews:
+        session.delete(review)
+
+    trades = list(session.exec(select(Trade).where(Trade.session_id == session_id)).all())
+    for trade in trades:
+        session.delete(trade)
+
+    session.commit()
+
+    return SessionClearTradesResult(
+        cleared_trades=len(trades),
+        cleared_reviews=len(reviews),
+        settled_quantity=float(settled_quantity),
+        settle_price=float(settle_price) if settle_price is not None else None,
+        settle_fee=float(settle_fee),
+        settle_date=settle_date,
+        net_cash_delta=float(net_cash_delta),
+        instrument_id=replay_session.instrument_id,
+        session_id=session_id,
+    )
 
 
 @router.post("/api/replay-sessions/{session_id}/import", response_model=SessionImportResult)

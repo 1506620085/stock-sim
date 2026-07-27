@@ -140,6 +140,24 @@ class AccountResetResult(SQLModel):
     cleared_reviews: int = 0
 
 
+class SessionClearTradesRequest(SQLModel):
+    """清除指定复盘会话交易记录；卖出结算使用客户端复盘卖出成交价基准。"""
+
+    sell_price_basis: str = "low"
+
+
+class SessionClearTradesResult(SQLModel):
+    cleared_trades: int = 0
+    cleared_reviews: int = 0
+    settled_quantity: float = 0
+    settle_price: float | None = None
+    settle_fee: float = 0
+    settle_date: date | None = None
+    net_cash_delta: float = 0
+    instrument_id: int
+    session_id: int
+
+
 class PnlSummaryRead(SQLModel):
     quantity: float
     cost: float
