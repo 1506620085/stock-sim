@@ -580,6 +580,21 @@ textarea {
   gap: 16px;
 }
 
+.notes-journal-header {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.notes-journal-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.notes-journal-header > .text-button {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
 /* Knowledge base (Yuque-style) */
 .kb-shell {
   display: flex;
