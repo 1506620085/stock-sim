@@ -2919,7 +2919,7 @@ textarea {
 
 .calculator-page-header {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   align-items: stretch;
 }
 
@@ -3017,13 +3017,13 @@ textarea {
 .calculator-form {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 16px;
+  gap: 10px;
   align-items: flex-start;
   justify-content: center;
 }
 
 .calculator-form > .panel:first-child {
-  width: calc((100% - 436px) * 0.5);
+  width: calc((100% - 430px) * 0.5);
   max-width: 100%;
   flex: 0 0 auto;
 }
@@ -3995,7 +3995,7 @@ textarea {
   grid-template-columns: minmax(280px, 0.48fr) minmax(280px, 1fr);
   gap: 12px;
   flex: 0 1 auto;
-  width: min(1080px, calc(100% - 436px));
+  width: min(1080px, calc(100% - 430px));
   max-width: 1080px;
   min-width: 0;
   min-height: 0;
