@@ -490,6 +490,11 @@ textarea {
   padding: 18px;
 }
 
+.workspace:has(.calculators-page) {
+  gap: 6px;
+  padding: 12px;
+}
+
 .workspace:has(.kb-shell) {
   min-height: 0;
   overflow: hidden;
@@ -568,7 +573,7 @@ textarea {
 }
 
 .calculators-page {
-  gap: 10px;
+  gap: 6px;
 }
 
 .notes-page:has(.kb-shell) {
@@ -2914,12 +2919,12 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .calculator-page-header {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: stretch;
 }
 
@@ -3017,13 +3022,13 @@ textarea {
 .calculator-form {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
   align-items: flex-start;
   justify-content: center;
 }
 
 .calculator-form > .panel:first-child {
-  width: calc((100% - 430px) * 0.5);
+  width: calc((100% - 426px) * 0.5);
   max-width: 100%;
   flex: 0 0 auto;
 }
@@ -3995,7 +4000,7 @@ textarea {
   grid-template-columns: minmax(280px, 0.48fr) minmax(280px, 1fr);
   gap: 12px;
   flex: 0 1 auto;
-  width: min(1080px, calc(100% - 430px));
+  width: min(1080px, calc(100% - 426px));
   max-width: 1080px;
   min-width: 0;
   min-height: 0;
