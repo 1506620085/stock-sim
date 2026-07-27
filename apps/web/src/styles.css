@@ -504,10 +504,13 @@ textarea {
 
 .topbar {
   display: flex;
+  box-sizing: border-box;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px;
+  gap: 12px;
+  height: 56px;
+  min-height: 56px;
+  padding: 8px 12px;
 }
 
 .topbar h1,
@@ -523,12 +526,13 @@ textarea {
 }
 
 .topbar h1 {
-  font-size: 26px;
+  font-size: 20px;
   line-height: 1.25;
 }
 
 .topbar-eyebrow {
-  font-size: 12px;
+  margin: 0;
+  font-size: 11px;
   line-height: 1;
   white-space: nowrap;
 }
@@ -545,8 +549,8 @@ textarea {
   border-radius: 999px;
   background: var(--warning-soft);
   color: #7a4d00;
-  font-size: 13px;
-  padding: 7px 11px;
+  font-size: 12px;
+  padding: 5px 9px;
   white-space: nowrap;
 }
 
@@ -6467,6 +6471,8 @@ textarea {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+    height: auto;
+    min-height: 56px;
   }
 
   .replay-page,
