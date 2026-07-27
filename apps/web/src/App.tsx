@@ -18,13 +18,13 @@ type MenuItem = {
 };
 
 const menuItems: MenuItem[] = [
-  { id: "watchlist", label: "自选", path: "/watchlist", icon: Star },
+  { id: "watchlist", label: "自选股票", path: "/watchlist", icon: Star },
   { id: "replay", label: "复盘", path: "/replay", icon: CandlestickChart },
   { id: "training", label: "训练", path: "/training", icon: Dumbbell },
-  { id: "calculators", label: "计算器", path: "/calculators", icon: Calculator },
-  { id: "stats", label: "统计", path: "/stats", icon: BarChart3 },
-  { id: "notes", label: "笔记", path: "/notes", icon: NotebookPen },
-  { id: "settings", label: "设置", path: "/settings", icon: Settings },
+  { id: "calculators", label: "交易计算器", path: "/calculators", icon: Calculator },
+  { id: "stats", label: "交易统计", path: "/stats", icon: BarChart3 },
+  { id: "notes", label: "交易笔记", path: "/notes", icon: NotebookPen },
+  { id: "settings", label: "系统设置", path: "/settings", icon: Settings },
 ];
 
 const pageMeta: Record<PageId, { eyebrow: string; title: string; badge: string }> = {
