@@ -486,11 +486,6 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px;
-}
-
-.workspace:has(.calculators-page) {
   gap: 6px;
   padding: 12px;
 }
@@ -557,7 +552,7 @@ textarea {
 
 .page-grid {
   display: grid;
-  gap: 16px;
+  gap: 6px;
 }
 
 .calculator-layout {
@@ -569,10 +564,6 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
-}
-
-.calculators-page {
   gap: 6px;
 }
 
@@ -586,7 +577,7 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 6px;
 }
 
 /* Knowledge base (Yuque-style) */
@@ -1834,13 +1825,13 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 6px;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
+  gap: 6px;
 }
 
 .metric-card {
@@ -1876,7 +1867,7 @@ textarea {
 .stats-layout {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 6px;
 }
 
 .stats-panel {
@@ -1891,13 +1882,13 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 6px;
 }
 
 .settings-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
-  gap: 16px;
+  gap: 6px;
 }
 
 .settings-panel {
@@ -4108,7 +4099,7 @@ textarea {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr) 360px;
   align-items: start;
-  gap: 16px;
+  gap: 6px;
 }
 
 .watchlist-page {
@@ -4119,7 +4110,7 @@ textarea {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 6px;
 }
 
 @media (max-width: 960px) {
@@ -4133,7 +4124,7 @@ textarea {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 6px;
 }
 
 .replay-center {
@@ -6489,7 +6480,7 @@ textarea {
 
   .settings-account-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 6px;
   }
 
   .calculators-tabs {
