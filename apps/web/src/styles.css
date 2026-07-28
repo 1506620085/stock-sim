@@ -1897,7 +1897,7 @@ textarea {
 }
 
 .stats-panel {
-  min-height: 260px;
+  min-height: 320px;
 }
 
 .stats-message {
@@ -2839,10 +2839,103 @@ textarea {
 }
 
 .stats-bars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.stats-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.stats-overview-item {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 18px;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfc;
+}
+
+.stats-overview-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stats-overview-item strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.stats-bar-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfc;
+}
+
+.stats-bar-card--profit {
+  background: linear-gradient(180deg, #fff7f6 0%, #fbfdfc 72%);
+  border-color: #f0d4d1;
+}
+
+.stats-bar-card--loss {
+  background: linear-gradient(180deg, #f3faf6 0%, #fbfdfc 72%);
+  border-color: #cfe3d8;
+}
+
+.stats-bar-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stats-bar-card-head span {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.stats-bar-card-head strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.stats-bar-track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(22, 36, 31, 0.06);
+}
+
+.stats-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+
+.positive-bg {
+  background: linear-gradient(90deg, #e25a52 0%, #d83a31 100%);
+}
+
+.negative-bg {
+  background: linear-gradient(90deg, #2a9a6e 0%, #15845f 100%);
 }
 
 .stats-bar-row {
@@ -2870,17 +2963,16 @@ textarea {
   border-radius: inherit;
 }
 
-.positive-bg {
-  background: #d83a31;
-}
-
-.negative-bg {
-  background: #15845f;
-}
-
 .stats-bar-row strong {
   font-size: 14px;
   text-align: right;
+}
+
+@media (max-width: 720px) {
+  .stats-bars,
+  .stats-overview-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tag-stat-list,

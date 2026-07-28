@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from app.core.database import get_session
 from app.models import Instrument, JournalEntry, ReplaySession, Trade, TradeReview
 from app.schemas import StatsSummaryRead
-from app.services.replay.pnl import calculate_closed_trade_pnls, calculate_fifo_position
+from app.services.replay.pnl import calculate_closed_trade_details, calculate_fifo_position
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -32,14 +32,35 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
     # 已实现总额仍按会话汇总；胜率/盈亏比按每笔平仓（卖出）样本
     session_pnls = [calculate_fifo_position(items).realized for items in trades_by_session.values()]
     realized_pnl = sum(session_pnls, Decimal("0"))
-    closed_pnls: list[Decimal] = []
-    for items in trades_by_session.values():
-        closed_pnls.extend(calculate_closed_trade_pnls(items))
 
+    closed_details = []
+    for items in trades_by_session.values():
+        closed_details.extend(calculate_closed_trade_details(items))
+    closed_details.sort(key=lambda item: item.trade_date)
+
+    closed_pnls = [item.pnl for item in closed_details]
     profitable_closes = [value for value in closed_pnls if value > 0]
     losing_closes = [value for value in closed_pnls if value < 0]
     average_profit = average(profitable_closes)
     average_loss = average(losing_closes)
+
+    profit_rates = [item.return_rate for item in closed_details if item.pnl > 0]
+    loss_rates = [item.return_rate for item in closed_details if item.pnl < 0]
+    max_profit_rate = max(profit_rates) if profit_rates else Decimal("0")
+    max_loss_rate = min(loss_rates) if loss_rates else Decimal("0")
+
+    cumulative = Decimal("0")
+    closed_pnl_curve: list[float] = []
+    for item in closed_details:
+        cumulative += item.pnl
+        closed_pnl_curve.append(float(cumulative))
+
+    trade_day_span = 0
+    if trades:
+        first_day = min(trade.trade_date for trade in trades)
+        last_day = max(trade.trade_date for trade in trades)
+        trade_day_span = max(1, (last_day - first_day).days + 1)
+
     journal_emotions = [item.emotion_score for item in journal_entries if item.emotion_score is not None]
     journal_tag_counter: Counter[str] = Counter()
     journal_rule_ref_count = 0
@@ -79,6 +100,12 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
             }
             for entry in journal_entries[:5]
         ],
+        operation_count=len(closed_details),
+        trade_day_span=trade_day_span,
+        win_count=len(profitable_closes),
+        max_profit_rate=float(max_profit_rate),
+        max_loss_rate=float(max_loss_rate),
+        closed_pnl_curve=closed_pnl_curve,
     )
 
 

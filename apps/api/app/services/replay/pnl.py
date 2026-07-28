@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from app.models import Trade
@@ -10,6 +11,19 @@ class PnlSummary:
     cost: Decimal
     avg_cost: Decimal
     realized: Decimal
+
+
+@dataclass(frozen=True)
+class ClosedTradePnl:
+    trade_date: date
+    pnl: Decimal
+    cost: Decimal
+
+    @property
+    def return_rate(self) -> Decimal:
+        if self.cost <= 0:
+            return Decimal("0")
+        return self.pnl / self.cost * Decimal("100")
 
 
 def calculate_fifo_position(trades: list[Trade]) -> PnlSummary:
@@ -50,8 +64,13 @@ def calculate_fifo_position(trades: list[Trade]) -> PnlSummary:
 
 def calculate_closed_trade_pnls(trades: list[Trade]) -> list[Decimal]:
     """按 FIFO 返回每笔卖出的已实现盈亏（一笔卖出 = 一次平仓样本）。"""
+    return [item.pnl for item in calculate_closed_trade_details(trades)]
+
+
+def calculate_closed_trade_details(trades: list[Trade]) -> list[ClosedTradePnl]:
+    """按 FIFO 返回每笔卖出的已实现盈亏与对应成本。"""
     lots: list[dict[str, Decimal]] = []
-    closed: list[Decimal] = []
+    closed: list[ClosedTradePnl] = []
 
     for trade in sorted(trades, key=lambda item: (item.trade_date, item.id or 0, item.created_at)):
         quantity = Decimal(trade.quantity)
@@ -82,6 +101,12 @@ def calculate_closed_trade_pnls(trades: list[Trade]) -> list[Decimal]:
         # 无对应买入可匹配时不计入平仓样本
         if matched_total <= 0:
             continue
-        closed.append(sell_proceeds - consumed_cost)
+        closed.append(
+            ClosedTradePnl(
+                trade_date=trade.trade_date,
+                pnl=sell_proceeds - consumed_cost,
+                cost=consumed_cost,
+            )
+        )
 
     return closed

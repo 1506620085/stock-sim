@@ -270,6 +270,13 @@ class StatsSummaryRead(SQLModel):
     journal_rule_ref_count: int = 0
     journal_tag_stats: list[dict[str, Any]] = Field(default_factory=list)
     recent_journal_entries: list[dict[str, Any]] = Field(default_factory=list)
+    # 盈亏概览扩展指标
+    operation_count: int = 0
+    trade_day_span: int = 0
+    win_count: int = 0
+    max_profit_rate: float = 0
+    max_loss_rate: float = 0
+    closed_pnl_curve: list[float] = Field(default_factory=list)
 
 
 class DataQualityRead(SQLModel):

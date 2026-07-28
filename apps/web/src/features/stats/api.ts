@@ -37,6 +37,12 @@ export type StatsSummary = {
     emotion_score: number | null;
     tags: string[];
   }>;
+  operation_count: number;
+  trade_day_span: number;
+  win_count: number;
+  max_profit_rate: number;
+  max_loss_rate: number;
+  closed_pnl_curve: number[];
 };
 
 export async function loadStatsSummary(): Promise<StatsSummary> {

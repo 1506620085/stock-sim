@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BarChart3, CalendarDays, ListChecks, NotebookPen, TrendingUp } from "lucide-react";
 import { FieldHelpTip } from "../../components/FieldHelpTip";
+import { loadPreferences } from "../settings/api";
 import { loadStatsSummary, type StatsSummary } from "./api";
 
 const emptySummary: StatsSummary = {
@@ -22,10 +23,17 @@ const emptySummary: StatsSummary = {
   journal_rule_ref_count: 0,
   journal_tag_stats: [],
   recent_journal_entries: [],
+  operation_count: 0,
+  trade_day_span: 0,
+  win_count: 0,
+  max_profit_rate: 0,
+  max_loss_rate: 0,
+  closed_pnl_curve: [],
 };
 
 export function StatsPage() {
   const [summary, setSummary] = useState<StatsSummary>(emptySummary);
+  const preferences = useMemo(() => loadPreferences(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +47,50 @@ export function StatsPage() {
       cancelled = true;
     };
   }, []);
+
+  const totalPnl = summary.realized_pnl + preferences.settledCashAdjustment;
+  const returnRate = preferences.startingCash > 0 ? (totalPnl / preferences.startingCash) * 100 : 0;
+  const maxDrawdownRate = computeMaxDrawdownRate(preferences.startingCash, summary.closed_pnl_curve);
+
+  const overviewMetrics = [
+    {
+      label: "总盈亏",
+      value: formatSignedNumber(totalPnl),
+      tone: toneOf(totalPnl),
+    },
+    {
+      label: "操作次数/天数",
+      value: `${summary.operation_count}/${summary.trade_day_span}`,
+    },
+    {
+      label: "最大盈利",
+      value: formatSignedPercent(summary.max_profit_rate),
+      tone: toneOf(summary.max_profit_rate),
+    },
+    {
+      label: "收益率",
+      value: formatSignedPercent(returnRate),
+      tone: toneOf(returnRate),
+    },
+    {
+      label: "盈利次数",
+      value: summary.win_count.toLocaleString("zh-CN"),
+    },
+    {
+      label: "最大亏损",
+      value: formatSignedPercent(summary.max_loss_rate),
+      tone: toneOf(summary.max_loss_rate),
+    },
+    {
+      label: "成功率",
+      value: `${summary.win_rate.toFixed(2)}%`,
+    },
+    {
+      label: "最大回撤",
+      value: formatSignedPercent(maxDrawdownRate),
+      tone: toneOf(maxDrawdownRate),
+    },
+  ];
 
   return (
     <section className="stats-page">
@@ -72,11 +124,28 @@ export function StatsPage() {
         <section className="panel stats-panel">
           <div className="section-header">
             <h2>盈亏概览</h2>
-            <span className={summary.realized_pnl >= 0 ? "positive" : "negative"}>{formatNumber(summary.realized_pnl)}</span>
+          </div>
+          <div className="stats-overview-grid">
+            {overviewMetrics.map((item) => (
+              <article className="stats-overview-item" key={item.label}>
+                <span>{item.label}</span>
+                <strong className={item.tone}>{item.value}</strong>
+              </article>
+            ))}
           </div>
           <div className="stats-bars">
-            <BarRow label="平均盈利" value={summary.average_profit} max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)} />
-            <BarRow label="平均亏损" value={summary.average_loss} max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)} />
+            <BarRow
+              kind="profit"
+              label="平均盈利"
+              value={summary.average_profit}
+              max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)}
+            />
+            <BarRow
+              kind="loss"
+              label="平均亏损"
+              value={summary.average_loss}
+              max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)}
+            />
           </div>
         </section>
 
@@ -173,17 +242,50 @@ function MetricCard({
   );
 }
 
-function BarRow({ label, max, value }: { label: string; max: number; value: number }) {
+function BarRow({
+  kind,
+  label,
+  max,
+  value,
+}: {
+  kind: "profit" | "loss";
+  label: string;
+  max: number;
+  value: number;
+}) {
   const width = Math.min(100, (Math.abs(value) / max) * 100);
   return (
-    <div className="stats-bar-row">
-      <span>{label}</span>
-      <div>
-        <i className={value >= 0 ? "positive-bg" : "negative-bg"} style={{ width: `${width}%` }} />
+    <article className={`stats-bar-card stats-bar-card--${kind}`}>
+      <div className="stats-bar-card-head">
+        <span>{label}</span>
+        <strong className={kind === "profit" ? "positive" : "negative"}>{formatNumber(value)}</strong>
       </div>
-      <strong className={value >= 0 ? "positive" : "negative"}>{formatNumber(value)}</strong>
-    </div>
+      <div className="stats-bar-track" aria-hidden="true">
+        <i className={kind === "profit" ? "positive-bg" : "negative-bg"} style={{ width: `${width}%` }} />
+      </div>
+    </article>
   );
+}
+
+function computeMaxDrawdownRate(startingCash: number, curve: number[]) {
+  if (!(startingCash > 0) || !curve.length) return 0;
+  let peak = startingCash;
+  let maxDrawdown = 0;
+  for (const cumulativePnl of curve) {
+    const equity = startingCash + cumulativePnl;
+    if (equity > peak) peak = equity;
+    if (peak > 0) {
+      const drawdown = ((equity - peak) / peak) * 100;
+      if (drawdown < maxDrawdown) maxDrawdown = drawdown;
+    }
+  }
+  return maxDrawdown;
+}
+
+function toneOf(value: number) {
+  if (value > 0) return "positive";
+  if (value < 0) return "negative";
+  return undefined;
 }
 
 function formatNumber(value: number) {
@@ -193,9 +295,22 @@ function formatNumber(value: number) {
   });
 }
 
+function formatSignedNumber(value: number) {
+  const abs = formatNumber(Math.abs(value));
+  if (value > 0) return `+${abs}`;
+  if (value < 0) return `-${abs}`;
+  return abs;
+}
+
+function formatSignedPercent(value: number) {
+  const abs = Math.abs(value).toFixed(2);
+  if (value > 0) return `+${abs}%`;
+  if (value < 0) return `-${abs}%`;
+  return `+${abs}%`;
+}
+
 function formatTagSource(item: StatsSummary["tag_stats"][number]) {
-  const stock =
-    [item.symbol_name, item.symbol_code].filter(Boolean).join(" ") || "未知标的";
+  const stock = [item.symbol_name, item.symbol_code].filter(Boolean).join(" ") || "未知标的";
   if (item.start_date && item.end_date) {
     return item.start_date === item.end_date
       ? `${stock} · ${item.start_date}`
