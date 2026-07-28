@@ -127,6 +127,10 @@ export function StatsPage() {
           <div className="section-header">
             <h2>盈亏概览</h2>
           </div>
+          <div className="stats-bars">
+            <BarRow label="平均盈利" value={summary.average_profit} max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)} />
+            <BarRow label="平均亏损" value={summary.average_loss} max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)} />
+          </div>
           <div className="stats-overview-grid">
             {overviewMetrics.map((item) => (
               <article className="stats-overview-item" key={item.label}>
@@ -139,20 +143,6 @@ export function StatsPage() {
                 <strong className={item.tone}>{item.value}</strong>
               </article>
             ))}
-          </div>
-          <div className="stats-bars">
-            <BarRow
-              kind="profit"
-              label="平均盈利"
-              value={summary.average_profit}
-              max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)}
-            />
-            <BarRow
-              kind="loss"
-              label="平均亏损"
-              value={summary.average_loss}
-              max={Math.max(Math.abs(summary.average_profit), Math.abs(summary.average_loss), 1)}
-            />
           </div>
         </section>
 
@@ -249,28 +239,16 @@ function MetricCard({
   );
 }
 
-function BarRow({
-  kind,
-  label,
-  max,
-  value,
-}: {
-  kind: "profit" | "loss";
-  label: string;
-  max: number;
-  value: number;
-}) {
+function BarRow({ label, max, value }: { label: string; max: number; value: number }) {
   const width = Math.min(100, (Math.abs(value) / max) * 100);
   return (
-    <article className={`stats-bar-card stats-bar-card--${kind}`}>
-      <div className="stats-bar-card-head">
-        <span>{label}</span>
-        <strong className={kind === "profit" ? "positive" : "negative"}>{formatNumber(value)}</strong>
+    <div className="stats-bar-row">
+      <span>{label}</span>
+      <div>
+        <i className={value >= 0 ? "positive-bg" : "negative-bg"} style={{ width: `${width}%` }} />
       </div>
-      <div className="stats-bar-track" aria-hidden="true">
-        <i className={kind === "profit" ? "positive-bg" : "negative-bg"} style={{ width: `${width}%` }} />
-      </div>
-    </article>
+      <strong className={value >= 0 ? "positive" : "negative"}>{formatNumber(value)}</strong>
+    </div>
   );
 }
 
