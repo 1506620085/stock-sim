@@ -1842,20 +1842,27 @@ textarea {
   min-height: 132px;
 }
 
-.metric-card svg {
+.metric-card-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-card-label svg {
+  flex: 0 0 auto;
   color: var(--accent);
 }
 
-.metric-card span,
+.metric-card-label span,
 .metric-card em {
-  display: block;
   color: var(--muted);
   font-size: 12px;
   font-style: normal;
 }
 
-.metric-card span {
-  margin-top: 12px;
+.metric-card-label span {
+  margin: 0;
+  line-height: 1.2;
 }
 
 .metric-card strong {
@@ -1865,6 +1872,7 @@ textarea {
 }
 
 .metric-card em {
+  display: block;
   margin-top: 8px;
 }
 

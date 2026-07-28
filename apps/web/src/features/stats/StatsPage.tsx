@@ -195,8 +195,10 @@ export function StatsPage() {
 function MetricCard({ icon: Icon, label, meta, value }: { icon: typeof BarChart3; label: string; meta?: string; value: string }) {
   return (
     <article className="panel metric-card">
-      <Icon size={18} />
-      <span>{label}</span>
+      <div className="metric-card-label">
+        <Icon size={18} />
+        <span>{label}</span>
+      </div>
       <strong>{value}</strong>
       {meta ? <em>{meta}</em> : null}
     </article>
