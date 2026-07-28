@@ -2868,6 +2868,25 @@ textarea {
   font-size: 12px;
 }
 
+.stats-overview-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.stats-overview-label .field-help-tip {
+  color: var(--muted);
+}
+
+.stats-overview-label .field-help-tip svg {
+  color: inherit;
+}
+
+.stats-overview-label .tooltip-bubble {
+  color: #ffffff;
+}
+
 .stats-overview-item strong {
   font-size: 20px;
   font-variant-numeric: tabular-nums;

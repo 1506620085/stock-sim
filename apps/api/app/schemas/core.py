@@ -276,7 +276,8 @@ class StatsSummaryRead(SQLModel):
     win_count: int = 0
     max_profit_rate: float = 0
     max_loss_rate: float = 0
-    closed_pnl_curve: list[float] = Field(default_factory=list)
+    # 持仓期盯市权益偏移曲线（现金从 0 起）；前端加初始资产后算最大回撤
+    mtm_equity_curve: list[float] = Field(default_factory=list)
 
 
 class DataQualityRead(SQLModel):

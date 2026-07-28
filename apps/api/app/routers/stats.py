@@ -1,20 +1,31 @@
 from collections import Counter, defaultdict
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends, Query
+from sqlmodel import Session, col, select
 
 from app.core.database import get_session
-from app.models import Instrument, JournalEntry, ReplaySession, Trade, TradeReview
+from app.models import Instrument, JournalEntry, KlineDaily, ReplaySession, Trade, TradeReview
 from app.schemas import StatsSummaryRead
-from app.services.replay.pnl import calculate_closed_trade_details, calculate_fifo_position
+from app.services.replay.pnl import (
+    calculate_closed_trade_details,
+    calculate_fifo_position,
+    calculate_mtm_equity_curve,
+)
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
+MARK_BASIS_OPTIONS = frozenset({"high", "low", "open", "close", "mid"})
+
 
 @router.get("/summary", response_model=StatsSummaryRead)
-def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRead:
+def get_stats_summary(
+    session: Session = Depends(get_session),
+    mark_basis: str = Query(default="low", description="持仓盯市估值口径，默认与卖出成交价一致用最低价"),
+) -> StatsSummaryRead:
+    basis = mark_basis if mark_basis in MARK_BASIS_OPTIONS else "low"
     replay_sessions = list(session.exec(select(ReplaySession).order_by(ReplaySession.updated_at.desc())).all())
     trades = list(session.exec(select(Trade).order_by(Trade.trade_date, Trade.id)).all())
     reviews = list(session.exec(select(TradeReview).order_by(TradeReview.created_at.desc())).all())
@@ -49,17 +60,20 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
     max_profit_rate = max(profit_rates) if profit_rates else Decimal("0")
     max_loss_rate = min(loss_rates) if loss_rates else Decimal("0")
 
-    cumulative = Decimal("0")
-    closed_pnl_curve: list[float] = []
-    for item in closed_details:
-        cumulative += item.pnl
-        closed_pnl_curve.append(float(cumulative))
-
     trade_day_span = 0
+    first_day: date | None = None
+    last_day: date | None = None
     if trades:
         first_day = min(trade.trade_date for trade in trades)
         last_day = max(trade.trade_date for trade in trades)
+        for trade in trades:
+            replay_session = sessions_by_id.get(trade.session_id)
+            if replay_session and replay_session.current_date > last_day:
+                last_day = replay_session.current_date
         trade_day_span = max(1, (last_day - first_day).days + 1)
+
+    bars_by_key = load_bars_for_mtm(session, trades, sessions_by_id, first_day, last_day)
+    mtm_equity_curve = calculate_mtm_equity_curve(trades, sessions_by_id, bars_by_key, basis)
 
     journal_emotions = [item.emotion_score for item in journal_entries if item.emotion_score is not None]
     journal_tag_counter: Counter[str] = Counter()
@@ -105,8 +119,47 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
         win_count=len(profitable_closes),
         max_profit_rate=float(max_profit_rate),
         max_loss_rate=float(max_loss_rate),
-        closed_pnl_curve=closed_pnl_curve,
+        mtm_equity_curve=mtm_equity_curve,
     )
+
+
+def load_bars_for_mtm(
+    session: Session,
+    trades: list[Trade],
+    sessions_by_id: dict[int, ReplaySession],
+    first_day: date | None,
+    last_day: date | None,
+) -> dict[tuple[int, str], dict[date, tuple[Decimal, Decimal, Decimal, Decimal]]]:
+    if not trades or first_day is None or last_day is None:
+        return {}
+
+    instrument_ids = {trade.instrument_id for trade in trades}
+    adjust_types = {
+        sessions_by_id[trade.session_id].adjust_type
+        for trade in trades
+        if trade.session_id in sessions_by_id
+    } or {"qfq"}
+
+    rows = list(
+        session.exec(
+            select(KlineDaily)
+            .where(col(KlineDaily.instrument_id).in_(instrument_ids))
+            .where(col(KlineDaily.adjust_type).in_(adjust_types))
+            .where(KlineDaily.trade_date >= first_day)
+            .where(KlineDaily.trade_date <= last_day)
+            .order_by(KlineDaily.trade_date, KlineDaily.source_updated_at)
+        ).all()
+    )
+
+    bars_by_key: dict[tuple[int, str], dict[date, tuple[Decimal, Decimal, Decimal, Decimal]]] = defaultdict(dict)
+    for row in rows:
+        bars_by_key[(row.instrument_id, row.adjust_type)][row.trade_date] = (
+            Decimal(row.open),
+            Decimal(row.high),
+            Decimal(row.low),
+            Decimal(row.close),
+        )
+    return bars_by_key
 
 
 def average(values: list[Decimal]) -> Decimal:

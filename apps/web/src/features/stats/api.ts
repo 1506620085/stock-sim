@@ -42,9 +42,11 @@ export type StatsSummary = {
   win_count: number;
   max_profit_rate: number;
   max_loss_rate: number;
-  closed_pnl_curve: number[];
+  /** 持仓期盯市权益偏移（现金从 0）；前端加初始资产后算最大回撤 */
+  mtm_equity_curve: number[];
 };
 
-export async function loadStatsSummary(): Promise<StatsSummary> {
-  return apiJson(`${API_BASE}/api/stats/summary`);
+export async function loadStatsSummary(markBasis: string = "low"): Promise<StatsSummary> {
+  const params = new URLSearchParams({ mark_basis: markBasis });
+  return apiJson(`${API_BASE}/api/stats/summary?${params.toString()}`);
 }

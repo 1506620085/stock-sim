@@ -28,7 +28,7 @@ const emptySummary: StatsSummary = {
   win_count: 0,
   max_profit_rate: 0,
   max_loss_rate: 0,
-  closed_pnl_curve: [],
+  mtm_equity_curve: [],
 };
 
 export function StatsPage() {
@@ -37,7 +37,7 @@ export function StatsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    loadStatsSummary()
+    loadStatsSummary(preferences.replaySellPriceBasis)
       .then((data) => {
         if (!cancelled) setSummary(data);
       })
@@ -46,11 +46,12 @@ export function StatsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [preferences.replaySellPriceBasis]);
 
+  const capitalBase = preferences.startingCash + preferences.settledCashAdjustment;
   const totalPnl = summary.realized_pnl + preferences.settledCashAdjustment;
   const returnRate = preferences.startingCash > 0 ? (totalPnl / preferences.startingCash) * 100 : 0;
-  const maxDrawdownRate = computeMaxDrawdownRate(preferences.startingCash, summary.closed_pnl_curve);
+  const maxDrawdownRate = computeMaxDrawdownRate(capitalBase, summary.mtm_equity_curve);
 
   const overviewMetrics = [
     {
@@ -89,6 +90,7 @@ export function StatsPage() {
       label: "最大回撤",
       value: formatSignedPercent(maxDrawdownRate),
       tone: toneOf(maxDrawdownRate),
+      tip: "按持仓期间每日市值盯市计算：权益=可用资金+持仓市值（估值口径与设置中的卖出成交价一致），取相对峰值的最大跌幅。",
     },
   ];
 
@@ -128,7 +130,12 @@ export function StatsPage() {
           <div className="stats-overview-grid">
             {overviewMetrics.map((item) => (
               <article className="stats-overview-item" key={item.label}>
-                <span>{item.label}</span>
+                <div className="stats-overview-label">
+                  <span>{item.label}</span>
+                  {"tip" in item && item.tip ? (
+                    <FieldHelpTip aria-label={`${item.label}说明`} tip={item.tip} />
+                  ) : null}
+                </div>
                 <strong className={item.tone}>{item.value}</strong>
               </article>
             ))}
@@ -267,12 +274,13 @@ function BarRow({
   );
 }
 
-function computeMaxDrawdownRate(startingCash: number, curve: number[]) {
-  if (!(startingCash > 0) || !curve.length) return 0;
-  let peak = startingCash;
+function computeMaxDrawdownRate(capitalBase: number, mtmEquityCurve: number[]) {
+  // mtm 曲线为「现金从 0 + 持仓市值」的每日权益偏移；真实权益 = 初始资产基数 + 偏移
+  if (!(capitalBase > 0) || !mtmEquityCurve.length) return 0;
+  let peak = capitalBase;
   let maxDrawdown = 0;
-  for (const cumulativePnl of curve) {
-    const equity = startingCash + cumulativePnl;
+  for (const offset of mtmEquityCurve) {
+    const equity = capitalBase + offset;
     if (equity > peak) peak = equity;
     if (peak > 0) {
       const drawdown = ((equity - peak) / peak) * 100;
