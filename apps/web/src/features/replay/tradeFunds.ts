@@ -4,11 +4,15 @@ import type { TradeRecord } from "./types";
 export const DEFAULT_STARTING_CASH = 100_000;
 export const SHARES_PER_LOT = 100;
 
-export function calculateAvailableCash(trades: TradeRecord[], startingCash = DEFAULT_STARTING_CASH) {
+export function calculateAvailableCash(
+  trades: TradeRecord[],
+  startingCash = DEFAULT_STARTING_CASH,
+  settledCashAdjustment = 0,
+) {
   return trades.reduce((cash, trade) => {
     const gross = trade.price * trade.quantity;
     return trade.side === "buy" ? cash - gross - trade.fee : cash + gross - trade.fee;
-  }, startingCash);
+  }, startingCash + settledCashAdjustment);
 }
 
 /** 按标的 FIFO 计算未平仓持仓成本（含买入费用摊入） */
@@ -50,9 +54,13 @@ export function calculateOpenPositionBookCost(trades: TradeRecord[]) {
   return totalCost;
 }
 
-/** 现有资产：可用资金 + 持仓账面成本 */
-export function calculateAccountEquity(trades: TradeRecord[], startingCash = DEFAULT_STARTING_CASH) {
-  return calculateAvailableCash(trades, startingCash) + calculateOpenPositionBookCost(trades);
+/** 现有资产：可用资金 + 持仓账面成本（含已清除会话的结算资金调整） */
+export function calculateAccountEquity(
+  trades: TradeRecord[],
+  startingCash = DEFAULT_STARTING_CASH,
+  settledCashAdjustment = 0,
+) {
+  return calculateAvailableCash(trades, startingCash, settledCashAdjustment) + calculateOpenPositionBookCost(trades);
 }
 
 export function normalizeTradeQuantity(raw: number) {

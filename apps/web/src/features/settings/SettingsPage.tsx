@@ -65,8 +65,8 @@ export function SettingsPage() {
   const editingTemplateId = templateModal?.mode === "edit" ? templateModal.templateId : null;
   const templateGroups = groupFeeTemplatesByAssetType(feeTemplates);
   const currentAssets = useMemo(
-    () => calculateAccountEquity(accountTrades, preferences.startingCash),
-    [accountTrades, preferences.startingCash],
+    () => calculateAccountEquity(accountTrades, preferences.startingCash, preferences.settledCashAdjustment),
+    [accountTrades, preferences.settledCashAdjustment, preferences.startingCash],
   );
   const totalPnl = currentAssets - preferences.startingCash;
   const returnRate = preferences.startingCash > 0 ? (totalPnl / preferences.startingCash) * 100 : 0;
@@ -174,7 +174,13 @@ export function SettingsPage() {
         clearedTrades = result.clearedTrades;
         setAccountTrades([]);
       }
-      updatePreferences({ startingCash: resetStartingCash }, { silent: true });
+      updatePreferences(
+        {
+          startingCash: resetStartingCash,
+          ...(resetClearTrades ? { settledCashAdjustment: 0 } : {}),
+        },
+        { silent: true },
+      );
       setResetDialogOpen(false);
       if (resetClearTrades) {
         showSuccess(
@@ -203,8 +209,8 @@ export function SettingsPage() {
     setClearing(true);
     try {
       const result = await clearSessionTrades(clearSessionId, preferences.replaySellPriceBasis);
-      const nextCash = Number((preferences.startingCash + result.netCashDelta).toFixed(2));
-      updatePreferences({ startingCash: nextCash }, { silent: true });
+      const nextAdjustment = Number((preferences.settledCashAdjustment + result.netCashDelta).toFixed(2));
+      updatePreferences({ settledCashAdjustment: nextAdjustment }, { silent: true });
       const trades = await loadAllTrades();
       setAccountTrades(trades);
       setClearDialogOpen(false);
@@ -212,8 +218,9 @@ export function SettingsPage() {
         result.settledQuantity > 0 && result.settlePrice != null
           ? `已按 ${result.settleDate ?? "当前复盘日"} / ${replayPriceBasisLabel(preferences.replaySellPriceBasis)} 卖出 ${result.settledQuantity.toLocaleString("zh-CN")} 股（成交价 ${result.settlePrice.toFixed(2)}）。`
           : "当前无持仓，未产生结算卖出。";
+      const pnlHint = `平仓结算资金变动 ${formatCurrency(result.netCashDelta)} 已计入总盈亏，初始资产保持不变。`;
       showSuccess(
-        `已清除 ${result.clearedTrades} 条买卖记录、${result.clearedReviews} 条复盘记录。${settleHint}初始资产已按结算后资金变动调整为 ${formatCurrency(nextCash)}。`,
+        `已清除 ${result.clearedTrades} 条买卖记录、${result.clearedReviews} 条复盘记录。${settleHint}${pnlHint}`,
       );
     } catch {
       // apiFetch 已弹出错误提示
@@ -375,7 +382,7 @@ export function SettingsPage() {
             <Eraser size={18} />
           </div>
           <p className="settings-hint">
-            去除指定复盘会话中该股票的买卖记录与复盘记录。若仍有持仓，将按当前复盘日与「复盘成交价」中的卖出设置全部卖出后再清除。
+            去除指定复盘会话中该股票的买卖记录与复盘记录。若仍有持仓，将按当前复盘日与「复盘成交价」中的卖出设置全部卖出后再清除；初始资产不变，平仓盈亏计入总盈亏与收益率。
           </p>
           <div className="settings-grid">
             <label>
@@ -661,7 +668,7 @@ export function SettingsPage() {
           </p>
           <p>
             已购入的股票不会原样返还，将以当前复盘日（{clearSession?.currentDate ?? "-"}）按「复盘成交价」卖出设置（
-            {replayPriceBasisLabel(preferences.replaySellPriceBasis)}）结算后平仓；交易记录与区间复盘记录会一并删除。若需保存，请先导出记录。
+            {replayPriceBasisLabel(preferences.replaySellPriceBasis)}）结算后平仓；交易记录与区间复盘记录会一并删除。初始资产保持不变，总盈亏与收益率按本次平仓结算结果计算。若需保存明细，请先导出记录。
           </p>
           <p>此操作不可撤销，确定继续吗？</p>
         </div>

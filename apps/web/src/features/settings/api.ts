@@ -18,6 +18,11 @@ export type AppPreferences = {
   replaySellPriceBasis: ReplayPriceBasis;
   /** 模拟账户初始资产（元） */
   startingCash: number;
+  /**
+   * 已清除复盘会话的结算资金累计（元）。
+   * 清除记录前若有持仓会先平仓，净资金变动记入此项，不改动初始资产，以便总盈亏/收益率按平仓结果保留。
+   */
+  settledCashAdjustment: number;
 };
 
 export type FeeTemplate = {
@@ -59,6 +64,7 @@ export const defaultPreferences: AppPreferences = {
   replayBuyPriceBasis: "high",
   replaySellPriceBasis: "low",
   startingCash: DEFAULT_STARTING_CASH,
+  settledCashAdjustment: 0,
 };
 
 export const REPLAY_PRICE_BASIS_OPTIONS: { label: string; value: ReplayPriceBasis }[] = [
@@ -80,6 +86,12 @@ function normalizeReplayPriceBasis(value: unknown, fallback: ReplayPriceBasis): 
 function normalizeStartingCash(value: unknown): number {
   const amount = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(amount) || amount < 0) return DEFAULT_STARTING_CASH;
+  return amount;
+}
+
+function normalizeSettledCashAdjustment(value: unknown): number {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) return 0;
   return amount;
 }
 
@@ -120,6 +132,7 @@ export function loadPreferences(): AppPreferences {
       replayBuyPriceBasis: normalizeReplayPriceBasis(parsed.replayBuyPriceBasis, defaultPreferences.replayBuyPriceBasis),
       replaySellPriceBasis: normalizeReplayPriceBasis(parsed.replaySellPriceBasis, defaultPreferences.replaySellPriceBasis),
       startingCash: normalizeStartingCash(parsed.startingCash),
+      settledCashAdjustment: normalizeSettledCashAdjustment(parsed.settledCashAdjustment),
     };
   } catch {
     return defaultPreferences;
