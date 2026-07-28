@@ -52,7 +52,18 @@ export function StatsPage() {
         <MetricCard icon={ListChecks} label="复盘次数" value={summary.total_sessions.toLocaleString("zh-CN")} />
         <MetricCard icon={BarChart3} label="交易次数" value={summary.total_trades.toLocaleString("zh-CN")} meta={`买 ${summary.buy_count} / 卖 ${summary.sell_count}`} />
         <MetricCard icon={TrendingUp} label="胜率" value={`${summary.win_rate.toFixed(1)}%`} />
-        <MetricCard icon={AlertTriangle} label="盈亏比" value={summary.profit_loss_ratio ? summary.profit_loss_ratio.toFixed(2) : "-"} meta={`复盘总结 ${summary.review_count}`} />
+        <MetricCard
+          icon={AlertTriangle}
+          label="盈亏比"
+          value={summary.profit_loss_ratio ? summary.profit_loss_ratio.toFixed(2) : "-"}
+          meta={
+            summary.profit_loss_ratio
+              ? `复盘总结 ${summary.review_count}`
+              : summary.average_profit
+                ? "暂无亏损平仓样本"
+                : "需同时有盈利与亏损平仓"
+          }
+        />
         <MetricCard
           icon={NotebookPen}
           label="实盘笔记"

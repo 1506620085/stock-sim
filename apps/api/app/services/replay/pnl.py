@@ -46,3 +46,42 @@ def calculate_fifo_position(trades: list[Trade]) -> PnlSummary:
     cost = sum((lot["quantity"] * lot["unit_cost"] for lot in lots), Decimal("0"))
     avg_cost = cost / quantity if quantity > 0 else Decimal("0")
     return PnlSummary(quantity=quantity, cost=cost, avg_cost=avg_cost, realized=realized)
+
+
+def calculate_closed_trade_pnls(trades: list[Trade]) -> list[Decimal]:
+    """按 FIFO 返回每笔卖出的已实现盈亏（一笔卖出 = 一次平仓样本）。"""
+    lots: list[dict[str, Decimal]] = []
+    closed: list[Decimal] = []
+
+    for trade in sorted(trades, key=lambda item: (item.trade_date, item.id or 0, item.created_at)):
+        quantity = Decimal(trade.quantity)
+        price = Decimal(trade.price)
+        fee = Decimal(trade.fee)
+
+        if trade.side == "buy":
+            unit_cost = (price * quantity + fee) / quantity
+            lots.append({"quantity": quantity, "unit_cost": unit_cost})
+            continue
+
+        remaining = quantity
+        sell_proceeds = price * quantity - fee
+        consumed_cost = Decimal("0")
+        matched_total = Decimal("0")
+
+        for lot in lots:
+            if remaining <= 0:
+                break
+            if lot["quantity"] <= 0:
+                continue
+            matched = min(lot["quantity"], remaining)
+            consumed_cost += matched * lot["unit_cost"]
+            lot["quantity"] -= matched
+            remaining -= matched
+            matched_total += matched
+
+        # 无对应买入可匹配时不计入平仓样本
+        if matched_total <= 0:
+            continue
+        closed.append(sell_proceeds - consumed_cost)
+
+    return closed

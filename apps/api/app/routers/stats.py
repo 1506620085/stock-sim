@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from app.core.database import get_session
 from app.models import JournalEntry, ReplaySession, Trade, TradeReview
 from app.schemas import StatsSummaryRead
-from app.services.replay.pnl import calculate_fifo_position
+from app.services.replay.pnl import calculate_closed_trade_pnls, calculate_fifo_position
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -24,12 +24,17 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
     for trade in trades:
         trades_by_session[trade.session_id].append(trade)
 
+    # 已实现总额仍按会话汇总；胜率/盈亏比按每笔平仓（卖出）样本
     session_pnls = [calculate_fifo_position(items).realized for items in trades_by_session.values()]
     realized_pnl = sum(session_pnls, Decimal("0"))
-    profitable_sessions = [value for value in session_pnls if value > 0]
-    losing_sessions = [value for value in session_pnls if value < 0]
-    average_profit = average(profitable_sessions)
-    average_loss = average(losing_sessions)
+    closed_pnls: list[Decimal] = []
+    for items in trades_by_session.values():
+        closed_pnls.extend(calculate_closed_trade_pnls(items))
+
+    profitable_closes = [value for value in closed_pnls if value > 0]
+    losing_closes = [value for value in closed_pnls if value < 0]
+    average_profit = average(profitable_closes)
+    average_loss = average(losing_closes)
     journal_emotions = [item.emotion_score for item in journal_entries if item.emotion_score is not None]
     journal_tag_counter: Counter[str] = Counter()
     journal_rule_ref_count = 0
@@ -42,10 +47,11 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
         total_trades=len(trades),
         buy_count=sum(1 for trade in trades if trade.side == "buy"),
         sell_count=sum(1 for trade in trades if trade.side == "sell"),
-        win_rate=(len(profitable_sessions) / len(session_pnls) * 100) if session_pnls else 0,
+        win_rate=(len(profitable_closes) / len(closed_pnls) * 100) if closed_pnls else 0,
         realized_pnl=float(realized_pnl),
         average_profit=float(average_profit),
         average_loss=float(average_loss),
+        # 盈亏比 = |平均盈利 / 平均亏损|；缺少亏损样本时为 0，前端显示为 -
         profit_loss_ratio=float(abs(average_profit / average_loss)) if average_loss else 0,
         review_count=len(reviews),
         calendar=build_calendar(replay_sessions, trades_by_session),
