@@ -835,8 +835,11 @@ function TooltipWrap({
   placement?: "top" | "bottom";
 }) {
   return (
-    <span className={["tooltip-wrap", placement === "bottom" ? "tooltip-wrap--bottom" : ""].filter(Boolean).join(" ")} data-tooltip={tip}>
+    <span className={["tooltip-wrap", placement === "bottom" ? "tooltip-wrap--bottom" : ""].filter(Boolean).join(" ")}>
       {children}
+      <span aria-hidden="true" className="tooltip-bubble">
+        {tip}
+      </span>
     </span>
   );
 }

@@ -4194,6 +4194,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  overflow: visible;
 }
 
 .chart-toolbar h2,
@@ -4208,6 +4209,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
+  overflow: visible;
 }
 
 .day-controls-divider {
@@ -4495,12 +4497,12 @@ textarea {
   display: inline-flex;
 }
 
-.tooltip-wrap::after {
-  content: attr(data-tooltip);
+/* 真实节点渲染提示，避免 ::after + transform 导致文字与背景分层错位 */
+.tooltip-bubble {
   position: absolute;
-  bottom: calc(100% + 8px);
   left: 50%;
-  z-index: 20;
+  z-index: 40;
+  box-sizing: border-box;
   width: max-content;
   max-width: 220px;
   padding: 6px 10px;
@@ -4513,25 +4515,22 @@ textarea {
   white-space: normal;
   pointer-events: none;
   opacity: 0;
-  transform: translateX(-50%) translateY(4px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  visibility: hidden;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  bottom: calc(100% + 8px);
+  top: auto;
 }
 
-.tooltip-wrap:hover::after,
-.tooltip-wrap:focus-within::after {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.tooltip-wrap--bottom::after {
+.tooltip-wrap--bottom > .tooltip-bubble {
   top: calc(100% + 8px);
   bottom: auto;
-  transform: translateX(-50%) translateY(-4px);
 }
 
-.tooltip-wrap--bottom:hover::after,
-.tooltip-wrap--bottom:focus-within::after {
-  transform: translateX(-50%) translateY(0);
+.tooltip-wrap:hover > .tooltip-bubble,
+.tooltip-wrap:focus-within > .tooltip-bubble {
+  opacity: 1;
+  visibility: visible;
 }
 
 .field-label-with-tip {
@@ -4550,24 +4549,20 @@ textarea {
   color: var(--accent);
 }
 
-.field-help-tip::after {
+.field-help-tip > .tooltip-bubble {
   max-width: 240px;
   transition:
     opacity 0.15s ease 0.45s,
-    transform 0.15s ease 0.45s;
+    visibility 0.15s ease 0.45s;
 }
 
-.field-help-tip:not(:hover):not(:focus-within)::after {
+.field-help-tip:not(:hover):not(:focus-within) > .tooltip-bubble {
   transition-delay: 0s;
 }
 
 .field-help-tip--click {
   cursor: pointer;
   position: relative;
-}
-
-.field-help-tip--click::after {
-  content: none;
 }
 
 .field-help-tip-trigger {

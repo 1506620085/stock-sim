@@ -83,10 +83,12 @@ export function FieldHelpTip({
     <span
       aria-label={ariaLabel}
       className={["tooltip-wrap", "field-help-tip", className].filter(Boolean).join(" ")}
-      data-tooltip={tipText ?? ariaLabel}
       tabIndex={0}
     >
       <CircleHelp aria-hidden="true" size={size} />
+      <span aria-hidden="true" className="tooltip-bubble">
+        {tipText ?? ariaLabel}
+      </span>
     </span>
   );
 }
