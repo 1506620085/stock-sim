@@ -60,6 +60,8 @@ const mainIndicatorTooltipOffsetTop = 6;
 const mainIndicatorTooltipTitleMarginTop = 4;
 const mainIndicatorTooltipTitleSize = 12;
 const mainIndicatorTriggerInsetLeftPx = 4;
+/** 鼠标靠近平均成本线多少像素内显示标签 */
+const avgCostLabelHoverThresholdPx = 12;
 
 type TradeOverlaySpec = {
   markers: Array<{ trade: TradeRecord; dataIndex: number; anchorPrice: number }>;
@@ -85,6 +87,7 @@ const emptyTradeOverlayLayout: TradeOverlayLayout = {
 };
 
 export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainIndicatorChange, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], avgCost = null, painPoint, onHoveredBarIndexChange }: Props) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const switcherAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +97,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   const onHoveredBarIndexChangeRef = useRef(onHoveredBarIndexChange);
   const [legendOffsetLeft, setLegendOffsetLeft] = useState(mainIndicatorTriggerReservePx);
   const [activeTrade, setActiveTrade] = useState<TradeRecord | null>(null);
+  const [avgCostLabelVisible, setAvgCostLabelVisible] = useState(false);
 
   selectedDateRef.current = selectedDate;
   onHoveredBarIndexChangeRef.current = onHoveredBarIndexChange;
@@ -326,8 +330,50 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     onHoveredBarIndexChangeRef.current?.(null);
   }, [selectedDate, bars]);
 
+  useEffect(() => {
+    if (!tradeOverlayLayout.avgCost) {
+      setAvgCostLabelVisible(false);
+    }
+  }, [tradeOverlayLayout.avgCost]);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    const updateAvgCostLabelVisibility = (clientX: number, clientY: number) => {
+      const avg = tradeOverlayLayout.avgCost;
+      const pane = tradeOverlayLayout.pane;
+      if (!avg || !pane) {
+        setAvgCostLabelVisible(false);
+        return;
+      }
+      const rect = wrap.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const inPane =
+        x >= pane.left &&
+        x <= pane.left + pane.width &&
+        y >= pane.top &&
+        y <= pane.top + pane.height;
+      const nearLine = Math.abs(y - (pane.top + avg.y)) <= avgCostLabelHoverThresholdPx;
+      setAvgCostLabelVisible(inPane && nearLine);
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      updateAvgCostLabelVisibility(event.clientX, event.clientY);
+    };
+    const handleMouseLeave = () => setAvgCostLabelVisible(false);
+
+    wrap.addEventListener("mousemove", handleMouseMove);
+    wrap.addEventListener("mouseleave", handleMouseLeave);
+    return () => {
+      wrap.removeEventListener("mousemove", handleMouseMove);
+      wrap.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, [tradeOverlayLayout.avgCost, tradeOverlayLayout.pane]);
+
   return (
-    <div className="kline-chart-wrap">
+    <div className="kline-chart-wrap" ref={wrapRef}>
       <div
         className="main-indicator-switcher-anchor"
         ref={switcherAnchorRef}
@@ -366,7 +412,11 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
         {tradeOverlayLayout.avgCost ? (
           <>
             <div aria-hidden="true" className="avg-cost-line" style={{ top: `${tradeOverlayLayout.avgCost.y}px` }} />
-            <div className="avg-cost-label" style={{ top: `${tradeOverlayLayout.avgCost.y}px` }}>
+            <div
+              aria-hidden={!avgCostLabelVisible}
+              className={`avg-cost-label${avgCostLabelVisible ? " is-visible" : ""}`}
+              style={{ top: `${tradeOverlayLayout.avgCost.y}px` }}
+            >
               {tradeOverlayLayout.avgCost.label}
             </div>
           </>
