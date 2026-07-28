@@ -90,7 +90,7 @@ export function StatsPage() {
       label: "最大回撤",
       value: formatSignedPercent(maxDrawdownRate),
       tone: toneOf(maxDrawdownRate),
-      tip: "按持仓期间每日市值盯市计算：权益=可用资金+持仓市值（估值口径与设置中的卖出成交价一致），取相对峰值的最大跌幅。",
+      tip: "按持仓期间每日市值盯市的账户权益曲线计算：相对曲线上真实出现过的权益峰值，取最大跌幅。与 K 线区间%（相对买入成本的浮盈亏）不是同一指标。估值口径与设置中的卖出成交价一致。",
     },
   ];
 
@@ -276,8 +276,10 @@ function BarRow({
 
 function computeMaxDrawdownRate(capitalBase: number, mtmEquityCurve: number[]) {
   // mtm 曲线为「现金从 0 + 持仓市值」的每日权益偏移；真实权益 = 初始资产基数 + 偏移
+  // 峰值只取曲线上真实出现过的权益高点，不用「初始资产」作为虚构峰值
+  // （否则买入后按最低价盯市会立刻低于初始资产，回撤被系统性放大）
   if (!(capitalBase > 0) || !mtmEquityCurve.length) return 0;
-  let peak = capitalBase;
+  let peak = Number.NEGATIVE_INFINITY;
   let maxDrawdown = 0;
   for (const offset of mtmEquityCurve) {
     const equity = capitalBase + offset;
