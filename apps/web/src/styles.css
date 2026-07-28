@@ -5323,6 +5323,35 @@ textarea {
   white-space: pre-wrap;
 }
 
+.trade-note-popover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.trade-note-popover-item {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.trade-note-popover-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.trade-note-popover-item p {
+  margin: 0 0 4px;
+}
+
+.trade-note-popover-item div {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
 .kline-chart {
   display: block;
   width: 100%;
