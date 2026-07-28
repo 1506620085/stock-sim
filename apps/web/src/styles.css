@@ -2894,7 +2894,7 @@ textarea {
 
 .tag-stat-list article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 60px 100px;
+  grid-template-columns: minmax(0, 1fr) 100px;
   align-items: center;
   gap: 10px;
   border: 1px solid var(--line);
@@ -2903,11 +2903,30 @@ textarea {
   padding: 10px;
 }
 
+.tag-stat-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tag-stat-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tag-stat-list span,
 .calendar-list span,
 .recent-review-list span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.tag-stat-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tag-stat-list em {

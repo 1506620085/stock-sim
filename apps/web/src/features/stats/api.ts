@@ -12,7 +12,16 @@ export type StatsSummary = {
   profit_loss_ratio: number;
   review_count: number;
   calendar: Array<{ date: string; sessions: number; trades: number }>;
-  tag_stats: Array<{ tag: string; count: number; pnl: number }>;
+  tag_stats: Array<{
+    tag: string;
+    count: number;
+    pnl: number;
+    symbol_code?: string | null;
+    symbol_name?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    review_id?: number | null;
+  }>;
   recent_reviews: Array<{ id: number; title: string; note: string | null; tags: string[]; metrics_snapshot: Record<string, unknown>; created_at: string }>;
   journal_entry_count: number;
   journal_emotion_avg: number | null;

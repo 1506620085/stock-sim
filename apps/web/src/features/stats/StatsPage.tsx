@@ -87,10 +87,12 @@ export function StatsPage() {
           </div>
           <div className="tag-stat-list">
             {summary.tag_stats.length ? (
-              summary.tag_stats.map((item) => (
-                <article key={item.tag}>
-                  <strong>{item.tag}</strong>
-                  <span>{item.count} 次</span>
+              summary.tag_stats.map((item, index) => (
+                <article key={`${item.review_id ?? "tag"}-${item.tag}-${index}`}>
+                  <div className="tag-stat-main">
+                    <strong>{item.tag}</strong>
+                    <span>{formatTagSource(item)}</span>
+                  </div>
                   <em className={item.pnl >= 0 ? "positive" : "negative"}>{formatNumber(item.pnl)}</em>
                 </article>
               ))
@@ -189,4 +191,18 @@ function formatNumber(value: number) {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   });
+}
+
+function formatTagSource(item: StatsSummary["tag_stats"][number]) {
+  const stock =
+    [item.symbol_name, item.symbol_code].filter(Boolean).join(" ") || "未知标的";
+  if (item.start_date && item.end_date) {
+    return item.start_date === item.end_date
+      ? `${stock} · ${item.start_date}`
+      : `${stock} · ${item.start_date} ~ ${item.end_date}`;
+  }
+  if (item.start_date || item.end_date) {
+    return `${stock} · ${item.start_date ?? "?"} ~ ${item.end_date ?? "?"}`;
+  }
+  return `${stock} · 区间未知`;
 }

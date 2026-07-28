@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
 from app.core.database import get_session
-from app.models import JournalEntry, ReplaySession, Trade, TradeReview
+from app.models import Instrument, JournalEntry, ReplaySession, Trade, TradeReview
 from app.schemas import StatsSummaryRead
 from app.services.replay.pnl import calculate_closed_trade_pnls, calculate_fifo_position
 
@@ -18,11 +18,16 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
     replay_sessions = list(session.exec(select(ReplaySession).order_by(ReplaySession.updated_at.desc())).all())
     trades = list(session.exec(select(Trade).order_by(Trade.trade_date, Trade.id)).all())
     reviews = list(session.exec(select(TradeReview).order_by(TradeReview.created_at.desc())).all())
+    instruments = list(session.exec(select(Instrument)).all())
     journal_entries = list(session.exec(select(JournalEntry).order_by(JournalEntry.entry_date.desc(), JournalEntry.id.desc())).all())
 
     trades_by_session: dict[int, list[Trade]] = defaultdict(list)
     for trade in trades:
         trades_by_session[trade.session_id].append(trade)
+
+    sessions_by_id = {item.id: item for item in replay_sessions if item.id is not None}
+    trades_by_id = {item.id: item for item in trades if item.id is not None}
+    instruments_by_id = {item.id: item for item in instruments if item.id is not None}
 
     # 已实现总额仍按会话汇总；胜率/盈亏比按每笔平仓（卖出）样本
     session_pnls = [calculate_fifo_position(items).realized for items in trades_by_session.values()]
@@ -55,7 +60,7 @@ def get_stats_summary(session: Session = Depends(get_session)) -> StatsSummaryRe
         profit_loss_ratio=float(abs(average_profit / average_loss)) if average_loss else 0,
         review_count=len(reviews),
         calendar=build_calendar(replay_sessions, trades_by_session),
-        tag_stats=build_tag_stats(reviews),
+        tag_stats=build_tag_stats(reviews, sessions_by_id, trades_by_session, trades_by_id, instruments_by_id),
         recent_reviews=reviews[:5],
         journal_entry_count=len(journal_entries),
         journal_emotion_avg=(sum(journal_emotions) / len(journal_emotions)) if journal_emotions else None,
@@ -93,19 +98,68 @@ def build_calendar(replay_sessions: list[ReplaySession], trades_by_session: dict
     return sorted(calendar.values(), key=lambda item: item["date"], reverse=True)[:30]
 
 
-def build_tag_stats(reviews: list[TradeReview]) -> list[dict[str, Any]]:
-    stats: dict[str, dict[str, Any]] = {}
+def build_tag_stats(
+    reviews: list[TradeReview],
+    sessions_by_id: dict[int, ReplaySession],
+    trades_by_session: dict[int, list[Trade]],
+    trades_by_id: dict[int, Trade],
+    instruments_by_id: dict[int, Instrument],
+) -> list[dict[str, Any]]:
+    """错因标签展开为每次打标记录，附带股票与复盘区间。"""
+    items: list[dict[str, Any]] = []
     for review in reviews:
-        pnl = parse_decimal_metric(review.metrics_snapshot, "pnl")
-        for tag in review.tags or []:
-            entry = stats.setdefault(tag, {"tag": tag, "count": 0, "pnl": Decimal("0")})
-            entry["count"] += 1
-            entry["pnl"] += pnl
+        tags = [tag for tag in (review.tags or []) if tag]
+        if not tags:
+            continue
 
-    return [
-        {"tag": item["tag"], "count": item["count"], "pnl": float(item["pnl"])}
-        for item in sorted(stats.values(), key=lambda value: (value["pnl"], -value["count"]))
-    ][:12]
+        replay_session = sessions_by_id.get(review.session_id)
+        instrument = instruments_by_id.get(replay_session.instrument_id) if replay_session else None
+        session_trades = sorted(
+            trades_by_session.get(review.session_id, []),
+            key=lambda item: (item.trade_date, item.id or 0),
+        )
+        start_trade = trades_by_id.get(review.start_trade_id) if review.start_trade_id else None
+        end_trade = trades_by_id.get(review.end_trade_id) if review.end_trade_id else None
+        if start_trade is None and session_trades:
+            start_trade = session_trades[0]
+        if end_trade is None and session_trades:
+            end_trade = session_trades[-1]
+
+        start_date = start_trade.trade_date.isoformat() if start_trade is not None else None
+        end_date = end_trade.trade_date.isoformat() if end_trade is not None else None
+
+        snapshot = review.metrics_snapshot if isinstance(review.metrics_snapshot, dict) else {}
+        if not start_date:
+            start_date = coerce_snapshot_date(snapshot.get("startDate"))
+        if not end_date:
+            end_date = coerce_snapshot_date(snapshot.get("endDate"))
+
+        pnl = float(parse_decimal_metric(snapshot, "pnl"))
+        symbol_code = instrument.code if instrument else None
+        symbol_name = instrument.name if instrument else None
+
+        for tag in tags:
+            items.append(
+                {
+                    "tag": tag,
+                    "count": 1,
+                    "pnl": pnl,
+                    "symbol_code": symbol_code,
+                    "symbol_name": symbol_name,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "review_id": review.id,
+                }
+            )
+
+    return sorted(items, key=lambda value: (value["pnl"], value["tag"]))[:24]
+
+
+def coerce_snapshot_date(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def parse_decimal_metric(metrics: dict[str, Any], key: str) -> Decimal:
