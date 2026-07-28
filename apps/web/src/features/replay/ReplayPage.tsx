@@ -383,7 +383,10 @@ export function ReplayPage() {
   const activeDataSource = activeInstrument?.source ?? (activeInstrument?.id ? "database" : "-");
   const configuredDataSource = preferences.dataSource === "akshare" ? "AKShare" : "Tushare Pro";
 
-  const position = useMemo(() => calculatePosition(replayTrades, selectedBar, replayBars), [replayTrades, selectedBar, replayBars]);
+  const position = useMemo(
+    () => calculatePosition(replayTrades, selectedBar, replayBars, sellPriceBasis),
+    [replayBars, replayTrades, selectedBar, sellPriceBasis],
+  );
   const availableCash = useMemo(
     () => calculateAvailableCash(replayTrades, preferences.startingCash, preferences.settledCashAdjustment),
     [preferences.settledCashAdjustment, preferences.startingCash, replayTrades],
@@ -607,6 +610,7 @@ export function ReplayPage() {
         <TradeReviewPanel
           bars={bars}
           reviews={tradeReviews}
+          sellPriceBasis={sellPriceBasis}
           sessionId={replaySession?.id ?? null}
           trades={activeTrades}
           onCreate={(review) => setTradeReviews((items) => [review, ...items])}
@@ -799,7 +803,7 @@ export function ReplayPage() {
           onSideChange={setTradeSide}
           onSubmit={submitTrade}
         />
-        <PnlPanel position={position} />
+        <PnlPanel position={position} sellPriceBasis={sellPriceBasis} />
       <AppConfirmDialog
         danger
         confirmLabel={excelBusy ? "导入中…" : "确认导入"}
@@ -1003,8 +1007,15 @@ function TradePanel({
   );
 }
 
-function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition> }) {
+function PnlPanel({
+  position,
+  sellPriceBasis,
+}: {
+  position: ReturnType<typeof calculatePosition>;
+  sellPriceBasis: ReplayPriceBasis;
+}) {
   const pressurePercent = Math.min(Math.max(position.pressurePercent, 0), 100);
+  const markLabel = replayPriceBasisLabel(sellPriceBasis);
 
   return (
     <section className="panel">
@@ -1012,6 +1023,7 @@ function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition>
         <h2>盈亏与压力</h2>
         <span className={position.total >= 0 ? "positive" : "negative"}>{formatNumber(position.total)}</span>
       </div>
+      <p className="pnl-basis-hint">浮盈亏与压力按卖出成交价「{markLabel}」估值</p>
       <div className="stat-grid">
         <article>
           <span>持仓</span>
@@ -1030,11 +1042,7 @@ function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition>
           <strong className={position.floating >= 0 ? "positive" : "negative"}>{formatNumber(position.floating)}</strong>
         </article>
         <article>
-          <span>当前低点浮亏</span>
-          <strong className={position.floatingLow >= 0 ? "positive" : "negative"}>{formatNumber(position.floatingLow)}</strong>
-        </article>
-        <article>
-          <span>买入后最大浮亏</span>
+          <span>持仓期最大浮亏</span>
           <strong className={position.maxFloatingLoss >= 0 ? "positive" : "negative"}>{formatNumber(position.maxFloatingLoss)}</strong>
         </article>
       </div>
@@ -1047,11 +1055,11 @@ function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition>
           <span style={{ width: `${pressurePercent}%` }} />
         </div>
         <p>
-          最差低点：{position.worstLowDate ?? "-"}
+          最差估值日：{position.worstLowDate ?? "-"}
           {position.worstLowPrice ? ` / ${formatNumber(position.worstLowPrice)}` : ""}
         </p>
       </div>
-      <div className="pain-curve" aria-label="持仓期间每日低点盈亏曲线">
+      <div className="pain-curve" aria-label={`持仓期间每日按${markLabel}估值的盈亏曲线`}>
         {position.lowPnlCurve.length ? (
           position.lowPnlCurve.map((point) => (
             <span
@@ -1062,10 +1070,9 @@ function PnlPanel({ position }: { position: ReturnType<typeof calculatePosition>
             />
           ))
         ) : (
-          <em>买入后会显示每日低点压力曲线</em>
+          <em>买入后会显示每日估值压力曲线</em>
         )}
       </div>
-
     </section>
   );
 }
@@ -1220,12 +1227,14 @@ function TradeHistory({ trades }: { trades: TradeRecord[] }) {
 function TradeReviewPanel({
   bars,
   reviews,
+  sellPriceBasis,
   sessionId,
   trades,
   onCreate,
 }: {
   bars: KLineBar[];
   reviews: TradeReview[];
+  sellPriceBasis: ReplayPriceBasis;
   sessionId: number | null;
   trades: TradeRecord[];
   onCreate: (review: TradeReview) => void;
@@ -1238,8 +1247,15 @@ function TradeReviewPanel({
   const [note, setNote] = useState("");
 
   const metrics = useMemo(
-    () => calculateReviewMetrics(selectableTrades, bars, parseNullableId(startTradeId), parseNullableId(endTradeId)),
-    [selectableTrades, bars, startTradeId, endTradeId],
+    () =>
+      calculateReviewMetrics(
+        selectableTrades,
+        bars,
+        parseNullableId(startTradeId),
+        parseNullableId(endTradeId),
+        sellPriceBasis,
+      ),
+    [selectableTrades, bars, sellPriceBasis, startTradeId, endTradeId],
   );
 
   async function submitReview(event: FormEvent<HTMLFormElement>) {
@@ -1359,7 +1375,12 @@ function TradeReviewPanel({
   );
 }
 
-function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar, replayBars: KLineBar[] = []) {
+function calculatePosition(
+  trades: TradeRecord[],
+  currentBar?: KLineBar,
+  replayBars: KLineBar[] = [],
+  sellPriceBasis: ReplayPriceBasis = "low",
+) {
   const lots: Array<{ quantity: number; unitCost: number; buyIndex: number }> = [];
   let realized = 0;
 
@@ -1389,14 +1410,25 @@ function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar, replayB
   const quantity = lots.reduce((sum, lot) => sum + lot.quantity, 0);
   const cost = lots.reduce((sum, lot) => sum + lot.quantity * lot.unitCost, 0);
   const avgCost = quantity > 0 ? cost / quantity : 0;
-  const floating = currentBar && quantity > 0 ? (currentBar.close - avgCost) * quantity : 0;
-  const floatingLow = currentBar && quantity > 0 ? (currentBar.low - avgCost) * quantity : 0;
+  const markPrice = currentBar ? resolveBarPrice(currentBar, sellPriceBasis) : 0;
+  const floating = currentBar && quantity > 0 ? (markPrice - avgCost) * quantity : 0;
+  // 压力口径：按卖出成交价规则对持仓期逐日估值，取最差一日
   const openLots = lots.filter((lot) => lot.quantity > 0);
   const firstOpenIndex = openLots.length ? Math.min(...openLots.map((lot) => lot.buyIndex)) : -1;
   const holdingBars = firstOpenIndex >= 0 ? replayBars.slice(firstOpenIndex) : [];
-  const worstBar = holdingBars.reduce<KLineBar | undefined>((worst, bar) => (!worst || bar.low < worst.low ? bar : worst), undefined);
-  const maxFloatingLoss = worstBar && quantity > 0 ? (worstBar.low - avgCost) * quantity : 0;
-  const lowPnlCurve = buildLowPnlCurve(holdingBars, avgCost, quantity);
+  const markedHolding = holdingBars.map((bar) => ({
+    bar,
+    mark: resolveBarPrice(bar, sellPriceBasis),
+  }));
+  const currentMarkRow = markedHolding.find((item) => item.bar.date === currentBar?.date) ?? markedHolding[markedHolding.length - 1];
+  const floatingLow =
+    currentMarkRow && quantity > 0 ? (currentMarkRow.mark - avgCost) * quantity : floating;
+  const worstRow = markedHolding.reduce<typeof markedHolding[number] | undefined>(
+    (worst, item) => (!worst || item.mark < worst.mark ? item : worst),
+    undefined,
+  );
+  const maxFloatingLoss = worstRow && quantity > 0 ? (worstRow.mark - avgCost) * quantity : 0;
+  const lowPnlCurve = buildMarkPnlCurve(holdingBars, avgCost, quantity, sellPriceBasis);
   const pressurePercent = cost > 0 && maxFloatingLoss < 0 ? Math.min(100, (Math.abs(maxFloatingLoss) / cost) * 100) : 0;
 
   return {
@@ -1407,15 +1439,22 @@ function calculatePosition(trades: TradeRecord[], currentBar?: KLineBar, replayB
     floating,
     floatingLow,
     maxFloatingLoss,
-    worstLowDate: worstBar?.date,
-    worstLowPrice: worstBar?.low,
+    worstLowDate: worstRow?.bar.date,
+    worstLowPrice: worstRow?.mark,
     pressurePercent,
     lowPnlCurve,
-    total: realized + floatingLow,
+    sellPriceBasis,
+    total: realized + floating,
   };
 }
 
-function calculateReviewMetrics(trades: TradeRecord[], bars: KLineBar[], startTradeId: number | null, endTradeId: number | null) {
+function calculateReviewMetrics(
+  trades: TradeRecord[],
+  bars: KLineBar[],
+  startTradeId: number | null,
+  endTradeId: number | null,
+  sellPriceBasis: ReplayPriceBasis = "low",
+) {
   const sortedTrades = [...trades].sort((a, b) => a.index - b.index);
   if (!sortedTrades.length) {
     return { invested: 0, proceeds: 0, fee: 0, pnl: 0, pnlRate: 0, maxFloatingLoss: 0, startDate: null, endDate: null };
@@ -1438,7 +1477,10 @@ function calculateReviewMetrics(trades: TradeRecord[], bars: KLineBar[], startTr
     .reduce((sum, trade) => sum + trade.price * trade.quantity + trade.fee, 0);
   const buyQuantity = selectedTrades.filter((trade) => trade.side === "buy").reduce((sum, trade) => sum + trade.quantity, 0);
   const avgCost = buyQuantity > 0 ? avgBuyCost / buyQuantity : 0;
-  const maxFloatingLoss = avgCost > 0 && buyQuantity > 0 ? Math.min(0, ...rangeBars.map((bar) => (bar.low - avgCost) * buyQuantity)) : 0;
+  const maxFloatingLoss =
+    avgCost > 0 && buyQuantity > 0
+      ? Math.min(0, ...rangeBars.map((bar) => (resolveBarPrice(bar, sellPriceBasis) - avgCost) * buyQuantity))
+      : 0;
 
   return {
     invested,
@@ -1461,12 +1503,12 @@ function formatPercent(value: number) {
   return `${prefix}${value.toFixed(2)}%`;
 }
 
-function buildLowPnlCurve(bars: KLineBar[], avgCost: number, quantity: number) {
+function buildMarkPnlCurve(bars: KLineBar[], avgCost: number, quantity: number, sellPriceBasis: ReplayPriceBasis) {
   if (!bars.length || quantity <= 0 || avgCost <= 0) return [];
 
   const points = bars.map((bar) => ({
     date: bar.date,
-    pnl: (bar.low - avgCost) * quantity,
+    pnl: (resolveBarPrice(bar, sellPriceBasis) - avgCost) * quantity,
   }));
   const maxAbs = Math.max(...points.map((point) => Math.abs(point.pnl)), 1);
   return points.slice(-48).map((point) => ({
