@@ -1848,9 +1848,19 @@ textarea {
   gap: 8px;
 }
 
+.metric-card-label .field-help-tip {
+  flex: 0 0 auto;
+  margin-left: -2px;
+  color: var(--muted);
+}
+
 .metric-card-label svg {
   flex: 0 0 auto;
   color: var(--accent);
+}
+
+.metric-card-label .field-help-tip svg {
+  color: inherit;
 }
 
 .metric-card-label span,
@@ -1858,6 +1868,10 @@ textarea {
   color: var(--muted);
   font-size: 12px;
   font-style: normal;
+}
+
+.metric-card-label .tooltip-bubble {
+  color: #ffffff;
 }
 
 .metric-card-label span {

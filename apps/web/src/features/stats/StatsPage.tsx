@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, BarChart3, CalendarDays, ListChecks, NotebookPen, TrendingUp } from "lucide-react";
+import { FieldHelpTip } from "../../components/FieldHelpTip";
 import { loadStatsSummary, type StatsSummary } from "./api";
 
 const emptySummary: StatsSummary = {
@@ -55,6 +56,8 @@ export function StatsPage() {
         <MetricCard
           icon={AlertTriangle}
           label="盈亏比"
+          tip="盈亏比 = |平均盈利 ÷ 平均亏损|。按每笔平仓（卖出）的已实现盈亏统计；需同时有盈利与亏损平仓样本，否则显示为 -。"
+          tipAriaLabel="盈亏比说明"
           value={summary.profit_loss_ratio ? summary.profit_loss_ratio.toFixed(2) : "-"}
           meta={
             summary.profit_loss_ratio
@@ -192,12 +195,27 @@ export function StatsPage() {
   );
 }
 
-function MetricCard({ icon: Icon, label, meta, value }: { icon: typeof BarChart3; label: string; meta?: string; value: string }) {
+function MetricCard({
+  icon: Icon,
+  label,
+  meta,
+  tip,
+  tipAriaLabel,
+  value,
+}: {
+  icon: typeof BarChart3;
+  label: string;
+  meta?: string;
+  tip?: string;
+  tipAriaLabel?: string;
+  value: string;
+}) {
   return (
     <article className="panel metric-card">
       <div className="metric-card-label">
         <Icon size={18} />
         <span>{label}</span>
+        {tip ? <FieldHelpTip aria-label={tipAriaLabel ?? `${label}说明`} tip={tip} /> : null}
       </div>
       <strong>{value}</strong>
       {meta ? <em>{meta}</em> : null}
