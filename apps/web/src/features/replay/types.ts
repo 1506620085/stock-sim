@@ -30,6 +30,8 @@ export type ChartDisplaySettings = {
   showVolume: boolean;
   showGrid: boolean;
   showCrosshair: boolean;
+  /** 是否显示平均持仓成本线 */
+  showAvgCostLine: boolean;
 };
 
 export type IndicatorSettings = {

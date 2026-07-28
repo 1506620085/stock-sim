@@ -130,6 +130,11 @@ export function ChartToolbar({
                 label="十字光标"
                 onChange={(checked) => onDisplaySettingsChange("showCrosshair", checked)}
               />
+              <SettingToggle
+                checked={displaySettings.showAvgCostLine}
+                label="成本线"
+                onChange={(checked) => onDisplaySettingsChange("showAvgCostLine", checked)}
+              />
 
               <div className="chart-settings-divider" />
 

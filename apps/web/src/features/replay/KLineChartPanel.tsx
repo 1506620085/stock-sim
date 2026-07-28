@@ -116,7 +116,16 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   );
   const effectiveSubCharts = useMemo(() => resolveEffectiveSubCharts(chartDisplay, indicators), [chartDisplay, indicators]);
   const chartHeight = useMemo(() => getChartHeight(effectiveSubCharts), [effectiveSubCharts]);
-  const tradeOverlaySpec = useMemo(() => buildTradeOverlaySpec(bars, trades, avgCost, painPoint), [avgCost, bars, trades, painPoint]);
+  const tradeOverlaySpec = useMemo(
+    () =>
+      buildTradeOverlaySpec(
+        bars,
+        trades,
+        chartDisplay.showAvgCostLine ? avgCost : null,
+        painPoint,
+      ),
+    [avgCost, bars, chartDisplay.showAvgCostLine, trades, painPoint],
+  );
   const tradeOverlaySpecRef = useRef(tradeOverlaySpec);
   const [tradeOverlayLayout, setTradeOverlayLayout] = useState<TradeOverlayLayout>(emptyTradeOverlayLayout);
 

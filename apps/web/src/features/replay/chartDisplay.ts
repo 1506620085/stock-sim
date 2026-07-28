@@ -5,6 +5,7 @@ export const defaultChartDisplaySettings: ChartDisplaySettings = {
   showVolume: true,
   showGrid: true,
   showCrosshair: true,
+  showAvgCostLine: true,
 };
 
 export type EffectiveSubCharts = Pick<IndicatorSettings, "showVolume" | "showBoll" | "showKdj" | "showMacd">;
