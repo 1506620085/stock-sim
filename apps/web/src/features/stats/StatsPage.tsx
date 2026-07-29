@@ -233,8 +233,10 @@ function MetricCard({
         <span>{label}</span>
         {tip ? <FieldHelpTip aria-label={tipAriaLabel ?? `${label}说明`} tip={tip} /> : null}
       </div>
-      <strong>{value}</strong>
-      {meta ? <em>{meta}</em> : null}
+      <div className="metric-card-value-row">
+        <strong>{value}</strong>
+        {meta ? <em>{meta}</em> : null}
+      </div>
     </article>
   );
 }

@@ -1907,16 +1907,24 @@ textarea {
   line-height: 1.2;
 }
 
-.metric-card strong {
-  display: block;
+.metric-card-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   margin-top: 6px;
+  min-width: 0;
+}
+
+.metric-card strong {
+  flex: 0 0 auto;
   font-size: 24px;
   line-height: 1.15;
 }
 
 .metric-card em {
-  display: block;
-  margin-top: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.3;
 }
 
 .stats-layout {
