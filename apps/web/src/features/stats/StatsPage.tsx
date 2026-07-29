@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, CalendarDays, ListChecks, NotebookPen, TrendingUp } from "lucide-react";
+import { AlertTriangle, BarChart3, ListChecks, NotebookPen, TrendingUp } from "lucide-react";
 import { FieldHelpTip } from "../../components/FieldHelpTip";
 import { loadPreferences } from "../settings/api";
 import { loadStatsSummary, type StatsSummary } from "./api";
@@ -146,7 +146,7 @@ export function StatsPage() {
           </div>
         </section>
 
-        <section className="panel stats-panel">
+        <section className="panel stats-panel stats-panel-tags">
           <div className="section-header">
             <h2>错因标签</h2>
             <span>{summary.tag_stats.length}</span>
@@ -164,25 +164,6 @@ export function StatsPage() {
               ))
             ) : (
               <p className="empty-copy">区间复盘添加标签后，这里会显示问题分布。</p>
-            )}
-          </div>
-        </section>
-
-        <section className="panel stats-panel">
-          <div className="section-header">
-            <h2>复盘日历</h2>
-            <CalendarDays size={18} />
-          </div>
-          <div className="calendar-list">
-            {summary.calendar.length ? (
-              summary.calendar.map((item) => (
-                <article key={item.date}>
-                  <strong>{item.date}</strong>
-                  <span>{item.sessions} 次复盘 / {item.trades} 笔交易</span>
-                </article>
-              ))
-            ) : (
-              <p className="empty-copy">开始创建复盘 session 后，这里会出现训练日历。</p>
             )}
           </div>
         </section>

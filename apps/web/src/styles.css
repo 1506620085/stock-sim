@@ -1937,6 +1937,11 @@ textarea {
   overflow: hidden;
 }
 
+.stats-panel-tags {
+  grid-column: 2;
+  grid-row: 1 / -1;
+}
+
 .stats-panel {
   display: flex;
   min-width: 0;
@@ -1953,14 +1958,12 @@ textarea {
 .stats-panel > .stats-bars,
 .stats-panel > .stats-overview-grid,
 .stats-panel > .tag-stat-list,
-.stats-panel > .calendar-list,
 .stats-panel > .recent-review-list,
 .stats-panel > .empty-copy {
   min-height: 0;
 }
 
 .stats-panel > .tag-stat-list,
-.stats-panel > .calendar-list,
 .stats-panel > .recent-review-list {
   flex: 1 1 auto;
   overflow: auto;
@@ -3018,6 +3021,11 @@ textarea {
     grid-template-columns: 1fr;
     grid-template-rows: none;
     overflow: auto;
+  }
+
+  .stats-panel-tags {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .stats-panel {
