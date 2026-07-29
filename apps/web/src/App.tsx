@@ -32,7 +32,7 @@ const pageMeta: Record<PageId, { eyebrow: string; title: string; badge: string }
   replay: { eyebrow: "Replay", title: "K 线复盘工作台", badge: "默认页面" },
   training: { eyebrow: "Training", title: "训练", badge: "规划中" },
   calculators: { eyebrow: "Tools", title: "交易计算器", badge: "工具箱" },
-  stats: { eyebrow: "Analytics", title: "训练统计", badge: "统计面板" },
+  stats: { eyebrow: "Trade Stats", title: "交易统计", badge: "统计面板" },
   notes: { eyebrow: "Journal", title: "交易笔记", badge: "实盘与规则" },
   settings: { eyebrow: "Preferences", title: "系统设置", badge: "设置面板" },
 };
