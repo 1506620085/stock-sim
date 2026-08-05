@@ -170,11 +170,11 @@ export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollap
                         <div className="tag-detail-occurrence-main">
                           <div className="tag-detail-occurrence-title">
                             <strong>{item.tag}</strong>
-                            <span className="tag-detail-occurrence-source">{formatTagSource(item)}</span>
+                            <span className="tag-detail-occurrence-time">
+                              发布 {formatTagDate(item.created_at || item.end_date || item.start_date)}
+                            </span>
                           </div>
-                          <span className="tag-detail-occurrence-time">
-                            发布 {formatTagDate(item.created_at || item.end_date || item.start_date)}
-                          </span>
+                          <span className="tag-detail-occurrence-source">{formatTagSource(item)}</span>
                         </div>
                         <em className={item.pnl >= 0 ? "positive" : "negative"}>{formatSigned(item.pnl)}</em>
                       </div>

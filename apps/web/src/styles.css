@@ -3375,18 +3375,20 @@ textarea {
   font-size: 13px;
 }
 
+.tag-detail-occurrence-time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .tag-detail-occurrence-source {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
   font-size: 12px;
-}
-
-.tag-detail-occurrence-time {
-  color: var(--muted);
-  font-size: 11px;
 }
 
 .tag-detail-occurrence-row > em {
