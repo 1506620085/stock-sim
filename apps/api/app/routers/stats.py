@@ -230,6 +230,8 @@ def build_tag_stats(
                     "end_date": end_date,
                     "review_id": review.id,
                     "created_at": review.created_at.isoformat() if review.created_at else None,
+                    "title": review.title or "",
+                    "note": review.note or "",
                 }
             )
 

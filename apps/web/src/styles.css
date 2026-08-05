@@ -3211,10 +3211,28 @@ textarea {
 }
 
 .tag-detail-occurrence-list li {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.tag-detail-occurrence-button {
+  display: block;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fbfdfc;
+  color: inherit;
+  cursor: pointer;
   padding: 10px;
+  text-align: left;
+}
+
+.tag-detail-occurrence-button:hover,
+.tag-detail-occurrence-button.is-active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
 }
 
 .tag-detail-occurrence-top {
@@ -3239,7 +3257,7 @@ textarea {
   font-weight: 700;
 }
 
-.tag-detail-occurrence-list span {
+.tag-detail-occurrence-button span {
   display: block;
   margin-top: 4px;
   color: var(--muted);
