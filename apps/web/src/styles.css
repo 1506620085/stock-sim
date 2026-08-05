@@ -3044,30 +3044,27 @@ textarea {
     flex-direction: column;
   }
 
-  .tag-detail-drawer {
-    position: relative;
-    right: auto;
-    top: auto;
-    bottom: auto;
-    width: auto;
+  .tag-panel-body.is-detail-open .tag-donut-section {
+    flex: 1 1 auto;
     max-width: none;
-    transform: none;
-    border-top: 1px solid var(--line);
-    border-left: 0;
+  }
+
+  .tag-detail-drawer {
+    flex: 0 0 0;
+    width: 0;
+    max-width: none;
     min-height: 0;
-    max-height: 0;
-    opacity: 0;
-    pointer-events: none;
-    transition:
-      max-height 280ms ease,
-      opacity 200ms ease;
+    border: 0;
+    box-shadow: none;
   }
 
   .tag-detail-drawer.is-open {
-    max-height: 52vh;
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
     min-height: 180px;
-    opacity: 1;
-    pointer-events: auto;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .tag-detail-handle {
@@ -3142,31 +3139,51 @@ textarea {
   min-width: 0;
   min-height: 0;
   padding: 0 8px 56px;
+  transition: max-width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tag-panel-body.is-detail-open .tag-donut-section {
+  flex: 1 1 50%;
+  max-width: 50%;
 }
 
 .tag-detail-drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 56px;
-  z-index: 1;
+  position: relative;
   display: flex;
-  width: 50%;
-  max-width: 50%;
+  flex: 0 0 0;
+  width: 0;
+  max-width: 0;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
-  pointer-events: none;
-  background: #ffffff;
-  border-left: 1px solid var(--line);
-  box-shadow: -6px 0 18px rgba(22, 36, 31, 0.04);
-  transform: translateX(calc(100% - 6px));
-  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  align-self: stretch;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transition:
+    flex-basis 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 200ms ease;
 }
 
 .tag-detail-drawer.is-open {
-  pointer-events: auto;
-  transform: translateX(0);
+  flex: 1 1 50%;
+  width: auto;
+  max-width: 50%;
+  background: #ffffff;
+  border-left: 1px solid var(--line);
+  box-shadow: -6px 0 18px rgba(22, 36, 31, 0.04);
+}
+
+.tag-detail-drawer:not(.is-open) .tag-detail-panel {
+  position: absolute;
+  inset: 0 auto 56px 0;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .tag-detail-handle {
@@ -3233,6 +3250,7 @@ textarea {
   flex-direction: column;
   overflow: hidden;
   background: #ffffff;
+  padding: 0 0 56px;
 }
 
 .tag-detail-panel-header {
