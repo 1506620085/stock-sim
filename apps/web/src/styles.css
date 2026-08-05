@@ -1979,8 +1979,8 @@ textarea {
 
 .stats-panel > .stats-overview-grid {
   flex: 1 1 auto;
-  overflow: auto;
-  margin-top: 10px;
+  overflow: hidden;
+  margin-top: 8px;
 }
 
 .stats-message {
@@ -2924,32 +2924,34 @@ textarea {
 .stats-bars {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .stats-overview-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-  align-content: start;
+  gap: 6px;
+  margin-top: 8px;
+  align-content: stretch;
 }
 
 .stats-overview-item {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #fbfdfc;
 }
 
 .stats-overview-item span {
   color: var(--muted);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .stats-overview-label {
@@ -2957,6 +2959,7 @@ textarea {
   align-items: center;
   gap: 4px;
   min-width: 0;
+  flex: 0 1 auto;
 }
 
 .stats-overview-label .field-help-tip {
@@ -2972,27 +2975,30 @@ textarea {
 }
 
 .stats-overview-item strong {
-  font-size: 20px;
+  flex: 0 0 auto;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: -0.02em;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .stats-bar-row {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) 110px;
+  grid-template-columns: 72px minmax(0, 1fr) 96px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stats-bar-row span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .stats-bar-row div {
   overflow: hidden;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: #edf1ee;
 }
@@ -3012,7 +3018,7 @@ textarea {
 }
 
 .stats-bar-row strong {
-  font-size: 14px;
+  font-size: 13px;
   text-align: right;
 }
 
