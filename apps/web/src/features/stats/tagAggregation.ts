@@ -97,3 +97,26 @@ export function formatTagSource(item: TagOccurrence): string {
   }
   return `${stock} · 区间未知`;
 }
+
+/** Flat occurrence list: optional tag filter, newest publish time first. */
+export function listTagOccurrences(items: TagOccurrence[], filterTag?: string | null): TagOccurrence[] {
+  const filtered = filterTag
+    ? items.filter((item) => item.tag.trim() === filterTag)
+    : items.filter((item) => item.tag.trim());
+
+  return [...filtered].sort((a, b) => compareDateDesc(pickOccurrenceDate(a), pickOccurrenceDate(b)));
+}
+
+export function fuzzyMatchTag(tag: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const target = tag.toLowerCase();
+  if (target.includes(q)) return true;
+  // simple subsequence fuzzy: all query chars appear in order
+  let i = 0;
+  for (const ch of target) {
+    if (ch === q[i]) i += 1;
+    if (i >= q.length) return true;
+  }
+  return false;
+}

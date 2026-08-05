@@ -3,9 +3,10 @@ import { AlertTriangle, BarChart3, ListChecks, NotebookPen, TrendingUp } from "l
 import { FieldHelpTip } from "../../components/FieldHelpTip";
 import { loadPreferences } from "../settings/api";
 import { loadStatsSummary, type StatsSummary } from "./api";
+import { TagDetailPanel } from "./TagDetailPanel";
 import { TagDonutChart } from "./TagDonutChart";
 import { TagPeekDrawer } from "./TagPeekDrawer";
-import { aggregateTagStats } from "./tagAggregation";
+import { aggregateTagStats, listTagOccurrences } from "./tagAggregation";
 
 const emptySummary: StatsSummary = {
   total_sessions: 0,
@@ -37,9 +38,20 @@ const emptySummary: StatsSummary = {
 export function StatsPage() {
   const [summary, setSummary] = useState<StatsSummary>(emptySummary);
   const [tagDrawerOpen, setTagDrawerOpen] = useState(false);
-  const [highlightTag, setHighlightTag] = useState<string | null>(null);
+  const [tagDetailOpen, setTagDetailOpen] = useState(true);
+  const [filterTag, setFilterTag] = useState<string | null>(null);
   const preferences = useMemo(() => loadPreferences(), []);
   const aggregatedTags = useMemo(() => aggregateTagStats(summary.tag_stats), [summary.tag_stats]);
+  const detailOccurrences = useMemo(
+    () => listTagOccurrences(summary.tag_stats, filterTag),
+    [summary.tag_stats, filterTag],
+  );
+
+  function selectTagFilter(tag: string) {
+    setFilterTag(tag);
+    setTagDetailOpen(true);
+    setTagDrawerOpen(false);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -157,21 +169,24 @@ export function StatsPage() {
             <h2>错因标签</h2>
             <span>{aggregatedTags.length}</span>
           </div>
-          <div className="tag-panel-body">
-            <div className="tag-donut-section">
-              <TagDonutChart
-                items={aggregatedTags}
-                onSelectTag={(tag) => {
-                  setHighlightTag(tag);
-                  setTagDrawerOpen(true);
-                }}
+          <div className={`tag-panel-body${tagDetailOpen ? " is-detail-open" : ""}`}>
+            <div className="tag-panel-main">
+              <div className="tag-donut-section">
+                <TagDonutChart items={aggregatedTags} onSelectTag={selectTagFilter} />
+              </div>
+              <TagDetailPanel
+                filterTag={filterTag}
+                items={detailOccurrences}
+                onClearFilter={() => setFilterTag(null)}
+                onCollapse={() => setTagDetailOpen(false)}
+                open={tagDetailOpen}
               />
             </div>
             <TagPeekDrawer
-              highlightTag={highlightTag}
+              activeTag={filterTag}
               items={aggregatedTags}
-              onHighlightConsumed={() => setHighlightTag(null)}
               onOpenChange={setTagDrawerOpen}
+              onSelectTag={selectTagFilter}
               open={tagDrawerOpen}
             />
           </div>
