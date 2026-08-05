@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { PanelRightClose, PanelRightOpen, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { TagOccurrence } from "./tagAggregation";
 import { formatTagDate, formatTagSource } from "./tagAggregation";
 
@@ -52,14 +52,14 @@ export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollap
   }
 
   useLayoutEffect(() => {
-    if (!activeKey) return;
+    if (!activeKey || !open) return;
     updateBubblePosition();
     const frame = window.requestAnimationFrame(updateBubblePosition);
     return () => window.cancelAnimationFrame(frame);
-  }, [activeKey, activeItem?.note, activeItem?.title]);
+  }, [activeKey, activeItem?.note, activeItem?.title, open]);
 
   useEffect(() => {
-    if (activeKey === null) return;
+    if (activeKey === null || !open) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -84,28 +84,14 @@ export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollap
       window.removeEventListener("resize", handleWindowChange);
       window.removeEventListener("scroll", handleWindowChange, true);
     };
-  }, [activeKey]);
+  }, [activeKey, open]);
 
   useEffect(() => {
     setActiveKey(null);
-  }, [filterTag, items]);
-
-  if (!open) {
-    return (
-      <button
-        aria-label="展开错因详情列表"
-        className="tag-detail-expand-button"
-        onClick={onExpand}
-        title="展开错因详情列表"
-        type="button"
-      >
-        <PanelRightOpen size={16} />
-        <span>详情</span>
-      </button>
-    );
-  }
+  }, [filterTag, items, open]);
 
   const noteBubble =
+    open &&
     activeItem &&
     createPortal(
       <div
@@ -126,64 +112,79 @@ export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollap
     );
 
   return (
-    <aside className="tag-detail-panel" aria-label="错因详情列表">
-      <div className="tag-detail-panel-header">
-        <div className="tag-detail-panel-title">
-          <strong>错因详情列表</strong>
-          <span>
-            {filterTag ? `筛选：${filterTag}` : "全部标签 · 按发布时间从新到旧"}
-            {` · ${items.length}`}
-          </span>
-        </div>
-        <div className="tag-detail-panel-actions">
-          {filterTag ? (
-            <button onClick={onClearFilter} type="button">
-              <X size={14} />
-              清除筛选
-            </button>
-          ) : null}
-          <button aria-label="收起错因详情列表" onClick={onCollapse} title="收起详情列表" type="button">
-            <PanelRightClose size={15} />
-          </button>
-        </div>
-      </div>
+    <aside
+      aria-hidden={!open}
+      aria-label="错因详情列表"
+      className={`tag-detail-drawer${open ? " is-open" : ""}`}
+    >
+      <button
+        aria-expanded={open}
+        aria-label={open ? "收起错因详情列表" : "展开错因详情列表"}
+        className="tag-detail-handle"
+        onClick={() => (open ? onCollapse() : onExpand())}
+        title={open ? "收起详情列表" : "展开详情列表"}
+        type="button"
+      >
+        <span className="tag-detail-handle-label">详情列表</span>
+        <span aria-hidden="true" className={`tag-detail-handle-arrow${open ? " is-open" : ""}`} />
+      </button>
 
-      <div className="tag-detail-panel-body">
-        {items.length ? (
-          <ul className="tag-detail-occurrence-list" ref={listRef}>
-            {items.map((item, index) => {
-              const key = occurrenceKey(item, index);
-              const active = activeKey === key;
-              return (
-                <li key={key}>
-                  <button
-                    aria-expanded={active}
-                    className={`tag-detail-occurrence-button${active ? " is-active" : ""}`}
-                    onClick={() => setActiveKey((current) => (current === key ? null : key))}
-                    ref={(node) => {
-                      if (node) rowRefs.current.set(key, node);
-                      else rowRefs.current.delete(key);
-                    }}
-                    type="button"
-                  >
-                    <div className="tag-detail-occurrence-top">
-                      <strong>{item.tag}</strong>
-                      <em className={item.pnl >= 0 ? "positive" : "negative"}>{formatSigned(item.pnl)}</em>
-                    </div>
-                    <span>{formatTagSource(item)}</span>
-                    <span className="tag-detail-occurrence-time">
-                      发布 {formatTagDate(item.created_at || item.end_date || item.start_date)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="empty-copy">
-            {filterTag ? "该标签暂无详情记录。" : "区间复盘添加标签后，这里会按时间展示详情。"}
-          </p>
-        )}
+      <div className="tag-detail-panel">
+        <div className="tag-detail-panel-header">
+          <div className="tag-detail-panel-title">
+            <strong>错因详情列表</strong>
+            <span>
+              {filterTag ? `筛选：${filterTag}` : "全部标签 · 按发布时间从新到旧"}
+              {` · ${items.length}`}
+            </span>
+          </div>
+          <div className="tag-detail-panel-actions">
+            {filterTag ? (
+              <button onClick={onClearFilter} type="button">
+                <X size={14} />
+                清除筛选
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="tag-detail-panel-body">
+          {items.length ? (
+            <ul className="tag-detail-occurrence-list" ref={listRef}>
+              {items.map((item, index) => {
+                const key = occurrenceKey(item, index);
+                const active = activeKey === key;
+                return (
+                  <li key={key}>
+                    <button
+                      aria-expanded={active}
+                      className={`tag-detail-occurrence-button${active ? " is-active" : ""}`}
+                      onClick={() => setActiveKey((current) => (current === key ? null : key))}
+                      ref={(node) => {
+                        if (node) rowRefs.current.set(key, node);
+                        else rowRefs.current.delete(key);
+                      }}
+                      type="button"
+                    >
+                      <div className="tag-detail-occurrence-top">
+                        <strong>{item.tag}</strong>
+                        <em className={item.pnl >= 0 ? "positive" : "negative"}>{formatSigned(item.pnl)}</em>
+                      </div>
+                      <span>{formatTagSource(item)}</span>
+                      <span className="tag-detail-occurrence-time">
+                        发布 {formatTagDate(item.created_at || item.end_date || item.start_date)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="empty-copy">
+              {filterTag ? "该标签暂无详情记录。" : "区间复盘添加标签后，这里会按时间展示详情。"}
+            </p>
+          )}
+        </div>
       </div>
       {noteBubble}
     </aside>

@@ -3044,16 +3044,62 @@ textarea {
     flex-direction: column;
   }
 
-  .tag-panel-body.is-detail-open .tag-donut-section,
-  .tag-detail-panel {
-    flex: 1 1 auto;
+  .tag-detail-drawer {
+    position: relative;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: auto;
     max-width: none;
+    transform: none;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+    min-height: 0;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      max-height 280ms ease,
+      opacity 200ms ease;
+  }
+
+  .tag-detail-drawer.is-open {
+    max-height: 52vh;
+    min-height: 180px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .tag-detail-handle {
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -70%);
+    flex-direction: row;
+    width: auto;
+    min-height: 0;
+    padding: 6px 14px;
+    border-radius: 999px;
+  }
+
+  .tag-detail-handle-label {
+    writing-mode: horizontal-tb;
+    letter-spacing: 0.06em;
+    font-size: 13px;
+  }
+
+  .tag-detail-handle-arrow {
+    margin-top: 0;
+    margin-left: 6px;
+    transform: rotate(-90deg);
+  }
+
+  .tag-detail-handle-arrow.is-open {
+    transform: rotate(90deg);
   }
 
   .tag-detail-panel {
-    border-top: 1px solid var(--line);
     border-left: 0;
-    min-height: 180px;
+    max-width: none;
   }
 
   .stats-panel {
@@ -3087,6 +3133,7 @@ textarea {
   min-height: 0;
   min-width: 0;
   align-items: stretch;
+  overflow: hidden;
 }
 
 .tag-donut-section {
@@ -3095,50 +3142,97 @@ textarea {
   min-width: 0;
   min-height: 0;
   padding: 0 8px 56px;
-  transition: flex-basis 220ms ease;
 }
 
-.tag-panel-body.is-detail-open .tag-donut-section {
-  flex: 1 1 50%;
-  max-width: 50%;
-}
-
-.tag-detail-expand-button {
+.tag-detail-drawer {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 0;
+  right: 0;
+  bottom: 56px;
   z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  display: flex;
+  width: 50%;
+  max-width: 50%;
+  min-width: 0;
+  flex-direction: column;
+  pointer-events: none;
   background: #ffffff;
-  box-shadow: 0 4px 12px rgba(22, 36, 31, 0.08);
-  color: var(--ink);
-  cursor: pointer;
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 600;
+  border-left: 1px solid var(--line);
+  box-shadow: -6px 0 18px rgba(22, 36, 31, 0.04);
+  transform: translateX(calc(100% - 6px));
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
-.tag-detail-expand-button:hover {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-  color: var(--accent);
+.tag-detail-drawer.is-open {
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.tag-detail-handle {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  width: 40px;
+  min-height: 128px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid #c5d3df;
+  border-radius: 14px 0 0 14px;
+  background: #eef3f7;
+  box-shadow: -2px 2px 8px rgba(55, 78, 98, 0.08);
+  color: #5d7d96;
+  cursor: pointer;
+  padding: 14px 0 12px;
+  pointer-events: auto;
+  transform: translate(-34px, -50%);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.tag-detail-handle:hover {
+  border-color: #a9bfd0;
+  background: #e5edf4;
+  color: #4a6b84;
+}
+
+.tag-detail-handle-label {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 0.22em;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+.tag-detail-handle-arrow {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 6px 9px 6px 0;
+  border-color: transparent currentColor transparent transparent;
+  transition: transform 220ms ease;
+}
+
+.tag-detail-handle-arrow.is-open {
+  transform: rotate(180deg);
 }
 
 .tag-detail-panel {
   display: flex;
-  flex: 1 1 50%;
-  max-width: 50%;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
-  border-left: 1px solid var(--line);
+  overflow: hidden;
   background: #ffffff;
-  padding: 0 0 56px;
 }
 
 .tag-detail-panel-header {
