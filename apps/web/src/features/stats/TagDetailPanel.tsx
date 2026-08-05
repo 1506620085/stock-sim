@@ -166,14 +166,18 @@ export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollap
                       }}
                       type="button"
                     >
-                      <div className="tag-detail-occurrence-top">
-                        <strong>{item.tag}</strong>
+                      <div className="tag-detail-occurrence-row">
+                        <div className="tag-detail-occurrence-main">
+                          <div className="tag-detail-occurrence-title">
+                            <strong>{item.tag}</strong>
+                            <span className="tag-detail-occurrence-source">{formatTagSource(item)}</span>
+                          </div>
+                          <span className="tag-detail-occurrence-time">
+                            发布 {formatTagDate(item.created_at || item.end_date || item.start_date)}
+                          </span>
+                        </div>
                         <em className={item.pnl >= 0 ? "positive" : "negative"}>{formatSigned(item.pnl)}</em>
                       </div>
-                      <span>{formatTagSource(item)}</span>
-                      <span className="tag-detail-occurrence-time">
-                        发布 {formatTagDate(item.created_at || item.end_date || item.start_date)}
-                      </span>
                     </button>
                   </li>
                 );

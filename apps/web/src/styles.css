@@ -3347,37 +3347,57 @@ textarea {
   background: var(--accent-soft);
 }
 
-.tag-detail-occurrence-top {
+.tag-detail-occurrence-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: 10px;
+}
+
+.tag-detail-occurrence-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tag-detail-occurrence-title {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
   gap: 8px;
 }
 
-.tag-detail-occurrence-top strong {
+.tag-detail-occurrence-title strong {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.tag-detail-occurrence-source {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-}
-
-.tag-detail-occurrence-top em {
-  flex: 0 0 auto;
-  font-size: 13px;
-  font-style: normal;
-  font-weight: 700;
-}
-
-.tag-detail-occurrence-button span {
-  display: block;
-  margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
 }
 
 .tag-detail-occurrence-time {
-  font-size: 11px !important;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tag-detail-occurrence-row > em {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .tag-donut-chart {
