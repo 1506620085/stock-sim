@@ -3,6 +3,9 @@ import { AlertTriangle, BarChart3, ListChecks, NotebookPen, TrendingUp } from "l
 import { FieldHelpTip } from "../../components/FieldHelpTip";
 import { loadPreferences } from "../settings/api";
 import { loadStatsSummary, type StatsSummary } from "./api";
+import { TagDonutChart } from "./TagDonutChart";
+import { TagPeekDrawer } from "./TagPeekDrawer";
+import { aggregateTagStats } from "./tagAggregation";
 
 const emptySummary: StatsSummary = {
   total_sessions: 0,
@@ -33,7 +36,10 @@ const emptySummary: StatsSummary = {
 
 export function StatsPage() {
   const [summary, setSummary] = useState<StatsSummary>(emptySummary);
+  const [tagDrawerOpen, setTagDrawerOpen] = useState(false);
+  const [highlightTag, setHighlightTag] = useState<string | null>(null);
   const preferences = useMemo(() => loadPreferences(), []);
+  const aggregatedTags = useMemo(() => aggregateTagStats(summary.tag_stats), [summary.tag_stats]);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,22 +155,25 @@ export function StatsPage() {
         <section className="panel stats-panel stats-panel-tags">
           <div className="section-header">
             <h2>错因标签</h2>
-            <span>{summary.tag_stats.length}</span>
+            <span>{aggregatedTags.length}</span>
           </div>
-          <div className="tag-stat-list">
-            {summary.tag_stats.length ? (
-              summary.tag_stats.map((item, index) => (
-                <article key={`${item.review_id ?? "tag"}-${item.tag}-${index}`}>
-                  <div className="tag-stat-main">
-                    <strong>{item.tag}</strong>
-                    <span>{formatTagSource(item)}</span>
-                  </div>
-                  <em className={item.pnl >= 0 ? "positive" : "negative"}>{formatNumber(item.pnl)}</em>
-                </article>
-              ))
-            ) : (
-              <p className="empty-copy">区间复盘添加标签后，这里会显示问题分布。</p>
-            )}
+          <div className="tag-panel-body">
+            <div className="tag-donut-section">
+              <TagDonutChart
+                items={aggregatedTags}
+                onSelectTag={(tag) => {
+                  setHighlightTag(tag);
+                  setTagDrawerOpen(true);
+                }}
+              />
+            </div>
+            <TagPeekDrawer
+              highlightTag={highlightTag}
+              items={aggregatedTags}
+              onHighlightConsumed={() => setHighlightTag(null)}
+              onOpenChange={setTagDrawerOpen}
+              open={tagDrawerOpen}
+            />
           </div>
         </section>
 
@@ -236,9 +245,6 @@ function BarRow({ label, max, value }: { label: string; max: number; value: numb
 }
 
 function computeMaxDrawdownRate(capitalBase: number, mtmEquityCurve: number[]) {
-  // mtm 曲线为「现金从 0 + 持仓市值」的每日权益偏移；真实权益 = 初始资产基数 + 偏移
-  // 峰值只取曲线上真实出现过的权益高点，不用「初始资产」作为虚构峰值
-  // （否则买入后按最低价盯市会立刻低于初始资产，回撤被系统性放大）
   if (!(capitalBase > 0) || !mtmEquityCurve.length) return 0;
   let peak = Number.NEGATIVE_INFINITY;
   let maxDrawdown = 0;
@@ -278,17 +284,4 @@ function formatSignedPercent(value: number) {
   if (value > 0) return `+${abs}%`;
   if (value < 0) return `-${abs}%`;
   return `+${abs}%`;
-}
-
-function formatTagSource(item: StatsSummary["tag_stats"][number]) {
-  const stock = [item.symbol_name, item.symbol_code].filter(Boolean).join(" ") || "未知标的";
-  if (item.start_date && item.end_date) {
-    return item.start_date === item.end_date
-      ? `${stock} · ${item.start_date}`
-      : `${stock} · ${item.start_date} ~ ${item.end_date}`;
-  }
-  if (item.start_date || item.end_date) {
-    return `${stock} · ${item.start_date ?? "?"} ~ ${item.end_date ?? "?"}`;
-  }
-  return `${stock} · 区间未知`;
 }

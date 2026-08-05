@@ -1957,15 +1957,19 @@ textarea {
 
 .stats-panel > .stats-bars,
 .stats-panel > .stats-overview-grid,
-.stats-panel > .tag-stat-list,
+.stats-panel > .tag-panel-body,
 .stats-panel > .recent-review-list,
 .stats-panel > .empty-copy {
   min-height: 0;
 }
 
-.stats-panel > .tag-stat-list,
+.stats-panel > .tag-panel-body,
 .stats-panel > .recent-review-list {
   flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.stats-panel > .recent-review-list {
   overflow: auto;
 }
 
@@ -3040,6 +3044,325 @@ textarea {
   flex-direction: column;
   gap: 8px;
   margin-top: 14px;
+}
+
+.tag-panel-body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  margin: 8px -18px -18px;
+  overflow: hidden;
+}
+
+.tag-donut-section {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 8px 56px;
+}
+
+.tag-donut-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+}
+
+.tag-peek-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 0;
+  background: rgba(23, 32, 28, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.tag-peek-mask.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tag-peek-drawer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  min-height: 52px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 12px 12px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -8px 24px rgba(22, 36, 31, 0.08);
+  transition: height 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tag-peek-handle {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px 8px;
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: grab;
+  padding: 8px 14px 10px;
+  text-align: left;
+  touch-action: none;
+  user-select: none;
+}
+
+.tag-peek-handle:active {
+  cursor: grabbing;
+}
+
+.tag-peek-grip {
+  justify-self: center;
+  width: 36px;
+  height: 4px;
+  grid-column: 1 / -1;
+  border-radius: 999px;
+  background: #c9d4cf;
+}
+
+.tag-peek-handle strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tag-peek-chevron {
+  color: var(--muted);
+  transition: transform 220ms ease;
+}
+
+.tag-peek-drawer.is-open .tag-peek-chevron {
+  transform: rotate(180deg);
+}
+
+.tag-peek-handle em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.tag-peek-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px;
+  overflow: hidden;
+}
+
+.tag-peek-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-peek-search {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 160px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfdfc;
+  color: var(--muted);
+  padding: 0 10px;
+}
+
+.tag-peek-search input {
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+}
+
+.tag-peek-filter {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tag-peek-filter select {
+  width: auto;
+  min-width: 72px;
+  padding: 7px 8px;
+}
+
+.tag-peek-table-wrap {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfdfc;
+}
+
+.tag-peek-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.tag-peek-table th,
+.tag-peek-table td {
+  padding: 9px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tag-peek-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid var(--line);
+  background: #f3f7f5;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.tag-peek-table th button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tag-peek-table tbody tr {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.tag-peek-table tbody tr:hover,
+.tag-peek-table tbody tr.is-active {
+  background: var(--accent-soft);
+}
+
+.tag-peek-table td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag-peek-swatch {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.tag-peek-empty {
+  color: var(--muted);
+  text-align: center !important;
+}
+
+.tag-peek-detail {
+  display: flex;
+  max-height: 38%;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid var(--accent-line);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  padding: 10px;
+}
+
+.tag-peek-detail-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tag-peek-detail-header strong {
+  display: block;
+  font-size: 13px;
+}
+
+.tag-peek-detail-header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tag-peek-detail-header button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tag-peek-occurrence-list {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  overflow: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-peek-occurrence-list li {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 8px 10px;
+}
+
+.tag-peek-occurrence-list strong,
+.tag-peek-occurrence-list span {
+  display: block;
+}
+
+.tag-peek-occurrence-list strong {
+  font-size: 12px;
+}
+
+.tag-peek-occurrence-list span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tag-peek-occurrence-list em,
+.tag-peek-detail-header em {
+  font-style: normal;
+  font-weight: 700;
 }
 
 .tag-stat-list article {

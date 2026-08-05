@@ -21,6 +21,7 @@ export type StatsSummary = {
     start_date?: string | null;
     end_date?: string | null;
     review_id?: number | null;
+    created_at?: string | null;
   }>;
   recent_reviews: Array<{ id: number; title: string; note: string | null; tags: string[]; metrics_snapshot: Record<string, unknown>; created_at: string }>;
   journal_entry_count: number;

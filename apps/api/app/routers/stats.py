@@ -229,10 +229,15 @@ def build_tag_stats(
                     "start_date": start_date,
                     "end_date": end_date,
                     "review_id": review.id,
+                    "created_at": review.created_at.isoformat() if review.created_at else None,
                 }
             )
 
-    return sorted(items, key=lambda value: (value["pnl"], value["tag"]))[:24]
+    return sorted(
+        items,
+        key=lambda value: (value.get("created_at") or "", value["pnl"], value["tag"]),
+        reverse=True,
+    )
 
 
 def coerce_snapshot_date(value: Any) -> str | None:
