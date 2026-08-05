@@ -179,6 +179,7 @@ export function StatsPage() {
                 items={detailOccurrences}
                 onClearFilter={() => setFilterTag(null)}
                 onCollapse={() => setTagDetailOpen(false)}
+                onExpand={() => setTagDetailOpen(true)}
                 open={tagDetailOpen}
               />
             </div>

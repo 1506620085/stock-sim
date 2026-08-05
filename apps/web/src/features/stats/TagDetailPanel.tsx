@@ -1,4 +1,4 @@
-import { PanelRightClose, X } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import type { TagOccurrence } from "./tagAggregation";
 import { formatTagDate, formatTagSource } from "./tagAggregation";
 
@@ -8,10 +8,24 @@ type Props = {
   open: boolean;
   onClearFilter: () => void;
   onCollapse: () => void;
+  onExpand: () => void;
 };
 
-export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollapse }: Props) {
-  if (!open) return null;
+export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollapse, onExpand }: Props) {
+  if (!open) {
+    return (
+      <button
+        aria-label="展开错因详情列表"
+        className="tag-detail-expand-button"
+        onClick={onExpand}
+        title="展开错因详情列表"
+        type="button"
+      >
+        <PanelRightOpen size={16} />
+        <span>详情</span>
+      </button>
+    );
+  }
 
   return (
     <aside className="tag-detail-panel" aria-label="错因详情列表">

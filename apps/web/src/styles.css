@@ -3081,6 +3081,7 @@ textarea {
 }
 
 .tag-panel-main {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
@@ -3100,6 +3101,32 @@ textarea {
 .tag-panel-body.is-detail-open .tag-donut-section {
   flex: 1 1 50%;
   max-width: 50%;
+}
+
+.tag-detail-expand-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(22, 36, 31, 0.08);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag-detail-expand-button:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .tag-detail-panel {
