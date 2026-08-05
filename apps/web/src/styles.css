@@ -2934,6 +2934,8 @@ textarea {
   gap: 6px;
   margin-top: 8px;
   align-content: stretch;
+  container-type: inline-size;
+  container-name: stats-overview;
 }
 
 .stats-overview-item {
@@ -2950,7 +2952,7 @@ textarea {
 
 .stats-overview-item span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: clamp(11px, 2.4cqi, 13px);
   white-space: nowrap;
 }
 
@@ -2976,7 +2978,7 @@ textarea {
 
 .stats-overview-item strong {
   flex: 0 0 auto;
-  font-size: 15px;
+  font-size: clamp(13px, 3.2cqi, 20px);
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   letter-spacing: -0.02em;
