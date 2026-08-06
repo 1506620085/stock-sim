@@ -54,7 +54,7 @@ const calculatorTabMeta: Record<CalculatorTab, { title: string; description: str
   },
   t: {
     title: "做 T 计算器",
-    description: "初始化底仓后逐笔记录买入卖出，按移动加权平均自动重算持仓成本、现金流与做 T 收益。",
+    description: "初始化底仓后逐笔记录买入卖出；买入按移动加权平均，卖出按券商常见规则将盈亏摊入剩余成本（盈利降本、亏损升本）。",
   },
   change: {
     title: "涨跌幅计算器",
@@ -486,7 +486,7 @@ function TCalculator() {
       ["未实现盈亏", currency(summary.unrealizedPnl)],
       ["总盈亏", currency(summary.totalPnl)],
       ["累计手续费", currency(summary.totalFees)],
-      ["已实现利润", currency(summary.realizedPnl)],
+      ["做 T 收益", currency(summary.tProfit)],
       ["可提取利润", currency(summary.extractableProfit)],
       ["剩余持仓成本", currency(summary.positionCost)],
     ];
@@ -646,7 +646,7 @@ function TCalculator() {
                 ["", ""],
                 // 第3列：费用与留存
                 ["累计手续费", currency(summary.totalFees)],
-                ["已实现利润", currency(summary.realizedPnl), summary.realizedPnl],
+                ["做 T 收益", currency(summary.tProfit), summary.tProfit],
                 ["可提取利润", currency(summary.extractableProfit), summary.extractableProfit],
                 ["剩余持仓成本", currency(summary.positionCost)],
               ]}

@@ -65,10 +65,10 @@ export type TLedgerSummary = {
   totalPnl: number;
   totalFees: number;
   totalCashFlow: number;
-  /** 做 T 收益：已实现盈亏 */
+  /** 做 T 收益：各笔卖出相对卖出前成本的盈亏合计（已用于升降剩余成本） */
   tProfit: number;
   markPrice: number;
-  /** 可提取利润：已实现盈亏中非负部分 */
+  /** 可提取利润：做 T 收益中的非负部分 */
   extractableProfit: number;
 };
 
@@ -145,9 +145,9 @@ export function calculateProfitCost(input: ProfitCostInput): ProfitCostResult {
 }
 
 /**
- * 按真实做 T 逻辑从首条记录重算整本账：
+ * 按券商/行情软件常见的做 T 账本逻辑重算：
  * - 买入：金额+手续费入成本，移动加权平均
- * - 卖出：金额-手续费为现金流，平均成本不变，仅减仓
+ * - 卖出：净回收资金从总成本中扣减，剩余持仓摊薄成本（盈利降本、亏损升本）；清仓时确认已实现盈亏
  * - finalPrice：可选情景价；有值时用其估算持仓市值与未实现/总盈亏，无值则用最后成交价
  */
 export function buildTLedger(
@@ -159,6 +159,7 @@ export function buildTLedger(
   let positionQuantity = 0;
   let positionAvgCost = 0;
   let realizedPnl = 0;
+  let tProfit = 0;
   let totalFees = 0;
   let totalCashFlow = 0;
   let lastTradePrice = 0;
@@ -215,19 +216,26 @@ export function buildTLedger(
       continue;
     }
 
-    // sell
+    // sell：净回收摊薄剩余成本（与同花顺等「做 T 降本」一致）
     quantity = Math.min(quantity, positionQuantity);
     const amount = price * quantity;
     const fee = quantity > 0 && price > 0 ? calculateTradeFee("sell", price, quantity, feeSettings) : 0;
     const cashFlow = amount - fee;
     const sellCost = positionAvgCost * quantity;
-    realizedPnl += amount - sellCost - fee;
-    positionQuantity = Math.max(0, positionQuantity - quantity);
-    // 平均成本保持不变；清仓后成本归零
-    if (positionQuantity <= 0) {
+    const tradePnl = cashFlow - sellCost;
+    tProfit += tradePnl;
+
+    const remainingQuantity = Math.max(0, positionQuantity - quantity);
+    if (remainingQuantity <= 0) {
+      realizedPnl += tradePnl;
       positionQuantity = 0;
       positionAvgCost = 0;
+    } else {
+      const remainingCost = positionQuantity * positionAvgCost - cashFlow;
+      positionQuantity = remainingQuantity;
+      positionAvgCost = remainingCost / remainingQuantity;
     }
+
     lastTradePrice = price;
     totalFees += fee;
     totalCashFlow += cashFlow;
@@ -251,7 +259,7 @@ export function buildTLedger(
   const markPrice = hasScenarioPrice ? scenarioPrice : lastTradePrice;
   const positionCost = positionQuantity * positionAvgCost;
   const positionMarketValue = positionQuantity * markPrice;
-  const unrealizedPnl = positionQuantity > 0 ? (markPrice - positionAvgCost) * positionQuantity : 0;
+  const unrealizedPnl = positionQuantity > 0 ? markPrice * positionQuantity - positionCost : 0;
   const totalPnl = realizedPnl + unrealizedPnl;
 
   return {
@@ -266,9 +274,9 @@ export function buildTLedger(
       totalPnl,
       totalFees,
       totalCashFlow,
-      tProfit: realizedPnl,
+      tProfit,
       markPrice,
-      extractableProfit: Math.max(0, realizedPnl),
+      extractableProfit: Math.max(0, tProfit),
     },
   };
 }
