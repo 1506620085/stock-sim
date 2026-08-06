@@ -5120,6 +5120,19 @@ textarea {
   gap: 8px;
 }
 
+.chart-toolbar-title-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-toolbar-title-row h2 {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .chart-toolbar h2,
 .section-header h2 {
   margin: 0;
@@ -5130,7 +5143,9 @@ textarea {
 
 .replay-session-switcher {
   position: relative;
-  width: min(100%, 420px);
+  flex: 1 1 220px;
+  width: min(100%, 360px);
+  max-width: 360px;
 }
 
 .replay-session-switcher-trigger {

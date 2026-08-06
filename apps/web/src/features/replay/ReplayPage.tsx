@@ -779,19 +779,21 @@ export function ReplayPage() {
                 {syncingBars ? " · 同步中" : ""}
                 {loadingSession ? " · 复盘状态同步中" : ""}）
               </p>
-              <h2>
-                {activeInstrument.code} {activeInstrument.name}
-              </h2>
-              <ReplaySessionSwitcher
-                activeSessionId={replaySession?.id ?? null}
-                creating={creatingSession}
-                disabled={loadingSession || !activeInstrument || deletingSessionBusy}
-                onCreate={() => void handleCreateReplaySession()}
-                onDelete={openDeleteSession}
-                onRename={openRenameSession}
-                onSelect={handleSelectReplaySession}
-                sessions={replaySessions}
-              />
+              <div className="chart-toolbar-title-row">
+                <h2>
+                  {activeInstrument.code} {activeInstrument.name}
+                </h2>
+                <ReplaySessionSwitcher
+                  activeSessionId={replaySession?.id ?? null}
+                  creating={creatingSession}
+                  disabled={loadingSession || !activeInstrument || deletingSessionBusy}
+                  onCreate={() => void handleCreateReplaySession()}
+                  onDelete={openDeleteSession}
+                  onRename={openRenameSession}
+                  onSelect={handleSelectReplaySession}
+                  sessions={replaySessions}
+                />
+              </div>
             </div>
             <div className="day-controls">
               <TooltipWrap placement="bottom" tip="导出当前会话的买卖记录与复盘记录为 Excel">
