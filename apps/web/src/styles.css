@@ -5109,7 +5109,7 @@ textarea {
 }
 
 .chart-toolbar {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .chart-toolbar-title-block {
