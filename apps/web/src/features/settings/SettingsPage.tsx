@@ -65,11 +65,18 @@ export function SettingsPage() {
   const editingTemplateId = templateModal?.mode === "edit" ? templateModal.templateId : null;
   const templateGroups = groupFeeTemplatesByAssetType(feeTemplates);
   const currentAssets = useMemo(
-    () => calculateAccountEquity(accountTrades, preferences.startingCash, preferences.settledCashAdjustment),
-    [accountTrades, preferences.settledCashAdjustment, preferences.startingCash],
+    () =>
+      calculateAccountEquity(
+        accountTrades,
+        preferences.startingCash,
+        preferences.settledCashAdjustment,
+        preferences.equityResetOffset,
+      ),
+    [accountTrades, preferences.equityResetOffset, preferences.settledCashAdjustment, preferences.startingCash],
   );
-  const totalPnl = currentAssets - preferences.startingCash;
-  const returnRate = preferences.startingCash > 0 ? (totalPnl / preferences.startingCash) * 100 : 0;
+  const livePnl = currentAssets - preferences.startingCash;
+  const totalPnl = livePnl + preferences.retainedAccountPnl;
+  const returnRate = currentAssets > 0 ? (totalPnl / currentAssets) * 100 : 0;
 
   const clearInstrument = useMemo(
     () => instruments.find((item) => item.id === clearInstrumentId) ?? null,
@@ -169,15 +176,43 @@ export function SettingsPage() {
     setResetting(true);
     try {
       let clearedTrades = 0;
+      let nextSettledAdjustment = preferences.settledCashAdjustment;
+      let nextEquityResetOffset = 0;
+      let nextRetainedPnl = 0;
+
       if (resetClearTrades) {
         const result = await resetAccount(true);
         clearedTrades = result.clearedTrades;
         setAccountTrades([]);
+        nextSettledAdjustment = 0;
+        nextEquityResetOffset = 0;
+        nextRetainedPnl = 0;
+      } else {
+        const currentEquity = calculateAccountEquity(
+          accountTrades,
+          preferences.startingCash,
+          preferences.settledCashAdjustment,
+          preferences.equityResetOffset,
+        );
+        nextRetainedPnl = Number(
+          (currentEquity - preferences.startingCash + preferences.retainedAccountPnl).toFixed(2),
+        );
+        // 保留买卖记录，但将现有资产校准为指定金额（不改 settledCashAdjustment）
+        const equityWithoutResetOffset = calculateAccountEquity(
+          accountTrades,
+          resetStartingCash,
+          preferences.settledCashAdjustment,
+          0,
+        );
+        nextEquityResetOffset = Number((resetStartingCash - equityWithoutResetOffset).toFixed(2));
       }
+
       updatePreferences(
         {
           startingCash: resetStartingCash,
-          ...(resetClearTrades ? { settledCashAdjustment: 0 } : {}),
+          settledCashAdjustment: nextSettledAdjustment,
+          equityResetOffset: nextEquityResetOffset,
+          retainedAccountPnl: nextRetainedPnl,
         },
         { silent: true },
       );
@@ -187,7 +222,7 @@ export function SettingsPage() {
           clearedTrades > 0 ? `账户已重置，已清空 ${clearedTrades} 条买卖记录` : "账户已重置，当前没有买卖记录",
         );
       } else {
-        showSuccess("账户已重置");
+        showSuccess("账户已重置：初始资产与现有资产已设为指定金额，总盈亏已保留，收益率按现有资产重算。");
       }
     } catch {
       // apiFetch 已弹出错误提示
@@ -324,7 +359,9 @@ export function SettingsPage() {
             <h2>模拟账户</h2>
             <Wallet size={18} />
           </div>
-          <p className="settings-hint">初始资产保存在本地，可通过「重置账户」修改；现有资产为可用资金加持仓账面成本。</p>
+          <p className="settings-hint">
+            初始资产保存在本地，可通过「重置账户」修改；现有资产为可用资金加持仓账面成本。重置且不清空记录时，会将初始/现有资产设为指定金额并保留总盈亏，收益率按现有资产计算。
+          </p>
           <div className="settings-account-grid">
             <div className="settings-account-column">
               <div className="settings-account-metric">
@@ -620,7 +657,9 @@ export function SettingsPage() {
         open={resetDialogOpen}
         title="重置账户"
       >
-        <p className="app-dialog-copy">将按下方初始资产重新设定模拟账户。此操作不可撤销。</p>
+        <p className="app-dialog-copy">
+          将按下方金额重新设定初始资产与现有资产。若不勾选清空买卖记录，历史成交会保留，总盈亏数字保留，收益率按重置后的现有资产重新计算。
+        </p>
         <div className="app-dialog-field">
           <AppNumberStepper
             aria-label="重置后的初始资产"

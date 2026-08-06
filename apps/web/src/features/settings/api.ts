@@ -23,6 +23,16 @@ export type AppPreferences = {
    * 清除记录前若有持仓会先平仓，净资金变动记入此项，不改动初始资产，以便总盈亏/收益率按平仓结果保留。
    */
   settledCashAdjustment: number;
+  /**
+   * 重置账户且保留买卖记录时的权益校准（元）。
+   * 用于使现有资产对齐指定初始资产，而不改写 settledCashAdjustment。
+   */
+  equityResetOffset: number;
+  /**
+   * 重置账户时锁定的累计总盈亏（元）。
+   * 现有资产按新基数起算后，总盈亏 = (现有资产 - 初始资产) + 此项；收益率按现有资产重算。
+   */
+  retainedAccountPnl: number;
 };
 
 export type FeeTemplate = {
@@ -65,6 +75,8 @@ export const defaultPreferences: AppPreferences = {
   replaySellPriceBasis: "low",
   startingCash: DEFAULT_STARTING_CASH,
   settledCashAdjustment: 0,
+  equityResetOffset: 0,
+  retainedAccountPnl: 0,
 };
 
 export const REPLAY_PRICE_BASIS_OPTIONS: { label: string; value: ReplayPriceBasis }[] = [
@@ -90,6 +102,12 @@ function normalizeStartingCash(value: unknown): number {
 }
 
 function normalizeSettledCashAdjustment(value: unknown): number {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) return 0;
+  return amount;
+}
+
+function normalizeMoneyOffset(value: unknown): number {
   const amount = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(amount)) return 0;
   return amount;
@@ -133,6 +151,8 @@ export function loadPreferences(): AppPreferences {
       replaySellPriceBasis: normalizeReplayPriceBasis(parsed.replaySellPriceBasis, defaultPreferences.replaySellPriceBasis),
       startingCash: normalizeStartingCash(parsed.startingCash),
       settledCashAdjustment: normalizeSettledCashAdjustment(parsed.settledCashAdjustment),
+      equityResetOffset: normalizeMoneyOffset(parsed.equityResetOffset),
+      retainedAccountPnl: normalizeMoneyOffset(parsed.retainedAccountPnl),
     };
   } catch {
     return defaultPreferences;

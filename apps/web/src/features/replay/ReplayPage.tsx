@@ -388,8 +388,14 @@ export function ReplayPage() {
     [replayBars, replayTrades, selectedBar, sellPriceBasis],
   );
   const availableCash = useMemo(
-    () => calculateAvailableCash(replayTrades, preferences.startingCash, preferences.settledCashAdjustment),
-    [preferences.settledCashAdjustment, preferences.startingCash, replayTrades],
+    () =>
+      calculateAvailableCash(
+        replayTrades,
+        preferences.startingCash,
+        preferences.settledCashAdjustment,
+        preferences.equityResetOffset,
+      ),
+    [preferences.equityResetOffset, preferences.settledCashAdjustment, preferences.startingCash, replayTrades],
   );
   const sellableQuantity = useMemo(() => normalizeTradeQuantity(position.quantity), [position.quantity]);
   const maxBuyableQuantity = useMemo(() => {

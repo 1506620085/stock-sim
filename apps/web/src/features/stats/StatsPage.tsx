@@ -66,7 +66,8 @@ export function StatsPage() {
     };
   }, [preferences.replaySellPriceBasis]);
 
-  const capitalBase = preferences.startingCash + preferences.settledCashAdjustment;
+  const capitalBase =
+    preferences.startingCash + preferences.settledCashAdjustment + preferences.equityResetOffset;
   const totalPnl = summary.realized_pnl + preferences.settledCashAdjustment;
   const returnRate = preferences.startingCash > 0 ? (totalPnl / preferences.startingCash) * 100 : 0;
   const maxDrawdownRate = computeMaxDrawdownRate(capitalBase, summary.mtm_equity_curve);
