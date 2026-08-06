@@ -213,7 +213,7 @@ function ProfitCostCalculator() {
 }
 
 function TCalculator() {
-  const { assetType, changeAssetType, feeSettings, selectedTemplate, selectTemplate, templates } = useCalculatorFeeSettings();
+  const { assetType, changeAssetType, feeSettings } = useCalculatorFeeSettings();
   const [baseAvgCost, setBaseAvgCost] = useState<number | null>(null);
   const [baseQuantity, setBaseQuantity] = useState<number | null>(null);
   const [tradeSide, setTradeSide] = useState<"buy" | "sell">("buy");
@@ -565,7 +565,7 @@ function TCalculator() {
                     <div className="calculator-asset-type-field">
                       <FieldLabelWithTip
                         htmlFor="t-asset-type"
-                        tip="成本类型决定费率规则：股票卖出计印花税，ETF 不计；佣金等按所选费率模板计算。"
+                        tip="成本类型决定费率规则：股票卖出计印花税，ETF 不计；佣金等按该类型的默认费率模板计算。"
                         tipAriaLabel="成本类型说明"
                       >
                         成本类型
@@ -584,15 +584,6 @@ function TCalculator() {
                       />
                     </div>
                   </div>
-                  <CalculatorFeeTemplateField
-                    assetType={assetType}
-                    onSelect={(templateId) => {
-                      selectTemplate(templateId);
-                      markDirty();
-                    }}
-                    selectedTemplate={selectedTemplate}
-                    templates={templates}
-                  />
                   <div className="calculator-input-grid t-input-grid t-input-grid--trade">
                     <label>
                       交易方向
