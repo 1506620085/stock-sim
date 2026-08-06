@@ -15,7 +15,7 @@ import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
 import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, resolveBarPrice, replayPriceBasisLabel, toTradePriceRule, type FeeTemplate, type ReplayPriceBasis } from "../settings/api";
 import { calculateTradeFee } from "../calculators/calculations";
 import { QuickPositionControls } from "./QuickPositionControls";
-import { AppConfirmDialog } from "../../components/AppDialog";
+import { AppConfirmDialog, AppPromptDialog } from "../../components/AppDialog";
 import {
   buildReplayExcelBlob,
   buildReplayExcelFilename,
@@ -23,6 +23,12 @@ import {
   parseReplayExcelFile,
   type ReplayExcelPayload,
 } from "./tradeExcel";
+import { ReplaySessionSwitcher } from "./ReplaySessionSwitcher";
+import {
+  buildDefaultSessionName,
+  getActiveReplaySessionId,
+  setActiveReplaySessionId,
+} from "./sessionSelection";
 
 import {
   calculateAvailableCash,
@@ -74,6 +80,10 @@ export function ReplayPage() {
   const excelFileInputRef = useRef<HTMLInputElement | null>(null);
   const [bars, setBars] = useState<KLineBar[]>([]);
   const [replaySession, setReplaySession] = useState<ReplaySession | null>(null);
+  const [replaySessions, setReplaySessions] = useState<ReplaySession[]>([]);
+  const [creatingSession, setCreatingSession] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renamingSession, setRenamingSession] = useState<ReplaySession | null>(null);
   const [jumpDate, setJumpDate] = useState("");
   const [loadingBars, setLoadingBars] = useState(false);
   const [syncingBars, setSyncingBars] = useState(false);
@@ -203,6 +213,7 @@ export function ReplayPage() {
     const instrumentId = activeInstrument?.id;
     if (!instrumentId || bars.length === 0) {
       setReplaySession(null);
+      setReplaySessions([]);
       return;
     }
 
@@ -210,30 +221,29 @@ export function ReplayPage() {
     loadReplaySessions(instrumentId)
       .then(async (sessions) => {
         if (cancelled) return;
+        setReplaySessions(sessions);
 
-        const existingSession = sessions[0];
+        const rememberedId = getActiveReplaySessionId(instrumentId);
+        const remembered = rememberedId ? sessions.find((item) => item.id === rememberedId) : undefined;
+        const existingSession = remembered ?? sessions[0];
         if (existingSession) {
           applyReplaySession(existingSession, bars);
+          setActiveReplaySessionId(instrumentId, existingSession.id);
           return;
         }
 
-        const startDate = bars[0].date;
-        const currentDate = bars[Math.min(Math.floor(bars.length * 0.6), bars.length - 1)]?.date ?? startDate;
-        const defaultTemplate = resolveFeeTemplate(feeTemplates, activeInstrument.assetType ?? "stock");
-        const createdSession = await createReplaySession({
-          instrumentId,
-          name: `${activeInstrument.code} ${activeInstrument.name} 复盘`,
-          startDate,
-          currentDate,
-          hideFuture,
-          adjustType: activeAdjustType,
-          indicatorConfig: indicators,
-          feeTemplateId: defaultTemplate?.id ?? null,
-        });
-        if (!cancelled) applyReplaySession(createdSession, bars);
+        const createdSession = await createBlankReplaySession(instrumentId, sessions.length + 1);
+        if (!cancelled) {
+          setReplaySessions([createdSession]);
+          applyReplaySession(createdSession, bars);
+          setActiveReplaySessionId(instrumentId, createdSession.id);
+        }
       })
       .catch(() => {
-        if (!cancelled) setReplaySession(null);
+        if (!cancelled) {
+          setReplaySession(null);
+          setReplaySessions([]);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingSession(false);
@@ -243,6 +253,80 @@ export function ReplayPage() {
       cancelled = true;
     };
   }, [activeAdjustType, activeInstrument?.id, bars, feeTemplates]);
+
+  async function createBlankReplaySession(instrumentId: number, sequence: number) {
+    const instrument = activeInstrument;
+    if (!instrument) {
+      throw new Error("缺少标的");
+    }
+    const startDate = bars[0]?.date;
+    const currentDate = bars[Math.min(Math.floor(bars.length * 0.6), bars.length - 1)]?.date ?? startDate;
+    if (!startDate || !currentDate) {
+      throw new Error("缺少 K 线数据");
+    }
+    const defaultTemplate = resolveFeeTemplate(feeTemplates, instrument.assetType ?? "stock");
+    return createReplaySession({
+      instrumentId,
+      name: buildDefaultSessionName(instrument.code, instrument.name, sequence),
+      startDate,
+      currentDate,
+      hideFuture,
+      adjustType: activeAdjustType,
+      indicatorConfig: indicators,
+      feeTemplateId: defaultTemplate?.id ?? null,
+    });
+  }
+
+  async function handleCreateReplaySession() {
+    const instrumentId = activeInstrument?.id;
+    if (!instrumentId || bars.length === 0) {
+      showInfo("请先选择标的并加载 K 线。");
+      return;
+    }
+    setCreatingSession(true);
+    try {
+      const createdSession = await createBlankReplaySession(instrumentId, replaySessions.length + 1);
+      setReplaySessions((current) => [createdSession, ...current]);
+      applyReplaySession(createdSession, bars);
+      setActiveReplaySessionId(instrumentId, createdSession.id);
+      showSuccess("已新建复盘会话，可开始独立复盘。");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "新建复盘失败");
+    } finally {
+      setCreatingSession(false);
+    }
+  }
+
+  function handleSelectReplaySession(sessionId: number) {
+    const instrumentId = activeInstrument?.id;
+    const next = replaySessions.find((item) => item.id === sessionId);
+    if (!next || !instrumentId) return;
+    applyReplaySession(next, bars);
+    setActiveReplaySessionId(instrumentId, next.id);
+  }
+
+  function openRenameSession(session: ReplaySession) {
+    setRenamingSession(session);
+    setRenameDraft(session.name);
+  }
+
+  async function confirmRenameSession() {
+    if (!renamingSession) return;
+    const name = renameDraft.trim();
+    if (!name) {
+      showInfo("请输入复盘会话名称。");
+      return;
+    }
+    try {
+      const updated = await updateReplaySession(renamingSession.id, { name });
+      setReplaySessions((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setReplaySession((current) => (current?.id === updated.id ? updated : current));
+      setRenamingSession(null);
+      showSuccess("复盘会话已重命名");
+    } catch {
+      showError("重命名失败");
+    }
+  }
 
   function handleFeeTemplateChange(templateId: number) {
     setSelectedFeeTemplateId(templateId);
@@ -439,7 +523,10 @@ export function ReplayPage() {
 
   function syncReplaySession(sessionId: number, payload: Parameters<typeof updateReplaySession>[1]) {
     void updateReplaySession(sessionId, payload)
-      .then(setReplaySession)
+      .then((updated) => {
+        setReplaySession(updated);
+        setReplaySessions((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      })
       .catch(() => showError("复盘状态同步失败"));
   }
 
@@ -628,7 +715,7 @@ export function ReplayPage() {
           {activeInstrument ? (
             <>
           <div className="chart-toolbar">
-            <div>
+            <div className="chart-toolbar-title-block">
               <p className="eyebrow">
                 {activeInstrument.market} / {activeInstrument.type}
                 （数据源：{activeDataSource}
@@ -636,12 +723,20 @@ export function ReplayPage() {
                 {` · 复权：${adjustLabel(activeAdjustType)}`}
                 {loadingBars ? " · 加载中" : ""}
                 {syncingBars ? " · 同步中" : ""}
-                {loadingSession ? " · 复盘状态同步中" : ""}
-                {replaySession ? ` · Session #${replaySession.id}` : ""}）
+                {loadingSession ? " · 复盘状态同步中" : ""}）
               </p>
               <h2>
                 {activeInstrument.code} {activeInstrument.name}
               </h2>
+              <ReplaySessionSwitcher
+                activeSessionId={replaySession?.id ?? null}
+                creating={creatingSession}
+                disabled={loadingSession || !activeInstrument}
+                onCreate={() => void handleCreateReplaySession()}
+                onRename={openRenameSession}
+                onSelect={handleSelectReplaySession}
+                sessions={replaySessions}
+              />
             </div>
             <div className="day-controls">
               <TooltipWrap placement="bottom" tip="导出当前会话的买卖记录与复盘记录为 Excel">
@@ -824,6 +919,17 @@ export function ReplayPage() {
         onConfirm={() => void confirmImportExcel()}
         open={pendingImport != null}
         title="导入 Excel"
+      />
+      <AppPromptDialog
+        confirmLabel="保存"
+        label="会话名称"
+        onCancel={() => setRenamingSession(null)}
+        onChange={setRenameDraft}
+        onConfirm={() => void confirmRenameSession()}
+        open={renamingSession != null}
+        placeholder="例如：第二轮突破复盘"
+        title="重命名复盘会话"
+        value={renameDraft}
       />
 
       </aside>

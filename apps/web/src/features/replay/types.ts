@@ -73,6 +73,8 @@ export type ReplaySession = {
   adjustType: string;
   indicatorConfig: IndicatorSettings;
   feeTemplateId: number | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type TradeReview = {

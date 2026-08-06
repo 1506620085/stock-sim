@@ -34,6 +34,8 @@ type ReplaySessionItem = {
   adjust_type: string;
   indicator_config: IndicatorSettings;
   fee_template_id: number | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 type TradeItem = {
@@ -150,6 +152,7 @@ export async function createReplaySession(payload: {
 export async function updateReplaySession(
   sessionId: number,
   payload: Partial<{
+    name: string;
     currentDate: string;
     hideFuture: boolean;
     adjustType: string;
@@ -158,6 +161,7 @@ export async function updateReplaySession(
   }>,
 ): Promise<ReplaySession> {
   const body: Record<string, unknown> = {};
+  if (payload.name !== undefined) body.name = payload.name;
   if (payload.currentDate !== undefined) body.current_date = payload.currentDate;
   if (payload.hideFuture !== undefined) body.hide_future = payload.hideFuture;
   if (payload.adjustType !== undefined) body.adjust_type = payload.adjustType;
@@ -400,6 +404,8 @@ function toReplaySession(item: ReplaySessionItem): ReplaySession {
     adjustType: item.adjust_type,
     indicatorConfig: item.indicator_config,
     feeTemplateId: item.fee_template_id,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
   };
 }
 
