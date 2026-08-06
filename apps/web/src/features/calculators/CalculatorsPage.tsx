@@ -38,11 +38,8 @@ import {
   type AverageHistorySession,
 } from "./averageHistory";
 import {
-  feeTemplateLabel,
-  loadFeePreferences,
   loadFeeTemplates,
   resolveFeeTemplate,
-  saveFeePreferences,
   templateToFeeSettings,
   type FeeTemplate,
 } from "../settings/api";
@@ -136,7 +133,7 @@ export function CalculatorsPage() {
 }
 
 function ProfitCostCalculator() {
-  const { assetType, changeAssetType, feeSettings, selectedTemplate, selectTemplate, templates } = useCalculatorFeeSettings();
+  const { assetType, changeAssetType, feeSettings } = useCalculatorFeeSettings();
   const [buyPrice, setBuyPrice] = useState<number | null>(null);
   const [sellPrice, setSellPrice] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number | null>(null);
@@ -165,7 +162,7 @@ function ProfitCostCalculator() {
           <div className="calculator-asset-type-field">
             <FieldLabelWithTip
               htmlFor="profit-cost-asset-type"
-              tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按下方费率模板计算。"
+              tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按设置中对应成本类型的默认费率模板计算。"
               tipAriaLabel="成本类型说明"
             >
               成本类型
@@ -180,12 +177,6 @@ function ProfitCostCalculator() {
               value={assetType}
             />
           </div>
-          <CalculatorFeeTemplateField
-            assetType={assetType}
-            onSelect={selectTemplate}
-            selectedTemplate={selectedTemplate}
-            templates={templates}
-          />
           <div className="calculator-input-grid">
             <AppNumberStepper label="买入价格" normalizeToStep onChange={setBuyPrice} step={priceStep} value={buyPrice} />
             <AppNumberStepper label="卖出价格" normalizeToStep onChange={setSellPrice} step={priceStep} value={sellPrice} />
@@ -950,7 +941,7 @@ function ChangeCalculator() {
 }
 
 function AveragePriceCalculator() {
-  const { assetType, changeAssetType, feeSettings, selectedTemplate, selectTemplate, templates } = useCalculatorFeeSettings();
+  const { assetType, changeAssetType, feeSettings } = useCalculatorFeeSettings();
   const [lines, setLines] = useState<AverageLine[]>([
     { id: "1", price: null, quantity: null },
     { id: "2", price: null, quantity: null },
@@ -1207,7 +1198,7 @@ function AveragePriceCalculator() {
             <div className="calculator-asset-type-field">
               <FieldLabelWithTip
                 htmlFor="average-price-asset-type"
-                tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按所选费率模板计算。"
+                tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按设置中对应成本类型的默认费率模板计算。"
                 tipAriaLabel="成本类型说明"
               >
                 成本类型
@@ -1225,15 +1216,6 @@ function AveragePriceCalculator() {
                 value={assetType}
               />
             </div>
-            <CalculatorFeeTemplateField
-              assetType={assetType}
-              onSelect={(templateId) => {
-                selectTemplate(templateId);
-                markDirty();
-              }}
-              selectedTemplate={selectedTemplate}
-              templates={templates}
-            />
             <div className="average-lines">
               {lines.map((line, index) => (
                 <div className="average-line" key={line.id}>
@@ -1346,9 +1328,6 @@ function feeSettingsForAssetType(assetType: AssetType): FeeSettings {
 function useCalculatorFeeSettings() {
   const [assetType, setAssetType] = useState<AssetType>("stock");
   const [templates, setTemplates] = useState<FeeTemplate[]>([]);
-  const [preferredTemplateId, setPreferredTemplateId] = useState<number | null>(
-    () => loadFeePreferences().calculatorTemplateId ?? null,
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1362,10 +1341,7 @@ function useCalculatorFeeSettings() {
     };
   }, []);
 
-  const selectedTemplate = useMemo(
-    () => resolveFeeTemplate(templates, assetType, { preferredTemplateId }),
-    [assetType, preferredTemplateId, templates],
-  );
+  const selectedTemplate = useMemo(() => resolveFeeTemplate(templates, assetType), [assetType, templates]);
 
   const feeSettings = useMemo(
     () => (selectedTemplate ? templateToFeeSettings(selectedTemplate) : feeSettingsForAssetType(assetType)),
@@ -1376,60 +1352,11 @@ function useCalculatorFeeSettings() {
     setAssetType(nextAssetType);
   }
 
-  function selectTemplate(templateId: number) {
-    setPreferredTemplateId(templateId);
-    saveFeePreferences({ ...loadFeePreferences(), calculatorTemplateId: templateId });
-  }
-
   return {
     assetType,
     changeAssetType,
-    templates,
-    selectedTemplate,
-    selectTemplate,
     feeSettings,
   };
-}
-
-function CalculatorFeeTemplateField({
-  assetType,
-  templates,
-  selectedTemplate,
-  onSelect,
-}: {
-  assetType: AssetType;
-  templates: FeeTemplate[];
-  selectedTemplate: FeeTemplate | null;
-  onSelect: (templateId: number) => void;
-}) {
-  const options = useMemo(
-    () => templates.filter((template) => template.assetType === assetType),
-    [assetType, templates],
-  );
-
-  if (!options.length) {
-    return (
-      <p className="calculator-fee-empty">
-        暂无{assetType === "etf" ? "ETF" : "股票"}费率模板，将使用内置默认费率；请到「设置」中创建。
-      </p>
-    );
-  }
-
-  return (
-    <label className="fee-template-select calculator-fee-template-field">
-      <FieldLabelWithTip tip="来自「设置 → 费率模板」。计算器手续费按所选模板的佣金、最低佣金、印花税与过户费计算。" tipAriaLabel="费率模板说明">
-        费率模板
-      </FieldLabelWithTip>
-      <AppSelect
-        onChange={onSelect}
-        options={options.map((template) => ({
-          label: feeTemplateLabel(template),
-          value: template.id,
-        }))}
-        value={selectedTemplate?.id ?? options[0]?.id ?? null}
-      />
-    </label>
-  );
 }
 
 function CalculatorShell({ children }: { children: ReactNode }) {

@@ -2163,19 +2163,6 @@ textarea {
   margin-top: 6px;
 }
 
-.calculator-fee-template-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 10px 0 0;
-}
-
-.calculator-fee-empty {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .calculator-fee-panel {
   display: flex;
   flex-direction: column;
