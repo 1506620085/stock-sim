@@ -56,11 +56,6 @@ export function ReplaySessionSwitcher({
       >
         <span className="replay-session-switcher-copy">
           <strong>{active?.name ?? "暂无复盘会话"}</strong>
-          <em>
-            {active
-              ? `Session #${active.id}${active.updatedAt ? ` · ${formatSessionUpdatedAt(active.updatedAt)}` : ""}`
-              : "选择或新建复盘"}
-          </em>
         </span>
         <ChevronsUpDown size={16} strokeWidth={2} />
       </button>
