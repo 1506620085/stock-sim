@@ -5,14 +5,14 @@ import { showError, showInfo, showSuccess } from "../../components/ToastProvider
 import { AppSelect } from "../../components/AppSelect";
 import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppSwitch } from "../../components/AppSwitch";
-import { createReplaySession, createSessionTrade, createTradeReview, importSessionRecords, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
+import { clearSessionTrades, createReplaySession, createSessionTrade, createTradeReview, deleteReplaySession, importSessionRecords, loadInstrumentKlines, loadReplaySessions, loadSessionTrades, loadTradeReviews, loadWatchlist, syncInstrumentKlines, updateReplaySession } from "./api";
 import { KLineChartPanel } from "./KLineChartPanel";
 import { QuoteSummary } from "./QuoteSummary";
 import { aggregateKlines, findBarIndexByDate, resolveChartReplayDate } from "./aggregateKlines";
 import { ChartToolbar } from "./ChartToolbar";
 import { defaultChartDisplaySettings } from "./chartDisplay";
 import { REPLAY_PENDING_CODE_KEY } from "../watchlist/WatchlistPage";
-import { loadInstruments, loadPreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, resolveBarPrice, replayPriceBasisLabel, toTradePriceRule, type FeeTemplate, type ReplayPriceBasis } from "../settings/api";
+import { loadInstruments, loadPreferences, savePreferences, loadFeeTemplates, loadFeePreferences, saveFeePreferences, resolveFeeTemplate, templateToFeeSettings, feeTemplateLabel, resolveBarPrice, replayPriceBasisLabel, toTradePriceRule, type FeeTemplate, type ReplayPriceBasis } from "../settings/api";
 import { calculateTradeFee } from "../calculators/calculations";
 import { QuickPositionControls } from "./QuickPositionControls";
 import { AppConfirmDialog, AppPromptDialog } from "../../components/AppDialog";
@@ -84,6 +84,8 @@ export function ReplayPage() {
   const [creatingSession, setCreatingSession] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [renamingSession, setRenamingSession] = useState<ReplaySession | null>(null);
+  const [deletingSession, setDeletingSession] = useState<ReplaySession | null>(null);
+  const [deletingSessionBusy, setDeletingSessionBusy] = useState(false);
   const [jumpDate, setJumpDate] = useState("");
   const [loadingBars, setLoadingBars] = useState(false);
   const [syncingBars, setSyncingBars] = useState(false);
@@ -95,7 +97,7 @@ export function ReplayPage() {
   const [klinePeriod, setKlinePeriod] = useState<KlinePeriod>("day");
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
   const [chartDisplay, setChartDisplay] = useState<ChartDisplaySettings>(defaultChartDisplaySettings);
-  const [preferences] = useState(() => loadPreferences());
+  const [preferences, setPreferences] = useState(() => loadPreferences());
   const buyPriceBasis: ReplayPriceBasis = preferences.replayBuyPriceBasis;
   const sellPriceBasis: ReplayPriceBasis = preferences.replaySellPriceBasis;
   const activePriceBasis = tradeSide === "buy" ? buyPriceBasis : sellPriceBasis;
@@ -325,6 +327,58 @@ export function ReplayPage() {
       showSuccess("复盘会话已重命名");
     } catch {
       showError("重命名失败");
+    }
+  }
+
+  function openDeleteSession(session: ReplaySession) {
+    setDeletingSession(session);
+  }
+
+  async function confirmDeleteSession() {
+    if (!deletingSession) return;
+    const instrumentId = activeInstrument?.id;
+    if (!instrumentId) return;
+
+    const target = deletingSession;
+    const wasActive = replaySession?.id === target.id;
+    setDeletingSessionBusy(true);
+    try {
+      const result = await clearSessionTrades(target.id, preferences.replaySellPriceBasis);
+      const nextAdjustment = Number((preferences.settledCashAdjustment + result.netCashDelta).toFixed(2));
+      const nextPreferences = { ...preferences, settledCashAdjustment: nextAdjustment };
+      setPreferences(nextPreferences);
+      savePreferences(nextPreferences);
+
+      await deleteReplaySession(target.id);
+
+      const remaining = replaySessions.filter((item) => item.id !== target.id);
+      setReplaySessions(remaining);
+      setTrades((current) => current.filter((trade) => trade.sessionId !== target.id));
+      setDeletingSession(null);
+
+      if (wasActive) {
+        setTradeReviews([]);
+        if (remaining[0]) {
+          applyReplaySession(remaining[0], bars);
+          setActiveReplaySessionId(instrumentId, remaining[0].id);
+        } else {
+          const createdSession = await createBlankReplaySession(instrumentId, 1);
+          setReplaySessions([createdSession]);
+          applyReplaySession(createdSession, bars);
+          setActiveReplaySessionId(instrumentId, createdSession.id);
+        }
+      }
+
+      const settleHint =
+        result.settledQuantity > 0 && result.settlePrice != null
+          ? `已按 ${result.settleDate ?? "当前复盘日"} / ${replayPriceBasisLabel(preferences.replaySellPriceBasis)} 卖出 ${result.settledQuantity.toLocaleString("zh-CN")} 股（成交价 ${result.settlePrice.toFixed(2)}）。`
+          : "当前无持仓，未产生结算卖出。";
+      const pnlHint = `平仓结算资金变动 ${formatCurrency(result.netCashDelta)} 已计入总盈亏，初始资产保持不变。`;
+      showSuccess(`已删除复盘会话「${target.name}」。${settleHint}${pnlHint}`);
+    } catch {
+      // apiFetch 已弹出错误提示
+    } finally {
+      setDeletingSessionBusy(false);
     }
   }
 
@@ -731,8 +785,9 @@ export function ReplayPage() {
               <ReplaySessionSwitcher
                 activeSessionId={replaySession?.id ?? null}
                 creating={creatingSession}
-                disabled={loadingSession || !activeInstrument}
+                disabled={loadingSession || !activeInstrument || deletingSessionBusy}
                 onCreate={() => void handleCreateReplaySession()}
+                onDelete={openDeleteSession}
                 onRename={openRenameSession}
                 onSelect={handleSelectReplaySession}
                 sessions={replaySessions}
@@ -930,6 +985,21 @@ export function ReplayPage() {
         placeholder="例如：第二轮突破复盘"
         title="重命名复盘会话"
         value={renameDraft}
+      />
+      <AppConfirmDialog
+        danger
+        confirmLabel={deletingSessionBusy ? "删除中…" : "确定删除"}
+        message={
+          deletingSession
+            ? `将删除复盘会话「${deletingSession.name}」。若有持仓，将按当前复盘日与卖出成交价设置平仓结算（与「清除该股票交易记录」相同），并删除该会话全部买卖与复盘记录。此操作不可撤销。`
+            : ""
+        }
+        onCancel={() => {
+          if (!deletingSessionBusy) setDeletingSession(null);
+        }}
+        onConfirm={() => void confirmDeleteSession()}
+        open={deletingSession != null}
+        title="删除复盘会话"
       />
 
       </aside>

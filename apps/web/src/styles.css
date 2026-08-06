@@ -5219,7 +5219,7 @@ textarea {
 
 .replay-session-switcher-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 32px;
+  grid-template-columns: minmax(0, 1fr) 32px 32px;
   align-items: stretch;
   gap: 4px;
   border-radius: 6px;
@@ -5255,7 +5255,7 @@ textarea {
   font-style: normal;
 }
 
-.replay-session-switcher-rename {
+.replay-session-switcher-action {
   display: grid;
   place-items: center;
   border: 0;
@@ -5265,9 +5265,14 @@ textarea {
   cursor: pointer;
 }
 
-.replay-session-switcher-rename:hover {
+.replay-session-switcher-action:hover {
   background: #edf2ef;
   color: var(--ink);
+}
+
+.replay-session-switcher-action.is-danger:hover {
+  background: #fff1f0;
+  color: #b52821;
 }
 
 .replay-session-switcher-empty {

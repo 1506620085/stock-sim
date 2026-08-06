@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronsUpDown, Plus, Pencil } from "lucide-react";
+import { ChevronsUpDown, Plus, Pencil, Trash2 } from "lucide-react";
 import type { ReplaySession } from "./types";
 import { formatSessionUpdatedAt } from "./sessionSelection";
 
@@ -11,6 +11,7 @@ type Props = {
   onSelect: (sessionId: number) => void;
   onCreate: () => void;
   onRename: (session: ReplaySession) => void;
+  onDelete: (session: ReplaySession) => void;
 };
 
 export function ReplaySessionSwitcher({
@@ -21,6 +22,7 @@ export function ReplaySessionSwitcher({
   onSelect,
   onCreate,
   onRename,
+  onDelete,
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -104,7 +106,7 @@ export function ReplaySessionSwitcher({
                     </button>
                     <button
                       aria-label={`重命名 ${session.name}`}
-                      className="replay-session-switcher-rename"
+                      className="replay-session-switcher-action"
                       onClick={() => {
                         setOpen(false);
                         onRename(session);
@@ -112,6 +114,17 @@ export function ReplaySessionSwitcher({
                       type="button"
                     >
                       <Pencil size={14} />
+                    </button>
+                    <button
+                      aria-label={`删除 ${session.name}`}
+                      className="replay-session-switcher-action is-danger"
+                      onClick={() => {
+                        setOpen(false);
+                        onDelete(session);
+                      }}
+                      type="button"
+                    >
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 );

@@ -193,6 +193,12 @@ export async function resetAccount(clearTrades: boolean): Promise<{ clearedTrade
   };
 }
 
+export async function deleteReplaySession(sessionId: number): Promise<void> {
+  await apiFetch(`${API_BASE}/api/replay-sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function clearSessionTrades(
   sessionId: number,
   sellPriceBasis: string,
