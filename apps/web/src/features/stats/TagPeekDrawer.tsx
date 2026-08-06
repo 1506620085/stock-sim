@@ -80,7 +80,7 @@ export function TagPeekDrawer({ items, open, activeTag, onOpenChange, onSelectTa
           type="button"
         >
           <span className="tag-peek-grip" />
-          <strong>错因标签列表</strong>
+          <strong>标签列表</strong>
           <ChevronUp className="tag-peek-chevron" size={16} strokeWidth={2.2} />
           <em>{items.length}</em>
         </button>

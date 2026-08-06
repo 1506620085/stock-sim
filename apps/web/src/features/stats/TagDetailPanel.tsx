@@ -132,7 +132,7 @@ export function TagDetailPanel({ items, filterTag, open, onClearFilter, onCollap
       <div className="tag-detail-panel">
         <div className="tag-detail-panel-header">
           <div className="tag-detail-panel-title">
-            <strong>错因详情列表</strong>
+            <strong>详情列表</strong>
             <span>
               {filterTag ? `筛选：${filterTag}` : "全部标签 · 按发布时间从新到旧"}
               {` · ${items.length}`}
