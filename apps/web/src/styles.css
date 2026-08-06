@@ -2950,7 +2950,7 @@ textarea {
   background: #fbfdfc;
 }
 
-.stats-overview-item span {
+.stats-overview-item span:not(.tooltip-bubble) {
   color: var(--muted);
   font-size: clamp(11px, 2.4cqi, 13px);
   white-space: nowrap;
@@ -2974,6 +2974,7 @@ textarea {
 
 .stats-overview-label .tooltip-bubble {
   color: #ffffff;
+  white-space: normal;
 }
 
 .stats-overview-item strong {
@@ -5423,6 +5424,8 @@ textarea {
   line-height: 1.4;
   text-align: center;
   white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -5430,6 +5433,12 @@ textarea {
   transition: opacity 0.15s ease, visibility 0.15s ease;
   bottom: calc(100% + 8px);
   top: auto;
+}
+
+.tooltip-bubble--portal {
+  max-width: min(320px, calc(100vw - 24px));
+  pointer-events: none;
+  transition: none;
 }
 
 .tooltip-wrap--bottom > .tooltip-bubble {
@@ -5460,7 +5469,7 @@ textarea {
 }
 
 .field-help-tip > .tooltip-bubble {
-  max-width: 240px;
+  max-width: 280px;
   transition:
     opacity 0.15s ease 0.45s,
     visibility 0.15s ease 0.45s;
@@ -5506,6 +5515,12 @@ textarea {
   box-shadow: var(--shadow);
   text-align: left;
   white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.field-help-popover--portal {
+  max-width: min(320px, calc(100vw - 24px));
 }
 
 .field-help-popover--top {

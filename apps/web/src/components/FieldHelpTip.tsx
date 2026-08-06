@@ -3,7 +3,8 @@
  * 字段说明提示：问号图标悬停或点击展示提示文案；FieldLabelWithTip 将标签与提示组合在同一行。
  */
 import { CircleHelp } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 type FieldHelpTipProps = {
   tip: ReactNode;
@@ -12,7 +13,7 @@ type FieldHelpTipProps = {
   size?: number;
   /** hover：悬停显示；click：点击弹出说明面板 */
   mode?: "hover" | "click";
-  /** click 模式下弹出层方位 */
+  /** 弹出层方位 */
   placement?: "top" | "top-left" | "bottom" | "bottom-left";
 };
 
@@ -26,14 +27,72 @@ export function FieldHelpTip({
 }: FieldHelpTipProps) {
   const tipId = useId();
   const rootRef = useRef<HTMLSpanElement | null>(null);
+  const bubbleRef = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
+  const [bubbleStyle, setBubbleStyle] = useState<CSSProperties>({});
   const tipText = typeof tip === "string" ? tip : undefined;
+
+  function updateBubblePosition() {
+    const root = rootRef.current;
+    const bubble = bubbleRef.current;
+    if (!root || !bubble) return;
+
+    const rect = root.getBoundingClientRect();
+    const bubbleRect = bubble.getBoundingClientRect();
+    const gap = 8;
+    const padding = 12;
+    const preferBottom = placement === "bottom" || placement === "bottom-left";
+    const preferLeft = placement === "top-left" || placement === "bottom-left";
+
+    let top = preferBottom ? rect.bottom + gap : rect.top - gap - bubbleRect.height;
+    if (!preferBottom && top < padding) {
+      top = rect.bottom + gap;
+    }
+    if (preferBottom && top + bubbleRect.height > window.innerHeight - padding) {
+      top = Math.max(padding, rect.top - gap - bubbleRect.height);
+    }
+
+    let left = preferLeft ? rect.right - bubbleRect.width : rect.left + rect.width / 2 - bubbleRect.width / 2;
+    left = Math.min(Math.max(padding, left), window.innerWidth - bubbleRect.width - padding);
+
+    setBubbleStyle({
+      position: "fixed",
+      top,
+      left,
+      transform: "none",
+      bottom: "auto",
+      right: "auto",
+      zIndex: 1200,
+      opacity: 1,
+      visibility: "visible",
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateBubblePosition();
+    const frame = window.requestAnimationFrame(updateBubblePosition);
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, placement, tipText, tip]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleWindowChange = () => updateBubblePosition();
+    window.addEventListener("resize", handleWindowChange);
+    window.addEventListener("scroll", handleWindowChange, true);
+    return () => {
+      window.removeEventListener("resize", handleWindowChange);
+      window.removeEventListener("scroll", handleWindowChange, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (mode !== "click" || !open) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !bubbleRef.current?.contains(target)) {
         setOpen(false);
       }
     };
@@ -65,16 +124,23 @@ export function FieldHelpTip({
         >
           <CircleHelp aria-hidden="true" size={size} />
         </button>
-        {open ? (
-          <div
-            className={["field-help-popover", `field-help-popover--${placement}`].join(" ")}
-            id={tipId}
-            role="dialog"
-            aria-label={ariaLabel}
-          >
-            {tip}
-          </div>
-        ) : null}
+        {open
+          ? createPortal(
+              <div
+                aria-label={ariaLabel}
+                className="field-help-popover field-help-popover--portal"
+                id={tipId}
+                ref={(node) => {
+                  bubbleRef.current = node;
+                }}
+                role="dialog"
+                style={bubbleStyle}
+              >
+                {tip}
+              </div>,
+              document.body,
+            )
+          : null}
       </span>
     );
   }
@@ -83,12 +149,29 @@ export function FieldHelpTip({
     <span
       aria-label={ariaLabel}
       className={["tooltip-wrap", "field-help-tip", className].filter(Boolean).join(" ")}
+      onBlur={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      ref={rootRef}
       tabIndex={0}
     >
       <CircleHelp aria-hidden="true" size={size} />
-      <span aria-hidden="true" className="tooltip-bubble">
-        {tipText ?? ariaLabel}
-      </span>
+      {open
+        ? createPortal(
+            <span
+              aria-hidden="true"
+              className="tooltip-bubble tooltip-bubble--portal"
+              ref={(node) => {
+                bubbleRef.current = node;
+              }}
+              style={bubbleStyle}
+            >
+              {tipText ?? ariaLabel}
+            </span>,
+            document.body,
+          )
+        : null}
     </span>
   );
 }
