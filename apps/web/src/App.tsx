@@ -90,7 +90,7 @@ export default function App() {
       </nav>
 
       <section className="workspace">
-        {activePage !== "replay" && activePage !== "calculators" && activePage !== "notes" && activePage !== "training" ? (-
+        {activePage !== "replay" && activePage !== "calculators" && activePage !== "notes" && activePage !== "training" ? (
           <header className="topbar">
             <div className="topbar-title-row">
               <h1>{activeMeta.title}</h1>
