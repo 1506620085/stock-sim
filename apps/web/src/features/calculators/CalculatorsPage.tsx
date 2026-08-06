@@ -72,7 +72,17 @@ const currency = (value: number) =>
     minimumFractionDigits: 2,
   });
 
+const priceText = (value: number, decimals: number) =>
+  value.toLocaleString("zh-CN", {
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+  });
+
 const percent = (value: number) => `${value.toFixed(2)}%`;
+
+function priceDecimalsForAsset(assetType: AssetType) {
+  return assetType === "etf" ? 3 : 2;
+}
 
 export function CalculatorsPage() {
   const [activeTab, setActiveTab] = useState<CalculatorTab>("profit");
@@ -204,6 +214,7 @@ function TCalculator() {
   const [dialog, setDialog] = useState<THistoryDialog | null>(null);
 
   const priceStep = assetType === "etf" ? 0.001 : 0.01;
+  const priceDecimals = priceDecimalsForAsset(assetType);
   const feeSettings = useMemo(() => feeSettingsForAssetType(assetType), [assetType]);
   const { rows, summary } = useMemo(
     () => buildTLedger(entries, feeSettings, { finalPrice }),
@@ -456,20 +467,20 @@ function TCalculator() {
     const body = rows.map((row) => [
       row.index,
       tSideLabel(row.side),
-      formatOptional(row.buyPrice),
+      formatOptionalPrice(row.buyPrice, priceDecimals),
       formatOptionalQty(row.buyQuantity),
-      formatOptional(row.sellPrice),
+      formatOptionalPrice(row.sellPrice, priceDecimals),
       formatOptionalQty(row.sellQuantity),
       currency(row.fee),
       currency(row.cashFlow),
       row.positionQuantity.toLocaleString("zh-CN"),
-      currency(row.positionAvgCost),
+      priceText(row.positionAvgCost, priceDecimals),
     ]);
     const summaryRows = [
       [],
       ["最终状态"],
       ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
-      ["当前平均成本", currency(summary.positionAvgCost)],
+      ["当前平均成本", priceText(summary.positionAvgCost, priceDecimals)],
       ["当前持仓市值", currency(summary.positionMarketValue)],
       ["已实现盈亏", currency(summary.realizedPnl)],
       ["未实现盈亏", currency(summary.unrealizedPnl)],
@@ -503,6 +514,7 @@ function TCalculator() {
                   <div className="calculator-input-grid t-input-grid t-input-grid--base">
                     <AppNumberStepper
                       label="底仓成本价"
+                      normalizeToStep
                       onChange={(value) => {
                         setBaseAvgCost(value);
                         markDirty();
@@ -529,6 +541,7 @@ function TCalculator() {
                           最终价格
                         </FieldLabelWithTip>
                       }
+                      normalizeToStep
                       onChange={(value) => {
                         setFinalPrice(value);
                         markDirty();
@@ -573,7 +586,7 @@ function TCalculator() {
                         value={tradeSide}
                       />
                     </label>
-                    <AppNumberStepper label="交易价格" onChange={setTradePrice} step={priceStep} value={tradePrice} />
+                    <AppNumberStepper label="交易价格" normalizeToStep onChange={setTradePrice} step={priceStep} value={tradePrice} />
                     <AppNumberStepper label="交易数量" normalizeToStep onChange={setTradeQuantity} step={100} value={tradeQuantity} />
                     <div className="t-peer-action">
                       <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
@@ -623,7 +636,7 @@ function TCalculator() {
               rows={[
                 // 第1列：持仓现状
                 ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
-                ["当前平均成本", currency(summary.positionAvgCost)],
+                ["当前平均成本", priceText(summary.positionAvgCost, priceDecimals)],
                 ["当前持仓市值", currency(summary.positionMarketValue)],
                 ["", ""],
                 // 第2列：盈亏结果
@@ -761,14 +774,14 @@ function TCalculator() {
                         </td>
                         <td>{row.index}</td>
                         <td>{tSideLabel(row.side)}</td>
-                        <td>{formatOptional(row.buyPrice)}</td>
+                        <td>{formatOptionalPrice(row.buyPrice, priceDecimals)}</td>
                         <td>{formatOptionalQty(row.buyQuantity)}</td>
-                        <td>{formatOptional(row.sellPrice)}</td>
+                        <td>{formatOptionalPrice(row.sellPrice, priceDecimals)}</td>
                         <td>{formatOptionalQty(row.sellQuantity)}</td>
                         <td>{currency(row.fee)}</td>
                         <td className={cashFlowTone(row)}>{currency(row.cashFlow)}</td>
                         <td>{row.positionQuantity.toLocaleString("zh-CN")}</td>
-                        <td>{currency(row.positionAvgCost)}</td>
+                        <td>{priceText(row.positionAvgCost, priceDecimals)}</td>
                       </tr>
                     ))
                   ) : (
@@ -851,8 +864,8 @@ function tSideLabel(side: TLedgerSide) {
   return ({ init: "初始持仓", buy: "买入", sell: "卖出" } as const)[side];
 }
 
-function formatOptional(value: number | null) {
-  return value == null ? "—" : currency(value);
+function formatOptionalPrice(value: number | null, decimals: number) {
+  return value == null ? "—" : priceText(value, decimals);
 }
 
 function formatOptionalQty(value: number | null) {

@@ -4,10 +4,18 @@
  */
 import { memo, useEffect, useId, useState, type ReactNode } from "react";
 
+export function countStepDecimals(step: number) {
+  if (!Number.isFinite(step) || step <= 0) return 0;
+  if (step >= 1) return 0;
+  const normalized = step.toFixed(12).replace(/\.?0+$/, "");
+  const dot = normalized.indexOf(".");
+  return dot === -1 ? 0 : normalized.length - dot - 1;
+}
+
 export function normalizeStepValue(raw: number, step: number) {
   if (!Number.isFinite(raw) || raw <= 0) return 0;
   if (step >= 1) return Math.floor(raw / step) * step;
-  const decimals = String(step).includes(".") ? String(step).split(".")[1]?.length ?? 0 : 0;
+  const decimals = countStepDecimals(step);
   const factor = 10 ** decimals;
   return Math.round(raw * factor) / factor;
 }
@@ -64,7 +72,8 @@ export const AppNumberStepper = memo(function AppNumberStepper({
       syncDraft(value == null ? "" : String(value));
       return;
     }
-    const normalized = normalizeToStep ? normalizeStepValue(raw, step) : normalizeStepValue(Math.max(min, raw), step);
+    const clamped = Math.max(min, raw);
+    const normalized = normalizeToStep ? normalizeStepValue(clamped, step) : clamped;
     let next = Math.max(min, normalized);
     if (max != null) next = Math.min(max, next);
     onChange(next);
