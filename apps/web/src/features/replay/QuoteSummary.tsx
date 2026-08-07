@@ -13,6 +13,10 @@ import type { KLineBar } from "./types";
 type Props = {
   bars: KLineBar[];
   barIndex: number;
+  /** 无障碍名称，默认「行情摘要」 */
+  "aria-label"?: string;
+  /** 是否显示右下角 B/S/L 说明，默认 false */
+  showHelp?: boolean;
 };
 
 const directionClass: Record<QuoteDirection, string> = {
@@ -21,7 +25,7 @@ const directionClass: Record<QuoteDirection, string> = {
   flat: "quote-flat",
 };
 
-export function QuoteSummary({ bars, barIndex }: Props) {
+export function QuoteSummary({ bars, barIndex, "aria-label": ariaLabel = "行情摘要", showHelp = false }: Props) {
   const quote = buildMarketQuote(bars, barIndex);
   if (!quote) return null;
 
@@ -35,7 +39,7 @@ export function QuoteSummary({ bars, barIndex }: Props) {
   ];
 
   return (
-    <section aria-label="行情摘要" className="quote-summary">
+    <section aria-label={ariaLabel} className="quote-summary">
       <div className="quote-summary-price-block">
         <strong className={`quote-summary-price ${directionClass[quote.direction]}`}>{formatQuotePrice(quote.price)}</strong>
         <div className={`quote-summary-change ${directionClass[quote.direction]}`}>
@@ -53,31 +57,33 @@ export function QuoteSummary({ bars, barIndex }: Props) {
         ))}
       </div>
 
-      <div className="quote-summary-help">
-        <FieldHelpTip
-          aria-label="买卖点标记说明"
-          mode="click"
-          placement="top-left"
-          size={15}
-          tip={
-            <div className="marker-legend">
-              <p className="marker-legend-title">K 线标记说明</p>
-              <div className="marker-legend-row">
-                <span className="trade-marker-tag buy">B</span>
-                <span>买入标记，红色，显示在对应 K 线下方</span>
+      {showHelp ? (
+        <div className="quote-summary-help">
+          <FieldHelpTip
+            aria-label="买卖点标记说明"
+            mode="click"
+            placement="top-left"
+            size={15}
+            tip={
+              <div className="marker-legend">
+                <p className="marker-legend-title">K 线标记说明</p>
+                <div className="marker-legend-row">
+                  <span className="trade-marker-tag buy">B</span>
+                  <span>买入标记，红色，显示在对应 K 线下方</span>
+                </div>
+                <div className="marker-legend-row">
+                  <span className="trade-marker-tag sell">S</span>
+                  <span>卖出标记，蓝色，显示在对应 K 线上方</span>
+                </div>
+                <div className="marker-legend-row">
+                  <span className="trade-marker-tag pain">L</span>
+                  <span>最差低点，青色，标记持仓期间最低价</span>
+                </div>
               </div>
-              <div className="marker-legend-row">
-                <span className="trade-marker-tag sell">S</span>
-                <span>卖出标记，蓝色，显示在对应 K 线上方</span>
-              </div>
-              <div className="marker-legend-row">
-                <span className="trade-marker-tag pain">L</span>
-                <span>最差低点，青色，标记持仓期间最低价</span>
-              </div>
-            </div>
-          }
-        />
-      </div>
+            }
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

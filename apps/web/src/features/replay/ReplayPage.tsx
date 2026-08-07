@@ -515,12 +515,12 @@ export function ReplayPage() {
   const chartBars = useMemo(() => aggregateKlines(visibleDailyBars, klinePeriod), [visibleDailyBars, klinePeriod]);
   const availableReplayDates = useMemo(() => bars.map((bar) => bar.date), [bars]);
   const chartReplayDate = useMemo(() => resolveChartReplayDate(chartBars, selectedBar?.date), [chartBars, selectedBar?.date]);
-  const summaryBarIndex = useMemo(() => {
+  const replaySummaryBarIndex = useMemo(() => {
     if (!chartBars.length) return 0;
-    if (hoveredBarIndex !== null) return hoveredBarIndex;
     const date = chartReplayDate ?? selectedBar?.date;
     return date ? findBarIndexByDate(chartBars, date) : chartBars.length - 1;
-  }, [chartBars, chartReplayDate, hoveredBarIndex, selectedBar?.date]);
+  }, [chartBars, chartReplayDate, selectedBar?.date]);
+  const hoverSummaryBarIndex = hoveredBarIndex ?? replaySummaryBarIndex;
   const replayBars = bars.slice(0, normalizedIndex + 1);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
@@ -965,7 +965,13 @@ export function ReplayPage() {
 
           {!loadingBars && !syncingBars && chartBars.length ? (
             <div className="chart-quote-summary">
-              <QuoteSummary barIndex={summaryBarIndex} bars={chartBars} />
+              <QuoteSummary aria-label="复盘日行情" barIndex={replaySummaryBarIndex} bars={chartBars} />
+              <QuoteSummary
+                aria-label={hoveredBarIndex !== null ? "光标行情" : "复盘日行情"}
+                barIndex={hoverSummaryBarIndex}
+                bars={chartBars}
+                showHelp
+              />
             </div>
           ) : null}
 
