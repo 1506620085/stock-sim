@@ -966,6 +966,7 @@ export function ReplayPage() {
           {!loadingBars && !syncingBars && chartBars.length ? (
             <div className="chart-quote-summary">
               <QuoteSummary aria-label="复盘日行情" barIndex={replaySummaryBarIndex} bars={chartBars} />
+              <div aria-hidden="true" className="chart-quote-summary-divider" />
               <QuoteSummary
                 aria-label={hoveredBarIndex !== null ? "光标行情" : "复盘日行情"}
                 barIndex={hoverSummaryBarIndex}

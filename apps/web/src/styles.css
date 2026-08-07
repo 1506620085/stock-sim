@@ -6171,6 +6171,14 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 
+.chart-quote-summary-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 0;
+  background: var(--line);
+}
+
 .quote-summary {
   position: relative;
   display: flex;
