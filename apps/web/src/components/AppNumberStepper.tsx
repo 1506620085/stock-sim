@@ -23,7 +23,10 @@ export function normalizeStepValue(raw: number, step: number) {
 type AppNumberStepperProps = {
   value: number | null;
   onChange: (value: number | null) => void;
+  /** 输入精度 / normalizeToStep 对齐步长；HTML input 的 step */
   step?: number;
+  /** +/- 按钮步长，默认与 step 相同（如股票价格输入精度 0.001、加减按 0.01） */
+  adjustStep?: number;
   min?: number;
   max?: number;
   normalizeToStep?: boolean;
@@ -41,6 +44,7 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   value,
   onChange,
   step = 1,
+  adjustStep,
   min = 0,
   max,
   normalizeToStep = false,
@@ -55,6 +59,7 @@ export const AppNumberStepper = memo(function AppNumberStepper({
 }: AppNumberStepperProps) {
   const inputId = useId();
   const [draft, setDraft] = useState(value == null ? "" : String(value));
+  const bumpStep = adjustStep ?? step;
 
   useEffect(() => {
     const nextDraft = value == null ? "" : String(value);
@@ -100,10 +105,10 @@ export const AppNumberStepper = memo(function AppNumberStepper({
   const control = (
     <div className="trade-qty-stepper">
       <button
-        aria-label={decrementAriaLabel ?? `减少 ${step}`}
+        aria-label={decrementAriaLabel ?? `减少 ${bumpStep}`}
         className="trade-qty-step"
         disabled={!canDecrement}
-        onClick={() => adjustValue(-step)}
+        onClick={() => adjustValue(-bumpStep)}
         type="button"
       >
         −
@@ -125,10 +130,10 @@ export const AppNumberStepper = memo(function AppNumberStepper({
         />
       </div>
       <button
-        aria-label={incrementAriaLabel ?? `增加 ${step}`}
+        aria-label={incrementAriaLabel ?? `增加 ${bumpStep}`}
         className="trade-qty-step"
         disabled={!canIncrement}
-        onClick={() => adjustValue(step)}
+        onClick={() => adjustValue(bumpStep)}
         type="button"
       >
         +

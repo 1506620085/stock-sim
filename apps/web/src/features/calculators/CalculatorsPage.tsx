@@ -86,8 +86,13 @@ const priceText = (value: number, decimals: number) =>
 
 const percent = (value: number) => `${value.toFixed(2)}%`;
 
-function priceDecimalsForAsset(assetType: AssetType) {
-  return assetType === "etf" ? 3 : 2;
+/** 价格输入统一三位小数精度 */
+const PRICE_INPUT_STEP = 0.001;
+const PRICE_DECIMALS = 3;
+
+/** 股票按分（0.01）加减，ETF 按厘（0.001）加减 */
+function priceAdjustStepForAsset(assetType: AssetType) {
+  return assetType === "etf" ? 0.001 : 0.01;
 }
 
 export function CalculatorsPage() {
@@ -137,7 +142,7 @@ function ProfitCostCalculator() {
   const [buyPrice, setBuyPrice] = useState<number | null>(null);
   const [sellPrice, setSellPrice] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number | null>(null);
-  const priceStep = assetType === "etf" ? 0.001 : 0.01;
+  const priceAdjustStep = priceAdjustStepForAsset(assetType);
   const result = useMemo(
     () =>
       calculateProfitCost({
@@ -150,8 +155,8 @@ function ProfitCostCalculator() {
   );
 
   useEffect(() => {
-    setBuyPrice((current) => (current == null ? current : Number(current.toFixed(assetType === "etf" ? 3 : 2))));
-    setSellPrice((current) => (current == null ? current : Number(current.toFixed(assetType === "etf" ? 3 : 2))));
+    setBuyPrice((current) => (current == null ? current : Number(current.toFixed(PRICE_DECIMALS))));
+    setSellPrice((current) => (current == null ? current : Number(current.toFixed(PRICE_DECIMALS))));
   }, [assetType]);
 
   return (
@@ -162,7 +167,7 @@ function ProfitCostCalculator() {
           <div className="calculator-asset-type-field">
             <FieldLabelWithTip
               htmlFor="profit-cost-asset-type"
-              tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按设置中对应成本类型的默认费率模板计算。"
+              tip="成本类型决定费率：股票卖出计印花税，ETF 不计。价格均可精确到三位小数；加减时股票按分（0.01）、ETF 按厘（0.001）。佣金等按设置中对应成本类型的默认费率模板计算。"
               tipAriaLabel="成本类型说明"
             >
               成本类型
@@ -178,8 +183,22 @@ function ProfitCostCalculator() {
             />
           </div>
           <div className="calculator-input-grid">
-            <AppNumberStepper label="买入价格" normalizeToStep onChange={setBuyPrice} step={priceStep} value={buyPrice} />
-            <AppNumberStepper label="卖出价格" normalizeToStep onChange={setSellPrice} step={priceStep} value={sellPrice} />
+            <AppNumberStepper
+              adjustStep={priceAdjustStep}
+              label="买入价格"
+              normalizeToStep
+              onChange={setBuyPrice}
+              step={PRICE_INPUT_STEP}
+              value={buyPrice}
+            />
+            <AppNumberStepper
+              adjustStep={priceAdjustStep}
+              label="卖出价格"
+              normalizeToStep
+              onChange={setSellPrice}
+              step={PRICE_INPUT_STEP}
+              value={sellPrice}
+            />
             <AppNumberStepper label="买入数量" normalizeToStep onChange={setQuantity} step={100} value={quantity} />
           </div>
         </div>
@@ -218,18 +237,16 @@ function TCalculator() {
   const [dirty, setDirty] = useState(false);
   const [dialog, setDialog] = useState<THistoryDialog | null>(null);
 
-  const priceStep = assetType === "etf" ? 0.001 : 0.01;
-  const priceDecimals = priceDecimalsForAsset(assetType);
+  const priceAdjustStep = priceAdjustStepForAsset(assetType);
   const { rows, summary } = useMemo(
     () => buildTLedger(entries, feeSettings, { finalPrice }),
     [entries, feeSettings, finalPrice],
   );
 
   useEffect(() => {
-    const decimals = assetType === "etf" ? 3 : 2;
-    setBaseAvgCost((current) => (current == null ? current : Number(current.toFixed(decimals))));
-    setTradePrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
-    setFinalPrice((current) => (current == null ? current : Number(current.toFixed(decimals))));
+    setBaseAvgCost((current) => (current == null ? current : Number(current.toFixed(PRICE_DECIMALS))));
+    setTradePrice((current) => (current == null ? current : Number(current.toFixed(PRICE_DECIMALS))));
+    setFinalPrice((current) => (current == null ? current : Number(current.toFixed(PRICE_DECIMALS))));
   }, [assetType]);
 
   function markDirty() {
@@ -471,20 +488,20 @@ function TCalculator() {
     const body = rows.map((row) => [
       row.index,
       tSideLabel(row.side),
-      formatOptionalPrice(row.buyPrice, priceDecimals),
+      formatOptionalPrice(row.buyPrice, PRICE_DECIMALS),
       formatOptionalQty(row.buyQuantity),
-      formatOptionalPrice(row.sellPrice, priceDecimals),
+      formatOptionalPrice(row.sellPrice, PRICE_DECIMALS),
       formatOptionalQty(row.sellQuantity),
       currency(row.fee),
       currency(row.cashFlow),
       row.positionQuantity.toLocaleString("zh-CN"),
-      priceText(row.positionAvgCost, priceDecimals),
+      priceText(row.positionAvgCost, PRICE_DECIMALS),
     ]);
     const summaryRows = [
       [],
       ["最终状态"],
       ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
-      ["当前平均成本", priceText(summary.positionAvgCost, priceDecimals)],
+      ["当前平均成本", priceText(summary.positionAvgCost, PRICE_DECIMALS)],
       ["当前持仓市值", currency(summary.positionMarketValue)],
       ["已实现盈亏", currency(summary.realizedPnl)],
       ["未实现盈亏", currency(summary.unrealizedPnl)],
@@ -517,13 +534,14 @@ function TCalculator() {
                 <div className="t-input-align">
                   <div className="calculator-input-grid t-input-grid t-input-grid--base">
                     <AppNumberStepper
+                      adjustStep={priceAdjustStep}
                       label="底仓成本价"
                       normalizeToStep
                       onChange={(value) => {
                         setBaseAvgCost(value);
                         markDirty();
                       }}
-                      step={priceStep}
+                      step={PRICE_INPUT_STEP}
                       value={baseAvgCost}
                     />
                     <AppNumberStepper
@@ -545,18 +563,19 @@ function TCalculator() {
                           最终价格
                         </FieldLabelWithTip>
                       }
+                      adjustStep={priceAdjustStep}
                       normalizeToStep
                       onChange={(value) => {
                         setFinalPrice(value);
                         markDirty();
                       }}
-                      step={priceStep}
+                      step={PRICE_INPUT_STEP}
                       value={finalPrice}
                     />
                     <div className="calculator-asset-type-field">
                       <FieldLabelWithTip
                         htmlFor="t-asset-type"
-                        tip="成本类型决定费率规则：股票卖出计印花税，ETF 不计；佣金等按设置中对应成本类型的默认费率模板计算。"
+                        tip="成本类型决定费率规则：股票卖出计印花税，ETF 不计。价格均可精确到三位小数；加减时股票按分（0.01）、ETF 按厘（0.001）。佣金等按设置中对应成本类型的默认费率模板计算。"
                         tipAriaLabel="成本类型说明"
                       >
                         成本类型
@@ -590,7 +609,14 @@ function TCalculator() {
                         value={tradeSide}
                       />
                     </label>
-                    <AppNumberStepper label="交易价格" normalizeToStep onChange={setTradePrice} step={priceStep} value={tradePrice} />
+                    <AppNumberStepper
+                      adjustStep={priceAdjustStep}
+                      label="交易价格"
+                      normalizeToStep
+                      onChange={setTradePrice}
+                      step={PRICE_INPUT_STEP}
+                      value={tradePrice}
+                    />
                     <AppNumberStepper label="交易数量" normalizeToStep onChange={setTradeQuantity} step={100} value={tradeQuantity} />
                     <div className="t-peer-action">
                       <button className="primary-button t-init-button" onClick={initBasePosition} type="button">
@@ -640,7 +666,7 @@ function TCalculator() {
               rows={[
                 // 第1列：持仓现状
                 ["当前持仓数量", summary.positionQuantity.toLocaleString("zh-CN")],
-                ["当前平均成本", priceText(summary.positionAvgCost, priceDecimals)],
+                ["当前平均成本", priceText(summary.positionAvgCost, PRICE_DECIMALS)],
                 ["当前持仓市值", currency(summary.positionMarketValue)],
                 ["", ""],
                 // 第2列：盈亏结果
@@ -778,14 +804,14 @@ function TCalculator() {
                         </td>
                         <td>{row.index}</td>
                         <td>{tSideLabel(row.side)}</td>
-                        <td>{formatOptionalPrice(row.buyPrice, priceDecimals)}</td>
+                        <td>{formatOptionalPrice(row.buyPrice, PRICE_DECIMALS)}</td>
                         <td>{formatOptionalQty(row.buyQuantity)}</td>
-                        <td>{formatOptionalPrice(row.sellPrice, priceDecimals)}</td>
+                        <td>{formatOptionalPrice(row.sellPrice, PRICE_DECIMALS)}</td>
                         <td>{formatOptionalQty(row.sellQuantity)}</td>
                         <td>{currency(row.fee)}</td>
                         <td className={cashFlowTone(row)}>{currency(row.cashFlow)}</td>
                         <td>{row.positionQuantity.toLocaleString("zh-CN")}</td>
-                        <td>{priceText(row.positionAvgCost, priceDecimals)}</td>
+                        <td>{priceText(row.positionAvgCost, PRICE_DECIMALS)}</td>
                       </tr>
                     ))
                   ) : (
@@ -907,8 +933,22 @@ function ChangeCalculator() {
         <div className="panel">
           <h2>输入参数</h2>
           <div className="calculator-input-grid">
-            <AppNumberStepper label="基准价格" onChange={setBasePrice} step={0.01} value={basePrice} />
-            <AppNumberStepper label="当前价格" onChange={setCurrentPrice} step={0.01} value={currentPrice} />
+            <AppNumberStepper
+              adjustStep={0.01}
+              label="基准价格"
+              normalizeToStep
+              onChange={setBasePrice}
+              step={PRICE_INPUT_STEP}
+              value={basePrice}
+            />
+            <AppNumberStepper
+              adjustStep={0.01}
+              label="当前价格"
+              normalizeToStep
+              onChange={setCurrentPrice}
+              step={PRICE_INPUT_STEP}
+              value={currentPrice}
+            />
             <AppNumberStepper label="目标涨跌幅(%)" onChange={setTargetRate} step={0.1} value={targetRate} />
           </div>
         </div>
@@ -951,15 +991,14 @@ function AveragePriceCalculator() {
   const [dirty, setDirty] = useState(false);
   const [dialog, setDialog] = useState<AverageHistoryDialog | null>(null);
 
-  const priceStep = assetType === "etf" ? 0.001 : 0.01;
+  const priceAdjustStep = priceAdjustStepForAsset(assetType);
   const result = useMemo(() => calculateAverage(lines, feeSettings), [feeSettings, lines]);
 
   useEffect(() => {
-    const decimals = assetType === "etf" ? 3 : 2;
     setLines((items) =>
       items.map((line) => ({
         ...line,
-        price: line.price == null ? null : Number(line.price.toFixed(decimals)),
+        price: line.price == null ? null : Number(line.price.toFixed(PRICE_DECIMALS)),
       })),
     );
   }, [assetType]);
@@ -1198,7 +1237,7 @@ function AveragePriceCalculator() {
             <div className="calculator-asset-type-field">
               <FieldLabelWithTip
                 htmlFor="average-price-asset-type"
-                tip="成本类型决定费率与价格精度：股票卖出计印花税、价格两位小数；ETF 不计印花税、价格三位小数。佣金等按设置中对应成本类型的默认费率模板计算。"
+                tip="成本类型决定费率与价格精度：股票卖出计印花税，ETF 不计印花税。价格均可精确到三位小数；加减时股票按分（0.01）、ETF 按厘（0.001）。佣金等按设置中对应成本类型的默认费率模板计算。"
                 tipAriaLabel="成本类型说明"
               >
                 成本类型
@@ -1221,10 +1260,11 @@ function AveragePriceCalculator() {
                 <div className="average-line" key={line.id}>
                   <span>{index + 1}</span>
                   <AppNumberStepper
+                    adjustStep={priceAdjustStep}
                     label="价格"
                     normalizeToStep
                     onChange={(value) => updateLine(line.id, { price: value })}
-                    step={priceStep}
+                    step={PRICE_INPUT_STEP}
                     value={line.price}
                   />
                   <AppNumberStepper
