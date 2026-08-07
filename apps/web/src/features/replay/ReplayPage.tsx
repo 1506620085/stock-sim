@@ -636,6 +636,74 @@ export function ReplayPage() {
     setRecenterToken((token) => token + 1);
   }
 
+  const moveReplayDateRef = useRef(moveReplayDate);
+  moveReplayDateRef.current = moveReplayDate;
+
+  useEffect(() => {
+    let holdDelayId: number | null = null;
+    let holdIntervalId: number | null = null;
+    let activeKey: "ArrowLeft" | "ArrowRight" | null = null;
+
+    function clearHold() {
+      if (holdDelayId != null) window.clearTimeout(holdDelayId);
+      if (holdIntervalId != null) window.clearInterval(holdIntervalId);
+      holdDelayId = null;
+      holdIntervalId = null;
+      activeKey = null;
+    }
+
+    function isEditableTarget(target: EventTarget | null) {
+      if (!(target instanceof HTMLElement)) return false;
+      if (target.isContentEditable) return true;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+    }
+
+    function shouldIgnore(event: KeyboardEvent) {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return true;
+      if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) return true;
+      if (document.querySelector(".app-dialog-backdrop, [aria-modal='true']")) return true;
+      return false;
+    }
+
+    function step(key: "ArrowLeft" | "ArrowRight") {
+      moveReplayDateRef.current(key === "ArrowLeft" ? -1 : 1);
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (shouldIgnore(event)) return;
+      event.preventDefault();
+      // 自管长按节奏，忽略系统 key repeat，避免与 interval 叠加速移
+      if (event.repeat || activeKey === event.key) return;
+
+      activeKey = event.key;
+      step(event.key);
+      holdDelayId = window.setTimeout(() => {
+        holdIntervalId = window.setInterval(() => {
+          if (activeKey) step(activeKey);
+        }, 120);
+      }, 360);
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === activeKey) clearHold();
+    };
+
+    const handleWindowBlur = () => clearHold();
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleWindowBlur);
+    return () => {
+      clearHold();
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, []);
+
   function updateKlinePeriod(period: KlinePeriod) {
     setKlinePeriod(period);
     setRecenterToken((token) => token + 1);
