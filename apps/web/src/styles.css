@@ -283,7 +283,7 @@ textarea {
 
 .tag-select-selector {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
   width: 100%;
   min-height: 36px;
@@ -364,13 +364,16 @@ textarea {
 
 .tag-select-clear {
   flex: 0 0 auto;
-  margin-top: 4px;
+  align-self: center;
+  margin: 0;
 }
 
 .tag-select-input {
   flex: 1 1 80px;
   min-width: 80px;
-  width: auto;
+  width: auto !important;
+  height: 24px;
+  margin: 0 !important;
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -379,10 +382,13 @@ textarea {
   line-height: 24px;
   outline: none;
   padding: 0 4px !important;
+  vertical-align: middle;
 }
 
 .tag-select-input::placeholder {
   color: #bfbfbf;
+  line-height: 24px;
+  vertical-align: middle;
 }
 
 .tag-select-dropdown {
@@ -7751,7 +7757,7 @@ textarea {
 
 .review-panel select,
 .review-panel .app-select,
-.review-panel input,
+.review-panel input:not(.tag-select-input),
 .review-panel textarea {
   margin-top: 6px;
 }
