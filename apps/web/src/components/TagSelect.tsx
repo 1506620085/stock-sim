@@ -14,7 +14,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 export type TagSelectOption = {
   label: string;
@@ -66,6 +66,19 @@ function uniquePreserveOrder(items: string[]) {
   return next;
 }
 
+function fuzzyMatchTag(tag: string, query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const target = tag.toLowerCase();
+  if (target.includes(q)) return true;
+  let i = 0;
+  for (const ch of target) {
+    if (ch === q[i]) i += 1;
+    if (i >= q.length) return true;
+  }
+  return false;
+}
+
 export function TagSelect({
   mode = "multiple",
   value,
@@ -88,6 +101,7 @@ export function TagSelect({
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [draft, setDraft] = useState("");
+  const [historyQuery, setHistoryQuery] = useState("");
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
   const [openUpward, setOpenUpward] = useState(false);
 
@@ -95,6 +109,10 @@ export function TagSelect({
   const historyOptions = useMemo(
     () => uniquePreserveOrder(options.map((item) => normalizeOption(item).value)),
     [options],
+  );
+  const filteredHistoryOptions = useMemo(
+    () => historyOptions.filter((tag) => fuzzyMatchTag(tag, historyQuery)),
+    [historyOptions, historyQuery],
   );
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
@@ -109,6 +127,7 @@ export function TagSelect({
   function close() {
     setOpen(false);
     setDraft("");
+    setHistoryQuery("");
   }
 
   function openDropdown() {
@@ -142,7 +161,7 @@ export function TagSelect({
   useLayoutEffect(() => {
     if (!open) return;
     updateDropdownPosition();
-  }, [open, historyOptions.length, selected.length, draft]);
+  }, [open, historyOptions.length, filteredHistoryOptions.length, selected.length, draft, historyQuery]);
 
   useEffect(() => {
     if (!open) return;
@@ -318,10 +337,29 @@ export function TagSelect({
               role="listbox"
               style={dropdownStyle}
             >
-              <div className="tag-select-dropdown-header">历史标签</div>
-              {historyOptions.length ? (
+              <div className="tag-select-dropdown-search">
+                <Search aria-hidden="true" className="tag-select-dropdown-search-icon" size={14} />
+                <input
+                  aria-label="搜索历史标签"
+                  autoComplete="off"
+                  onChange={(event) => setHistoryQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      close();
+                    }
+                  }}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  placeholder="搜索历史标签"
+                  type="search"
+                  value={historyQuery}
+                />
+              </div>
+              {historyOptions.length === 0 ? (
+                <p className="tag-select-dropdown-empty">暂无历史标签，保存区间复盘后会出现在这里</p>
+              ) : filteredHistoryOptions.length ? (
                 <div className="tag-select-dropdown-list">
-                  {historyOptions.map((tag) => {
+                  {filteredHistoryOptions.map((tag) => {
                     const selectedAlready = selectedSet.has(tag);
                     return (
                       <div
@@ -357,7 +395,7 @@ export function TagSelect({
                   })}
                 </div>
               ) : (
-                <p className="tag-select-dropdown-empty">暂无历史标签，保存区间复盘后会出现在这里</p>
+                <p className="tag-select-dropdown-empty">未找到匹配的历史标签</p>
               )}
               <div className="tag-select-dropdown-footer">输入文字后按 Enter 创建标签</div>
             </div>,

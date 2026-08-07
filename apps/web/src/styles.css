@@ -429,6 +429,40 @@ textarea {
   border-bottom: 1px solid #f0f0f0;
 }
 
+.tag-select-dropdown-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tag-select-dropdown-search-icon {
+  flex: 0 0 auto;
+  color: #8c8c8c;
+}
+
+.tag-select-dropdown-search input {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
+  min-height: 32px;
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 6px;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.tag-select-dropdown-search input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(23, 108, 143, 0.12) !important;
+}
+
 .tag-select-dropdown-footer {
   border-top: 1px solid #f0f0f0;
 }
