@@ -6178,20 +6178,6 @@ textarea {
   background: var(--line);
 }
 
-.chart-quote-summary-placeholder {
-  display: flex;
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  min-width: 0;
-  min-height: 52px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-  text-align: center;
-}
-
 .chart-quote-summary > .quote-summary:last-child {
   border-bottom: 1px solid var(--line);
   margin-left: -16px;
