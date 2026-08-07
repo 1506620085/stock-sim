@@ -6180,8 +6180,10 @@ textarea {
 
 .chart-quote-summary > .quote-summary:last-child {
   border-bottom: 1px solid var(--line);
+  margin-left: -16px;
   margin-right: -18px;
   margin-bottom: -8px;
+  padding-left: 16px;
   padding-right: 18px;
   padding-bottom: 8px;
 }
