@@ -277,6 +277,225 @@ textarea {
   font-size: 13px;
 }
 
+.tag-select {
+  width: 100%;
+}
+
+.tag-select-selector {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: text;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.tag-select-selector:hover:not(.is-disabled) {
+  border-color: var(--accent);
+}
+
+.tag-select-selector.is-open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(23, 108, 143, 0.16);
+}
+
+.tag-select-selector.is-disabled {
+  cursor: not-allowed;
+  background: #f5f5f5;
+  color: #999999;
+}
+
+.tag-select-selection {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tag-select-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #f5f7f6;
+  color: var(--ink);
+  padding: 1px 4px 1px 8px;
+  line-height: 20px;
+}
+
+.tag-select-chip em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.tag-select-chip-remove,
+.tag-select-clear,
+.tag-select-option-remove {
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.tag-select-chip-remove:hover,
+.tag-select-clear:hover,
+.tag-select-option-remove:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ink);
+}
+
+.tag-select-clear {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
+.tag-select-input {
+  flex: 1 1 80px;
+  min-width: 80px;
+  width: auto;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 24px;
+  outline: none;
+  padding: 0 4px !important;
+}
+
+.tag-select-input::placeholder {
+  color: #bfbfbf;
+}
+
+.tag-select-dropdown {
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.08),
+    0 3px 6px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  transform: scale(0.98);
+  transform-origin: top center;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  pointer-events: none;
+}
+
+.tag-select-dropdown.is-upward {
+  transform-origin: bottom center;
+}
+
+.tag-select-dropdown.is-open {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.tag-select-dropdown-header,
+.tag-select-dropdown-footer {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.tag-select-dropdown-header {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tag-select-dropdown-footer {
+  border-top: 1px solid #f0f0f0;
+}
+
+.tag-select-dropdown-list {
+  display: flex;
+  max-height: 200px;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+  padding: 6px;
+}
+
+.tag-select-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 2px;
+  border-radius: 6px;
+}
+
+.tag-select-option:hover:not(.is-selected) {
+  background: #f5f5f5;
+}
+
+.tag-select-option.is-selected {
+  background: #f5f5f5;
+}
+
+.tag-select-option-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.tag-select-option-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.tag-select-option-main em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.tag-select-option.is-selected .tag-select-option-main {
+  color: #999999;
+  cursor: not-allowed;
+}
+
+.tag-select-option-main:disabled {
+  cursor: not-allowed;
+}
+
+.tag-select-dropdown-empty {
+  margin: 0;
+  color: #999999;
+  font-size: 13px;
+  padding: 12px;
+}
+
 .app-switch-row {
   display: inline-flex;
   align-items: center;
@@ -6617,6 +6836,10 @@ textarea {
   display: block;
   color: var(--muted);
   font-size: 13px;
+}
+
+.full-field > .tag-select {
+  margin-top: 6px;
 }
 
 .trade-lot-hint {

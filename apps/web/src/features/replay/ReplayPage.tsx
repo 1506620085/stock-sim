@@ -16,6 +16,7 @@ import { loadInstruments, loadPreferences, savePreferences, loadFeeTemplates, lo
 import { calculateTradeFee } from "../calculators/calculations";
 import { QuickPositionControls } from "./QuickPositionControls";
 import { AppConfirmDialog, AppPromptDialog } from "../../components/AppDialog";
+import { TagSelect } from "../../components/TagSelect";
 import {
   buildReplayExcelBlob,
   buildReplayExcelFilename,
@@ -29,6 +30,12 @@ import {
   getActiveReplaySessionId,
   setActiveReplaySessionId,
 } from "./sessionSelection";
+import {
+  hydrateReviewTagHistoryFromReviews,
+  loadReviewTagHistory,
+  mergeReviewTagHistory,
+  saveReviewTagHistory,
+} from "./reviewTagHistory";
 
 import {
   calculateAvailableCash,
@@ -1430,8 +1437,13 @@ function TradeReviewPanel({
   const [startTradeId, setStartTradeId] = useState<string>("");
   const [endTradeId, setEndTradeId] = useState<string>("");
   const [title, setTitle] = useState("区间复盘");
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagHistory, setTagHistory] = useState<string[]>(() => loadReviewTagHistory());
   const [note, setNote] = useState("");
+
+  useEffect(() => {
+    setTagHistory(hydrateReviewTagHistoryFromReviews(reviews));
+  }, [reviews]);
 
   const metrics = useMemo(
     () =>
@@ -1457,20 +1469,19 @@ function TradeReviewPanel({
     }
 
     try {
+      const nextTags = tags.map((tag) => tag.trim()).filter(Boolean);
       const review = await createTradeReview(sessionId, {
         startTradeId: parseNullableId(startTradeId),
         endTradeId: parseNullableId(endTradeId),
         title: title.trim(),
         note,
-        tags: tags
-          .split(/[，,]/)
-          .map((item) => item.trim())
-          .filter(Boolean),
+        tags: nextTags,
         metricsSnapshot: metrics,
       });
       onCreate(review);
+      setTagHistory(mergeReviewTagHistory(nextTags));
       setNote("");
-      setTags("");
+      setTags([]);
       showSuccess("已保存区间复盘。");
     } catch {
       // apiFetch 已弹出错误提示
@@ -1536,10 +1547,22 @@ function TradeReviewPanel({
           标题
           <input value={title} onChange={(event) => setTitle(event.target.value)} />
         </label>
-        <label className="full-field">
-          标签
-          <input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="追高, 未按计划, 放量突破" />
-        </label>
+        <div className="full-field">
+          <span>标签</span>
+          <TagSelect
+            allowClear
+            aria-label="区间复盘标签"
+            mode="multiple"
+            onChange={setTags}
+            onOptionsChange={(next) => {
+              saveReviewTagHistory(next);
+              setTagHistory(next);
+            }}
+            options={tagHistory}
+            placeholder="请输入或选择标签"
+            value={tags}
+          />
+        </div>
         <label className="full-field">
           总结笔记
           <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} placeholder="总结这段交易的判断、执行和情绪问题" />
