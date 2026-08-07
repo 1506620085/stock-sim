@@ -6,7 +6,9 @@ import { loadStatsSummary, type StatsSummary } from "./api";
 import { TagDetailPanel } from "./TagDetailPanel";
 import { TagDonutChart } from "./TagDonutChart";
 import { TagPeekDrawer } from "./TagPeekDrawer";
+import { TrainingFocusPanel } from "./TrainingFocusPanel";
 import { aggregateTagStats, listTagOccurrences } from "./tagAggregation";
+import { formatTrainingRhythm, pickTrainingFocusTags } from "./trainingFocus";
 
 const emptySummary: StatsSummary = {
   total_sessions: 0,
@@ -42,6 +44,8 @@ export function StatsPage() {
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const preferences = useMemo(() => loadPreferences(), []);
   const aggregatedTags = useMemo(() => aggregateTagStats(summary.tag_stats), [summary.tag_stats]);
+  const focusTags = useMemo(() => pickTrainingFocusTags(aggregatedTags, 3), [aggregatedTags]);
+  const rhythmLabel = useMemo(() => formatTrainingRhythm(summary.calendar), [summary.calendar]);
   const detailOccurrences = useMemo(
     () => listTagOccurrences(summary.tag_stats, filterTag),
     [summary.tag_stats, filterTag],
@@ -51,6 +55,13 @@ export function StatsPage() {
     setFilterTag(tag);
     setTagDetailOpen(true);
     setTagDrawerOpen(false);
+  }
+
+  function goReplay() {
+    if (window.location.pathname !== "/replay") {
+      window.history.pushState({}, "", "/replay");
+    }
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
 
   useEffect(() => {
@@ -196,22 +207,16 @@ export function StatsPage() {
 
         <section className="panel stats-panel">
           <div className="section-header">
-            <h2>最近总结</h2>
-            <span>{summary.recent_reviews.length}</span>
+            <h2>训练焦点</h2>
+            <span>{rhythmLabel}</span>
           </div>
-          <div className="recent-review-list">
-            {summary.recent_reviews.length ? (
-              summary.recent_reviews.map((review) => (
-                <article key={review.id}>
-                  <strong>{review.title}</strong>
-                  <span>{review.tags.join(" / ") || "未标记"}</span>
-                  <p>{review.note || "未填写总结"}</p>
-                </article>
-              ))
-            ) : (
-              <p className="empty-copy">保存区间复盘后，这里会集中展示最近总结。</p>
-            )}
-          </div>
+          <TrainingFocusPanel
+            activeTag={filterTag}
+            items={focusTags}
+            onGoReplay={goReplay}
+            onSelectTag={selectTagFilter}
+            onViewAllTags={() => setTagDrawerOpen(true)}
+          />
         </section>
       </div>
     </section>
