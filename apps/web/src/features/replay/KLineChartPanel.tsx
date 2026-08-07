@@ -255,15 +255,44 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     chart.subscribeAction("onVisibleRangeChange", handleViewChange);
 
     const handleCrosshairChange = (data: unknown) => {
-      const crosshair = data as Crosshair;
-      if (crosshair.dataIndex !== undefined && crosshair.dataIndex >= 0) {
-        onHoveredBarIndexChangeRef.current?.(crosshair.dataIndex);
+      const crosshair = (data ?? {}) as Crosshair;
+      const currentChart = chartRef.current;
+      if (!currentChart) return;
+
+      // klinecharts 回调传入的是原始十字线坐标，不一定带 dataIndex，需自行换算
+      let index =
+        typeof crosshair.dataIndex === "number"
+          ? crosshair.dataIndex
+          : typeof crosshair.realDataIndex === "number"
+            ? crosshair.realDataIndex
+            : undefined;
+
+      if ((index === undefined || index < 0) && typeof crosshair.x === "number") {
+        const converted = currentChart.convertFromPixel([{ x: crosshair.x }], {
+          paneId: crosshair.paneId,
+        });
+        const point = Array.isArray(converted) ? converted[0] : converted;
+        if (typeof point?.dataIndex === "number") {
+          index = point.dataIndex;
+        }
+      }
+
+      const dataCount = currentChart.getDataList().length;
+      if (typeof index === "number" && index >= 0 && dataCount > 0) {
+        onHoveredBarIndexChangeRef.current?.(Math.min(Math.floor(index), dataCount - 1));
         return;
       }
+
       onHoveredBarIndexChangeRef.current?.(null);
     };
 
     chart.subscribeAction("onCrosshairChange", handleCrosshairChange);
+
+    const clearHoveredBar = () => {
+      onHoveredBarIndexChangeRef.current?.(null);
+    };
+
+    chartContainer.addEventListener("pointerleave", clearHoveredBar);
 
     return () => {
       chart.unsubscribeAction("onCrosshairChange", handleCrosshairChange);
@@ -276,6 +305,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       chartContainer.removeEventListener("pointerup", handlePointerEnd);
       chartContainer.removeEventListener("pointercancel", handlePointerEnd);
       chartContainer.removeEventListener("pointerleave", handlePointerEnd);
+      chartContainer.removeEventListener("pointerleave", clearHoveredBar);
       resizeObserver.disconnect();
       dispose(chart);
       chartRef.current = null;
