@@ -754,7 +754,6 @@ function updateCrosshairDateLabel(
 
     const yAxisWidth = chart.getSize(crosshairDateBandPaneId, "yAxis")?.width ?? 0;
     syncVisibleRangeDateLabels(chart, bars, period, rangeStartEl, rangeEndEl, {
-      bandHeight: dedicatedBand.height,
       endRightInset: yAxisWidth + 8,
     });
 
@@ -821,7 +820,7 @@ function syncVisibleRangeDateLabels(
   period: KlinePeriod,
   startEl: HTMLElement | null,
   endEl: HTMLElement | null,
-  layout: { bandHeight: number; endRightInset: number },
+  layout: { endRightInset: number },
 ) {
   if (!startEl || !endEl || !bars.length) {
     if (startEl) startEl.style.visibility = "hidden";
@@ -838,14 +837,11 @@ function syncVisibleRangeDateLabels(
     return;
   }
 
-  const top = `${Math.max(2, (layout.bandHeight - 20) / 2)}px`;
   startEl.textContent = formatCrosshairBarTime(startBar.date, period);
   startEl.style.visibility = "visible";
-  startEl.style.top = top;
 
   endEl.textContent = formatCrosshairBarTime(endBar.date, period);
   endEl.style.visibility = "visible";
-  endEl.style.top = top;
   endEl.style.right = `${layout.endRightInset}px`;
 }
 

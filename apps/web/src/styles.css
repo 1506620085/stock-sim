@@ -6924,8 +6924,10 @@ textarea {
 
 .crosshair-range-date {
   position: absolute;
+  top: 50%;
   left: 8px;
   z-index: 1;
+  transform: translateY(-50%);
   color: #999999;
   font-size: 12px;
   font-weight: 600;
