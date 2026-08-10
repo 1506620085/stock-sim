@@ -6922,12 +6922,11 @@ textarea {
   background: #ffffff;
 }
 
-.crosshair-date-range-label {
+.crosshair-range-date {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 8px;
   color: #999999;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -6935,11 +6934,8 @@ textarea {
   visibility: hidden;
 }
 
-.crosshair-date-range-label.is-start {
-  left: 8px;
-}
-
-.crosshair-date-range-label.is-end {
+.crosshair-range-date.is-end {
+  left: auto;
   right: 8px;
 }
 
