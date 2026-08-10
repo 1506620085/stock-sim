@@ -213,6 +213,10 @@ export function registerCustomIndicators() {
     series: "normal",
     figures: [],
     calc: () => [],
+    styles: {
+      lastValueMark: { show: false },
+      tooltip: { showRule: "none" },
+    },
     createTooltipDataSource: () => ({ name: "", calcParamsText: "", features: [], legends: [] }),
     draw: ({ ctx, bounding }) => {
       ctx.save();

@@ -802,12 +802,26 @@ function updateCrosshairDateLabel(
 }
 
 function resolveDedicatedDateBandRect(chart: Chart) {
+  // 优先用整行 root（含右侧 Y 轴区域），避免时间条旁露出默认刻度
+  const rootSize = chart.getSize(crosshairDateBandPaneId, "root");
+  if (rootSize && rootSize.height > 0) {
+    return {
+      left: rootSize.left,
+      top: rootSize.top,
+      width: rootSize.width,
+      height: rootSize.height,
+    };
+  }
+
   const bandSize = chart.getSize(crosshairDateBandPaneId, "main");
   if (!bandSize || bandSize.height <= 0) return null;
+
+  const yAxisSize = chart.getSize(crosshairDateBandPaneId, "yAxis");
+  const width = yAxisSize ? Math.max(bandSize.width, yAxisSize.left + yAxisSize.width - bandSize.left) : bandSize.width;
   return {
     left: bandSize.left,
     top: bandSize.top,
-    width: bandSize.width,
+    width,
     height: bandSize.height,
   };
 }
@@ -976,6 +990,7 @@ function syncIndicators(
         shortName: "",
         styles: {
           tooltip: { showRule: "none" },
+          lastValueMark: { show: false },
         },
       },
       {
@@ -984,6 +999,11 @@ function syncIndicators(
           height: crosshairDateBandHeight,
           minHeight: crosshairDateBandHeight,
           dragEnabled: false,
+        },
+        // 空白时间条不需要 Y 轴，否则右侧会出现默认刻度（如 6.0000）
+        yAxis: {
+          needWidget: false,
+          createTicks: () => [],
         },
       },
     );
