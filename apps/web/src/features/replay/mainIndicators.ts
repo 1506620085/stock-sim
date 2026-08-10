@@ -101,11 +101,16 @@ function normalizeMaLines(raw: unknown): MaLineConfig[] {
   // 兼容旧版 { periods: [5,10,20] }
   if (Array.isArray(asRecord?.periods) && !Array.isArray(asRecord?.lines)) {
     const periods = asRecord.periods as unknown[];
-    return defaults.map((item, index) => ({
-      period: clampMaPeriod(periods[index], item.period),
-      color: item.color,
-      enabled: index < periods.length ? index < 3 || Boolean(periods[index]) : item.enabled,
-    }));
+    return defaults.map((item, index) => {
+      if (index < periods.length) {
+        return {
+          period: clampMaPeriod(periods[index], item.period),
+          color: item.color,
+          enabled: true,
+        };
+      }
+      return { ...item, enabled: false };
+    });
   }
 
   const lines = Array.isArray(asRecord?.lines) ? asRecord.lines : Array.isArray(raw) ? raw : null;
