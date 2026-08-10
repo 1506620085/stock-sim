@@ -6913,6 +6913,22 @@ textarea {
   pointer-events: none;
 }
 
+.crosshair-date-label {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  border-radius: 4px;
+  background: rgba(23, 32, 28, 0.88);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  padding: 3px 6px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .field-label,
 .input-grid label,
 .input-grid .app-number-stepper-field > label,

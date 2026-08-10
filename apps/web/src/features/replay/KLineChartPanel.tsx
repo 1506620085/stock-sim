@@ -47,6 +47,8 @@ const volumePaneHeight = 118;
 const bollPaneHeight = 126;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
+/** 主图与副图分界线下方用于显示十字光标日期的空位高度 */
+const crosshairDateGapHeight = 22;
 const earliestBarHintMessage = "已显示最早的K线";
 const latestBarHintMessage = "已显示最新的K线";
 const chartEdgeHintCooldownMs = 1500;
@@ -98,9 +100,13 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   const [legendOffsetLeft, setLegendOffsetLeft] = useState(mainIndicatorTriggerReservePx);
   const [activeTrades, setActiveTrades] = useState<TradeRecord[] | null>(null);
   const [avgCostLabelVisible, setAvgCostLabelVisible] = useState(false);
+  const [crosshairDateLabel, setCrosshairDateLabel] = useState<{ text: string; x: number; y: number } | null>(null);
+  const barsRef = useRef(bars);
+  const effectiveSubChartsRef = useRef(resolveEffectiveSubCharts(chartDisplay, indicators));
 
   selectedDateRef.current = selectedDate;
   onHoveredBarIndexChangeRef.current = onHoveredBarIndexChange;
+  barsRef.current = bars;
 
   const chartData = useMemo<KLineData[]>(
     () =>
@@ -115,6 +121,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     [bars],
   );
   const effectiveSubCharts = useMemo(() => resolveEffectiveSubCharts(chartDisplay, indicators), [chartDisplay, indicators]);
+  effectiveSubChartsRef.current = effectiveSubCharts;
   const chartHeight = useMemo(() => getChartHeight(effectiveSubCharts), [effectiveSubCharts]);
   const tradeOverlaySpec = useMemo(
     () =>
@@ -274,15 +281,43 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       return null;
     };
 
+    const updateCrosshairDateLabel = (crosshair: Crosshair, index: number | null) => {
+      const chart = chartRef.current;
+      if (!chart || index === null || typeof crosshair.x !== "number") {
+        setCrosshairDateLabel(null);
+        return;
+      }
+
+      const bar = barsRef.current[index];
+      const paneId = resolveCandlePaneId(chart);
+      const mainSize = chart.getSize(paneId, "main");
+      if (!bar || !mainSize) {
+        setCrosshairDateLabel(null);
+        return;
+      }
+
+      const hasSubPane = countSubChartPanes(effectiveSubChartsRef.current) > 0;
+      const gap = hasSubPane ? crosshairDateGapHeight : 0;
+      const minX = mainSize.left + 36;
+      const maxX = mainSize.left + mainSize.width - 36;
+      setCrosshairDateLabel({
+        text: bar.date,
+        x: Math.min(Math.max(crosshair.x, minX), maxX),
+        y: mainSize.top + mainSize.height + gap / 2,
+      });
+    };
+
     const handleCrosshairChange = (data: unknown) => {
       const crosshair = (data ?? {}) as Crosshair;
       const index = resolveHoveredBarIndex(crosshair);
       onHoveredBarIndexChangeRef.current?.(index);
+      updateCrosshairDateLabel(crosshair, index);
     };
 
     const handleChartPointerLeave = () => {
       pointerActive = false;
       onHoveredBarIndexChangeRef.current?.(null);
+      setCrosshairDateLabel(null);
     };
 
     // 挂在 wrap 上：覆盖层/指标切换器不在 canvas 容器内，避免误触发 pointerleave 清空行情
@@ -363,6 +398,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   const barsRangeKey = `${bars.length}:${bars[0]?.date ?? ""}:${bars[bars.length - 1]?.date ?? ""}`;
   useEffect(() => {
     onHoveredBarIndexChangeRef.current?.(null);
+    setCrosshairDateLabel(null);
   }, [selectedDate, barsRangeKey]);
 
   useEffect(() => {
@@ -552,6 +588,15 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
           <span className="replay-date-label" ref={replayDayLabelRef}>
             复盘日
           </span>
+        </div>
+      ) : null}
+      {crosshairDateLabel ? (
+        <div
+          aria-hidden="true"
+          className="crosshair-date-label"
+          style={{ left: `${crosshairDateLabel.x}px`, top: `${crosshairDateLabel.y}px` }}
+        >
+          {crosshairDateLabel.text}
         </div>
       ) : null}
     </div>
@@ -782,7 +827,15 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
           dashedValue: [4, 3],
           color: "rgba(23, 32, 28, 0.45)",
         },
+        // 日期改在主/副图分界空位展示，避免与底部 x 轴标签重复
+        text: { show: false },
       },
+    },
+    separator: {
+      size: crosshairDateGapHeight,
+      color: "#f3f6f4",
+      fill: true,
+      activeBackgroundColor: "#e8eeeb",
     },
   };
 }
@@ -873,14 +926,22 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
   );
 }
 
+function countSubChartPanes(subCharts: EffectiveSubCharts) {
+  return (
+    Number(subCharts.showVolume) + Number(subCharts.showBoll) + Number(subCharts.showKdj) + Number(subCharts.showMacd)
+  );
+}
+
 function getChartHeight(subCharts: EffectiveSubCharts) {
+  const subPaneCount = countSubChartPanes(subCharts);
   return (
     mainPaneHeight +
     xAxisHeight +
     (subCharts.showVolume ? volumePaneHeight : 0) +
     (subCharts.showBoll ? bollPaneHeight : 0) +
     (subCharts.showKdj ? oscillatorPaneHeight : 0) +
-    (subCharts.showMacd ? oscillatorPaneHeight : 0)
+    (subCharts.showMacd ? oscillatorPaneHeight : 0) +
+    crosshairDateGapHeight * subPaneCount
   );
 }
 
