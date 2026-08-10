@@ -770,14 +770,9 @@ function updateCrosshairDateLabel(
     label.style.top = `${Math.max(2, (dedicatedBand.height - 20) / 2)}px`;
     label.style.transform = "translateX(-50%)";
 
+    // 仅在整段越出绘图区时隐藏；靠近左右范围日期时保留，由更高 z-index 浮于其上
     const labelHalfWidth = label.offsetWidth / 2;
-    const startEdge = 8 + (rangeStartEl?.offsetWidth ?? 0) + 10;
-    const endEdge = dedicatedBand.width - (yAxisWidth + 8) - (rangeEndEl?.offsetWidth ?? 0) - 10;
-    if (
-      !isReplayDayLabelInPane(left, dedicatedBand.width, labelHalfWidth) ||
-      left - labelHalfWidth < startEdge ||
-      left + labelHalfWidth > endEdge
-    ) {
+    if (!isReplayDayLabelInPane(left, dedicatedBand.width - yAxisWidth, labelHalfWidth)) {
       label.style.visibility = "hidden";
     }
     return;
@@ -843,7 +838,7 @@ function syncVisibleRangeDateLabels(
     return;
   }
 
-  const top = `${Math.max(2, (layout.bandHeight - 14) / 2)}px`;
+  const top = `${Math.max(2, (layout.bandHeight - 20) / 2)}px`;
   startEl.textContent = formatCrosshairBarTime(startBar.date, period);
   startEl.style.visibility = "visible";
   startEl.style.top = top;
