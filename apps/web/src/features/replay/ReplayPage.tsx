@@ -511,7 +511,11 @@ export function ReplayPage() {
   const normalizedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(bars.length - 1, 0));
   const selectedBar = bars[normalizedIndex] ?? bars[0];
   const tradePrice = selectedBar ? resolveBarPrice(selectedBar, activePriceBasis) : 0;
-  const visibleDailyBars = hideFuture ? bars.slice(0, normalizedIndex + 1) : bars;
+  // slice 结果必须 memo，否则 chartBars 每轮渲染都换引用，会把 hoveredBarIndex 清掉
+  const visibleDailyBars = useMemo(
+    () => (hideFuture ? bars.slice(0, normalizedIndex + 1) : bars),
+    [bars, hideFuture, normalizedIndex],
+  );
   const chartBars = useMemo(() => aggregateKlines(visibleDailyBars, klinePeriod), [visibleDailyBars, klinePeriod]);
   const availableReplayDates = useMemo(() => bars.map((bar) => bar.date), [bars]);
   const chartReplayDate = useMemo(() => resolveChartReplayDate(chartBars, selectedBar?.date), [chartBars, selectedBar?.date]);

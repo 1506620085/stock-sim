@@ -255,8 +255,9 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
 
     const handleCrosshairChange = (data: unknown) => {
       const crosshair = data as Crosshair;
-      if (crosshair.dataIndex !== undefined && crosshair.dataIndex >= 0) {
-        onHoveredBarIndexChangeRef.current?.(crosshair.dataIndex);
+      const index = crosshair.dataIndex ?? crosshair.realDataIndex;
+      if (typeof index === "number" && Number.isFinite(index) && index >= 0) {
+        onHoveredBarIndexChangeRef.current?.(Math.floor(index));
         return;
       }
       onHoveredBarIndexChangeRef.current?.(null);
@@ -267,7 +268,9 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       onHoveredBarIndexChangeRef.current?.(null);
     };
 
-    chartContainer.addEventListener("pointerleave", handleChartPointerLeave);
+    // 挂在 wrap 上：覆盖层/指标切换器不在 canvas 容器内，避免误触发 pointerleave 清空行情
+    const chartWrap = wrapRef.current;
+    chartWrap?.addEventListener("pointerleave", handleChartPointerLeave);
     chart.subscribeAction("onCrosshairChange", handleCrosshairChange);
 
     return () => {
@@ -280,7 +283,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       chartContainer.removeEventListener("pointermove", handlePointerMove);
       chartContainer.removeEventListener("pointerup", handlePointerEnd);
       chartContainer.removeEventListener("pointercancel", handlePointerEnd);
-      chartContainer.removeEventListener("pointerleave", handleChartPointerLeave);
+      chartWrap?.removeEventListener("pointerleave", handleChartPointerLeave);
       resizeObserver.disconnect();
       dispose(chart);
       chartRef.current = null;
