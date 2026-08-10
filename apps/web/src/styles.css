@@ -6944,8 +6944,9 @@ textarea {
 
 .crosshair-date-label {
   position: absolute;
+  top: 50%;
   z-index: 2;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   border-radius: 4px;
   background: rgba(23, 32, 28, 0.88);
   color: #ffffff;
