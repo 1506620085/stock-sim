@@ -558,9 +558,11 @@ export function ReplayPage() {
     }
   }, [maxTradeQuantity, quantity]);
 
+  // 仅在复盘日/周期/数据范围真正变化时清空，避免数组引用抖动冲掉悬停行情
+  const chartBarsRangeKey = `${chartBars.length}:${chartBars[0]?.date ?? ""}:${chartBars[chartBars.length - 1]?.date ?? ""}`;
   useEffect(() => {
     setHoveredBarIndex(null);
-  }, [chartReplayDate, chartBars, klinePeriod]);
+  }, [chartReplayDate, chartBarsRangeKey, klinePeriod]);
 
   useEffect(() => {
     if (!replaySession || !feeTemplates.length) return;

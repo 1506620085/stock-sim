@@ -253,14 +253,31 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     chart.subscribeAction("onZoom", handleViewChange);
     chart.subscribeAction("onVisibleRangeChange", handleViewChange);
 
-    const handleCrosshairChange = (data: unknown) => {
-      const crosshair = data as Crosshair;
-      const index = crosshair.dataIndex ?? crosshair.realDataIndex;
-      if (typeof index === "number" && Number.isFinite(index) && index >= 0) {
-        onHoveredBarIndexChangeRef.current?.(Math.floor(index));
-        return;
+    const resolveHoveredBarIndex = (crosshair: Crosshair): number | null => {
+      const direct = crosshair.dataIndex ?? crosshair.realDataIndex;
+      if (typeof direct === "number" && Number.isFinite(direct) && direct >= 0) {
+        return Math.floor(direct);
       }
-      onHoveredBarIndexChangeRef.current?.(null);
+
+      // klinecharts 10 beta：onCrosshairChange 实际只回传 {x,y,paneId}，dataIndex 只存在内部 store
+      const chart = chartRef.current;
+      if (!chart || typeof crosshair.x !== "number") return null;
+
+      const converted = chart.convertFromPixel([{ x: crosshair.x, y: crosshair.y ?? 0 }], {
+        paneId: crosshair.paneId,
+      });
+      const point = Array.isArray(converted) ? converted[0] : converted;
+      const index = point?.dataIndex;
+      if (typeof index === "number" && Number.isFinite(index) && index >= 0) {
+        return Math.floor(index);
+      }
+      return null;
+    };
+
+    const handleCrosshairChange = (data: unknown) => {
+      const crosshair = (data ?? {}) as Crosshair;
+      const index = resolveHoveredBarIndex(crosshair);
+      onHoveredBarIndexChangeRef.current?.(index);
     };
 
     const handleChartPointerLeave = () => {
@@ -343,9 +360,10 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDateRef.current);
   }, [viewScrollToken, viewScrollDate]);
 
+  const barsRangeKey = `${bars.length}:${bars[0]?.date ?? ""}:${bars[bars.length - 1]?.date ?? ""}`;
   useEffect(() => {
     onHoveredBarIndexChangeRef.current?.(null);
-  }, [selectedDate, bars]);
+  }, [selectedDate, barsRangeKey]);
 
   useEffect(() => {
     if (!tradeOverlayLayout.avgCost) {
