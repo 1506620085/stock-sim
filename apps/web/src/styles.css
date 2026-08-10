@@ -6913,20 +6913,28 @@ textarea {
   pointer-events: none;
 }
 
-.crosshair-date-label {
+.crosshair-date-label-layer {
   position: absolute;
   z-index: 5;
-  transform: translate(-50%, -50%);
+  display: none;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.crosshair-date-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
   border-radius: 4px;
   background: rgba(23, 32, 28, 0.88);
   color: #ffffff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.02em;
-  padding: 3px 6px;
+  padding: 4px 8px;
   white-space: nowrap;
   pointer-events: none;
+  box-shadow: 0 1px 2px rgba(23, 32, 28, 0.12);
 }
 
 .field-label,
