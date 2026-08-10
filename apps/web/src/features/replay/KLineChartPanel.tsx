@@ -615,7 +615,9 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
         </div>
       ) : null}
       <div className="crosshair-date-label-layer" ref={crosshairDateLayerRef}>
+        <span className="crosshair-date-range-label is-start" />
         <span className="crosshair-date-label" ref={crosshairDateLabelRef} />
+        <span className="crosshair-date-range-label is-end" />
       </div>
     </div>
   );
@@ -735,6 +737,8 @@ function updateCrosshairDateLabel(
 ) {
   if (!labelLayer || !label) return;
 
+  const rangeStartLabel = labelLayer.querySelector(".crosshair-date-range-label.is-start") as HTMLSpanElement | null;
+  const rangeEndLabel = labelLayer.querySelector(".crosshair-date-range-label.is-end") as HTMLSpanElement | null;
   const dedicatedBand = resolveDedicatedDateBandRect(chart);
   const bar = dataIndex !== null ? bars[dataIndex] : undefined;
   const left = dataIndex !== null ? getBarLabelLeft(chart, dataIndex) : null;
@@ -747,6 +751,8 @@ function updateCrosshairDateLabel(
     labelLayer.style.width = `${dedicatedBand.width}px`;
     labelLayer.style.height = `${dedicatedBand.height}px`;
     labelLayer.style.background = chartPaneBackground;
+
+    updateVisibleRangeDateLabels(chart, bars, period, rangeStartLabel, rangeEndLabel);
 
     if (!bar || left === null) {
       label.textContent = "";
@@ -768,6 +774,7 @@ function updateCrosshairDateLabel(
   }
 
   // 无副图时：仅悬停显示时间标签，贴在主图底边
+  hideVisibleRangeDateLabels(rangeStartLabel, rangeEndLabel);
   if (!bar || left === null) {
     labelLayer.style.display = "none";
     label.textContent = "";
@@ -799,6 +806,53 @@ function updateCrosshairDateLabel(
   if (!isReplayDayLabelInPane(left, mainSize.width, labelHalfWidth)) {
     label.style.visibility = "hidden";
   }
+}
+
+function updateVisibleRangeDateLabels(
+  chart: Chart,
+  bars: KLineBar[],
+  period: KlinePeriod,
+  startLabel: HTMLSpanElement | null,
+  endLabel: HTMLSpanElement | null,
+) {
+  if (!startLabel || !endLabel) return;
+
+  const range = resolveVisibleBarRange(chart, bars.length);
+  if (!range) {
+    hideVisibleRangeDateLabels(startLabel, endLabel);
+    return;
+  }
+
+  const startDate = bars[range.start]?.date;
+  const endDate = bars[range.end]?.date;
+  if (!startDate || !endDate) {
+    hideVisibleRangeDateLabels(startLabel, endLabel);
+    return;
+  }
+
+  startLabel.textContent = formatCrosshairBarTime(startDate, period);
+  endLabel.textContent = formatCrosshairBarTime(endDate, period);
+  startLabel.style.visibility = "visible";
+  endLabel.style.visibility = "visible";
+}
+
+function hideVisibleRangeDateLabels(startLabel: HTMLSpanElement | null, endLabel: HTMLSpanElement | null) {
+  if (startLabel) {
+    startLabel.textContent = "";
+    startLabel.style.visibility = "hidden";
+  }
+  if (endLabel) {
+    endLabel.textContent = "";
+    endLabel.style.visibility = "hidden";
+  }
+}
+
+function resolveVisibleBarRange(chart: Chart, barCount: number) {
+  if (barCount <= 0) return null;
+  const { from, to } = chart.getVisibleRange();
+  const start = Math.min(barCount - 1, Math.max(0, Math.floor(from)));
+  const end = Math.min(barCount - 1, Math.max(start, Math.ceil(to) - 1));
+  return { start, end };
 }
 
 function resolveDedicatedDateBandRect(chart: Chart) {
