@@ -145,7 +145,11 @@ export function AppDatePicker({
         onChange={handleChange}
         placeholder={placeholder}
         placement={placement}
-        popupClassName={["app-date-picker-popup", popupClassName].filter(Boolean).join(" ")}
+        classNames={{
+          popup: {
+            root: ["app-date-picker-popup", popupClassName].filter(Boolean).join(" "),
+          },
+        }}
         renderExtraFooter={renderExtraFooter}
         showNow={false}
         showToday={false}
