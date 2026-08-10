@@ -47,6 +47,8 @@ const volumePaneHeight = 118;
 const bollPaneHeight = 126;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
+/** 主副图分隔带高度，用于容纳十字光标 K 线时间标签 */
+const paneSeparatorSize = 26;
 const earliestBarHintMessage = "已显示最早的K线";
 const latestBarHintMessage = "已显示最新的K线";
 const chartEdgeHintCooldownMs = 1500;
@@ -740,12 +742,12 @@ function updateCrosshairDateLabel(
   label.textContent = formatCrosshairBarTime(bar.date, period);
   labelLayer.style.display = "block";
   labelLayer.style.left = `${mainSize.left}px`;
-  // 贴在主图底边下方：主图与副图分界线下方
+  // 贴在主图底边：落入主副图分隔带内，避免遮挡副图指标
   labelLayer.style.top = `${mainSize.top + mainSize.height}px`;
   labelLayer.style.width = `${mainSize.width}px`;
-  labelLayer.style.height = "28px";
+  labelLayer.style.height = `${paneSeparatorSize}px`;
   label.style.left = `${left}px`;
-  label.style.transform = "translateX(-50%)";
+  label.style.transform = "translate(-50%, -50%)";
 
   const labelHalfWidth = label.offsetWidth / 2;
   if (!isReplayDayLabelInPane(left, mainSize.width, labelHalfWidth)) {
@@ -881,6 +883,12 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
         color: "#f5f7f6",
       },
     },
+    separator: {
+      size: paneSeparatorSize,
+      color: "#e8ecea",
+      fill: true,
+      activeBackgroundColor: "rgba(23, 32, 28, 0.04)",
+    },
     crosshair: {
       show: display.showCrosshair,
       horizontal: { show: display.showCrosshair },
@@ -985,9 +993,17 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
 }
 
 function getChartHeight(subCharts: EffectiveSubCharts) {
+  const subPaneCount =
+    Number(subCharts.showVolume) +
+    Number(subCharts.showBoll) +
+    Number(subCharts.showKdj) +
+    Number(subCharts.showMacd);
+  // 每个副图上方都有一条分隔带（含主图与第一副图之间）
+  const separatorTotal = subPaneCount * paneSeparatorSize;
   return (
     mainPaneHeight +
     xAxisHeight +
+    separatorTotal +
     (subCharts.showVolume ? volumePaneHeight : 0) +
     (subCharts.showBoll ? bollPaneHeight : 0) +
     (subCharts.showKdj ? oscillatorPaneHeight : 0) +
