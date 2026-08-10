@@ -6200,6 +6200,21 @@ textarea {
   pointer-events: auto;
 }
 
+.quote-summary--empty {
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+}
+
+.quote-summary-empty-hint {
+  margin: 0;
+  color: #999999;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .quote-summary-help {
   position: absolute;
   right: 0;

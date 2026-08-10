@@ -520,7 +520,6 @@ export function ReplayPage() {
     const date = chartReplayDate ?? selectedBar?.date;
     return date ? findBarIndexByDate(chartBars, date) : chartBars.length - 1;
   }, [chartBars, chartReplayDate, selectedBar?.date]);
-  const hoverSummaryBarIndex = hoveredBarIndex ?? replaySummaryBarIndex;
   const replayBars = bars.slice(0, normalizedIndex + 1);
   const activeTrades = trades.filter((trade) => trade.code === activeCode);
   const replayTrades = activeTrades.filter((trade) => !selectedBar || trade.date <= selectedBar.date);
@@ -965,14 +964,14 @@ export function ReplayPage() {
 
           {!loadingBars && !syncingBars && chartBars.length ? (
             <div className="chart-quote-summary">
-              <QuoteSummary aria-label="复盘日行情" barIndex={replaySummaryBarIndex} bars={chartBars} />
-              <div aria-hidden="true" className="chart-quote-summary-divider" />
               <QuoteSummary
-                aria-label={hoveredBarIndex !== null ? "光标行情" : "复盘日行情"}
-                barIndex={hoverSummaryBarIndex}
+                aria-label="光标行情"
+                barIndex={hoveredBarIndex}
                 bars={chartBars}
-                showHelp
+                emptyHint="将鼠标移入K线查看行情"
               />
+              <div aria-hidden="true" className="chart-quote-summary-divider" />
+              <QuoteSummary aria-label="复盘日行情" barIndex={replaySummaryBarIndex} bars={chartBars} showHelp />
             </div>
           ) : null}
 

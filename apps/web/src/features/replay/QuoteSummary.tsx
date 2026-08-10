@@ -12,9 +12,12 @@ import type { KLineBar } from "./types";
 
 type Props = {
   bars: KLineBar[];
-  barIndex: number;
+  /** 为 null 时显示空态提示，不展示具体行情 */
+  barIndex: number | null;
   /** 无障碍名称，默认「行情摘要」 */
   "aria-label"?: string;
+  /** 空态提示文案 */
+  emptyHint?: string;
   /** 是否显示右下角 B/S/L 说明，默认 false */
   showHelp?: boolean;
 };
@@ -25,9 +28,31 @@ const directionClass: Record<QuoteDirection, string> = {
   flat: "quote-flat",
 };
 
-export function QuoteSummary({ bars, barIndex, "aria-label": ariaLabel = "行情摘要", showHelp = false }: Props) {
+const DEFAULT_EMPTY_HINT = "将鼠标移入K线查看行情";
+
+export function QuoteSummary({
+  bars,
+  barIndex,
+  "aria-label": ariaLabel = "行情摘要",
+  emptyHint = DEFAULT_EMPTY_HINT,
+  showHelp = false,
+}: Props) {
+  if (barIndex === null) {
+    return (
+      <section aria-label={ariaLabel} className="quote-summary quote-summary--empty">
+        <p className="quote-summary-empty-hint">{emptyHint}</p>
+      </section>
+    );
+  }
+
   const quote = buildMarketQuote(bars, barIndex);
-  if (!quote) return null;
+  if (!quote) {
+    return (
+      <section aria-label={ariaLabel} className="quote-summary quote-summary--empty">
+        <p className="quote-summary-empty-hint">{emptyHint}</p>
+      </section>
+    );
+  }
 
   const metrics = [
     { label: "最高", value: formatQuotePrice(quote.high) },

@@ -228,7 +228,6 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     chartContainer.addEventListener("pointermove", handlePointerMove);
     chartContainer.addEventListener("pointerup", handlePointerEnd);
     chartContainer.addEventListener("pointercancel", handlePointerEnd);
-    chartContainer.addEventListener("pointerleave", handlePointerEnd);
 
     const resizeObserver = new ResizeObserver(() => {
       if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
@@ -263,6 +262,12 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       onHoveredBarIndexChangeRef.current?.(null);
     };
 
+    const handleChartPointerLeave = () => {
+      pointerActive = false;
+      onHoveredBarIndexChangeRef.current?.(null);
+    };
+
+    chartContainer.addEventListener("pointerleave", handleChartPointerLeave);
     chart.subscribeAction("onCrosshairChange", handleCrosshairChange);
 
     return () => {
@@ -275,7 +280,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       chartContainer.removeEventListener("pointermove", handlePointerMove);
       chartContainer.removeEventListener("pointerup", handlePointerEnd);
       chartContainer.removeEventListener("pointercancel", handlePointerEnd);
-      chartContainer.removeEventListener("pointerleave", handlePointerEnd);
+      chartContainer.removeEventListener("pointerleave", handleChartPointerLeave);
       resizeObserver.disconnect();
       dispose(chart);
       chartRef.current = null;
@@ -747,7 +752,16 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
     crosshair: {
       show: display.showCrosshair,
       horizontal: { show: display.showCrosshair },
-      vertical: { show: display.showCrosshair },
+      vertical: {
+        show: display.showCrosshair,
+        line: {
+          show: true,
+          style: "dashed" as const,
+          size: 1,
+          dashedValue: [4, 3],
+          color: "rgba(23, 32, 28, 0.45)",
+        },
+      },
     },
   };
 }
