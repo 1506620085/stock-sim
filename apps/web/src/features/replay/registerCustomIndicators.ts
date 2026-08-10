@@ -205,4 +205,21 @@ export function registerCustomIndicators() {
       });
     },
   });
+
+  // 主副图之间的空白时间条：只占位，不绘制指标
+  registerIndicator({
+    name: "DATE_BAND",
+    shortName: "",
+    series: "normal",
+    figures: [],
+    calc: () => [],
+    createTooltipDataSource: () => ({ name: "", calcParamsText: "", features: [], legends: [] }),
+    draw: ({ ctx, bounding }) => {
+      ctx.save();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(bounding.left, bounding.top, bounding.width, bounding.height);
+      ctx.restore();
+      return true;
+    },
+  });
 }

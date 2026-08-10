@@ -31,6 +31,7 @@ type Props = {
 };
 
 const candlePaneId = "candle_pane";
+const crosshairDateBandPaneId = "crosshair-date-band";
 const indicatorPaneIds = ["volume-pane", "boll-pane", "kdj-pane", "macd-pane"];
 const replayDayLineOverlayId = "replay-day-line";
 /** B/S 标签固定尺寸（与 CSS 保持一致） */
@@ -42,13 +43,14 @@ const TRADE_MARKER_STACK_GAP = 4;
 const candleUpColor = "#d83a31";
 const candleDownColor = "#15845f";
 const candleNoChangeColor = "#68736e";
+const chartPaneBackground = "#ffffff";
 const mainPaneHeight = 360;
 const volumePaneHeight = 118;
 const bollPaneHeight = 126;
 const oscillatorPaneHeight = 126;
 const xAxisHeight = 36;
-/** 主副图分隔带高度，用于容纳十字光标 K 线时间标签 */
-const paneSeparatorSize = 26;
+/** 主图与副图之间留给十字光标时间标签的高度 */
+const crosshairDateBandHeight = 28;
 const earliestBarHintMessage = "已显示最早的K线";
 const latestBarHintMessage = "已显示最新的K线";
 const chartEdgeHintCooldownMs = 1500;
@@ -365,6 +367,14 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
     updateReplayDayLabel(chart, replayLabelLayerRef.current, replayDayLabelRef.current, selectedDate);
+    updateCrosshairDateLabel(
+      chart,
+      crosshairDateLayerRef.current,
+      crosshairDateLabelRef.current,
+      bars,
+      hoveredBarIndexRef.current,
+      period,
+    );
     syncTradeOverlayLayout();
   }, [chartData, code, indicators, effectiveSubCharts, mainIndicator, period, selectedDate, legendOffsetLeft]);
 
@@ -725,34 +735,81 @@ function updateCrosshairDateLabel(
 ) {
   if (!labelLayer || !label) return;
 
+  const dedicatedBand = resolveDedicatedDateBandRect(chart);
   const bar = dataIndex !== null ? bars[dataIndex] : undefined;
-  if (!bar) {
+  const left = dataIndex !== null ? getBarLabelLeft(chart, dataIndex) : null;
+
+  // 有副图时：常驻白色时间条，副图整体下移，不挡指标
+  if (dedicatedBand) {
+    labelLayer.style.display = "block";
+    labelLayer.style.left = `${dedicatedBand.left}px`;
+    labelLayer.style.top = `${dedicatedBand.top}px`;
+    labelLayer.style.width = `${dedicatedBand.width}px`;
+    labelLayer.style.height = `${dedicatedBand.height}px`;
+    labelLayer.style.background = chartPaneBackground;
+
+    if (!bar || left === null) {
+      label.textContent = "";
+      label.style.visibility = "hidden";
+      return;
+    }
+
+    label.textContent = formatCrosshairBarTime(bar.date, period);
+    label.style.visibility = "visible";
+    label.style.left = `${left}px`;
+    label.style.top = `${Math.max(2, (dedicatedBand.height - 20) / 2)}px`;
+    label.style.transform = "translateX(-50%)";
+
+    const labelHalfWidth = label.offsetWidth / 2;
+    if (!isReplayDayLabelInPane(left, dedicatedBand.width, labelHalfWidth)) {
+      label.style.visibility = "hidden";
+    }
+    return;
+  }
+
+  // 无副图时：仅悬停显示时间标签，贴在主图底边
+  if (!bar || left === null) {
     labelLayer.style.display = "none";
+    label.textContent = "";
+    label.style.visibility = "hidden";
     return;
   }
 
   const paneId = resolveCandlePaneId(chart);
   const mainSize = chart.getSize(paneId, "main");
-  const left = getBarLabelLeft(chart, dataIndex as number);
-  if (left === null || !mainSize) {
+  if (!mainSize) {
     labelLayer.style.display = "none";
     return;
   }
 
-  label.textContent = formatCrosshairBarTime(bar.date, period);
   labelLayer.style.display = "block";
   labelLayer.style.left = `${mainSize.left}px`;
-  // 贴在主图底边：落入主副图分隔带内，避免遮挡副图指标
-  labelLayer.style.top = `${mainSize.top + mainSize.height}px`;
+  labelLayer.style.top = `${mainSize.top + mainSize.height - crosshairDateBandHeight}px`;
   labelLayer.style.width = `${mainSize.width}px`;
-  labelLayer.style.height = `${paneSeparatorSize}px`;
+  labelLayer.style.height = `${crosshairDateBandHeight}px`;
+  labelLayer.style.background = "transparent";
+
+  label.textContent = formatCrosshairBarTime(bar.date, period);
+  label.style.visibility = "visible";
   label.style.left = `${left}px`;
-  label.style.transform = "translate(-50%, -50%)";
+  label.style.top = `${Math.max(2, (crosshairDateBandHeight - 20) / 2)}px`;
+  label.style.transform = "translateX(-50%)";
 
   const labelHalfWidth = label.offsetWidth / 2;
   if (!isReplayDayLabelInPane(left, mainSize.width, labelHalfWidth)) {
-    labelLayer.style.display = "none";
+    label.style.visibility = "hidden";
   }
+}
+
+function resolveDedicatedDateBandRect(chart: Chart) {
+  const bandSize = chart.getSize(crosshairDateBandPaneId, "main");
+  if (!bandSize || bandSize.height <= 0) return null;
+  return {
+    left: bandSize.left,
+    top: bandSize.top,
+    width: bandSize.width,
+    height: bandSize.height,
+  };
 }
 
 function formatCrosshairBarTime(date: string, period: KlinePeriod) {
@@ -883,12 +940,6 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
         color: "#f5f7f6",
       },
     },
-    separator: {
-      size: paneSeparatorSize,
-      color: "#e8ecea",
-      fill: true,
-      activeBackgroundColor: "rgba(23, 32, 28, 0.04)",
-    },
     crosshair: {
       show: display.showCrosshair,
       horizontal: { show: display.showCrosshair },
@@ -915,6 +966,28 @@ function syncIndicators(
   chart.removeIndicator();
   chart.setPaneOptions({ id: candlePaneId, height: mainPaneHeight, minHeight: 300 });
   createMainPaneIndicator(chart, mainIndicator);
+
+  const hasSubCharts = subCharts.showVolume || subCharts.showBoll || subCharts.showKdj || subCharts.showMacd;
+  if (hasSubCharts) {
+    // 主图与副图之间插入空白窗格，专供十字光标时间，避免挡住副图指标
+    chart.createIndicator(
+      {
+        name: "DATE_BAND",
+        shortName: "",
+        styles: {
+          tooltip: { showRule: "none" },
+        },
+      },
+      {
+        pane: {
+          id: crosshairDateBandPaneId,
+          height: crosshairDateBandHeight,
+          minHeight: crosshairDateBandHeight,
+          dragEnabled: false,
+        },
+      },
+    );
+  }
 
   if (subCharts.showVolume) {
     chart.createIndicator(
@@ -993,17 +1066,11 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
 }
 
 function getChartHeight(subCharts: EffectiveSubCharts) {
-  const subPaneCount =
-    Number(subCharts.showVolume) +
-    Number(subCharts.showBoll) +
-    Number(subCharts.showKdj) +
-    Number(subCharts.showMacd);
-  // 每个副图上方都有一条分隔带（含主图与第一副图之间）
-  const separatorTotal = subPaneCount * paneSeparatorSize;
+  const hasSubCharts = subCharts.showVolume || subCharts.showBoll || subCharts.showKdj || subCharts.showMacd;
   return (
     mainPaneHeight +
     xAxisHeight +
-    separatorTotal +
+    (hasSubCharts ? crosshairDateBandHeight : 0) +
     (subCharts.showVolume ? volumePaneHeight : 0) +
     (subCharts.showBoll ? bollPaneHeight : 0) +
     (subCharts.showKdj ? oscillatorPaneHeight : 0) +
