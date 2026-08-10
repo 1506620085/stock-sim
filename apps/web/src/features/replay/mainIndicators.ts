@@ -4,7 +4,17 @@
  */
 export type MainIndicatorId = "none" | "MA" | "BOLL" | "BBI" | "EXPMA" | "ENE" | "DKX";
 
-export type MaParams = { periods: [number, number, number] };
+export const MA_LINE_COUNT = 8;
+export const MA_PERIOD_MIN = 1;
+export const MA_PERIOD_MAX = 900;
+
+export type MaLineConfig = {
+  period: number;
+  color: string;
+  enabled: boolean;
+};
+
+export type MaParams = { lines: MaLineConfig[] };
 export type BollParams = { period: number; multiplier: number };
 export type BbiParams = { periods: [number, number, number, number] };
 export type ExpmaParams = { periods: [number, number] };
@@ -35,8 +45,20 @@ export const MAIN_INDICATOR_OPTIONS: Array<{ id: MainIndicatorId; name: string; 
   { id: "DKX", name: "DKX 多空线", shortName: "DKX" },
 ];
 
+/** 默认 8 条均线：周期 / 颜色 / 是否开启 */
+export const DEFAULT_MA_LINES: MaLineConfig[] = [
+  { period: 5, color: "#1677FF", enabled: true },
+  { period: 10, color: "#22A06B", enabled: true },
+  { period: 20, color: "#F18F01", enabled: true },
+  { period: 30, color: "#EB2F96", enabled: false },
+  { period: 60, color: "#722ED1", enabled: false },
+  { period: 120, color: "#13C2C2", enabled: false },
+  { period: 180, color: "#A855F7", enabled: false },
+  { period: 360, color: "#B45309", enabled: false },
+];
+
 export const defaultMainIndicatorParams: MainIndicatorParams = {
-  MA: { periods: [5, 10, 20] },
+  MA: { lines: structuredClone(DEFAULT_MA_LINES) },
   BOLL: { period: 20, multiplier: 2 },
   BBI: { periods: [3, 6, 12, 24] },
   EXPMA: { periods: [12, 50] },
@@ -57,22 +79,57 @@ function clampPeriod(value: unknown, fallback: number, min = 2, max = 250) {
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
+function clampMaPeriod(value: unknown, fallback: number) {
+  return clampPeriod(value, fallback, MA_PERIOD_MIN, MA_PERIOD_MAX);
+}
+
+function normalizeColor(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed.toUpperCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    const [, r, g, b] = trimmed;
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+  }
+  return fallback;
+}
+
+function normalizeMaLines(raw: unknown): MaLineConfig[] {
+  const defaults = DEFAULT_MA_LINES;
+  const asRecord = raw && typeof raw === "object" ? (raw as { lines?: unknown; periods?: unknown }) : null;
+
+  // 兼容旧版 { periods: [5,10,20] }
+  if (Array.isArray(asRecord?.periods) && !Array.isArray(asRecord?.lines)) {
+    const periods = asRecord.periods as unknown[];
+    return defaults.map((item, index) => ({
+      period: clampMaPeriod(periods[index], item.period),
+      color: item.color,
+      enabled: index < periods.length ? index < 3 || Boolean(periods[index]) : item.enabled,
+    }));
+  }
+
+  const lines = Array.isArray(asRecord?.lines) ? asRecord.lines : Array.isArray(raw) ? raw : null;
+  if (!Array.isArray(lines)) return structuredClone(defaults);
+
+  return defaults.map((item, index) => {
+    const line = lines[index] as Partial<MaLineConfig> | undefined;
+    return {
+      period: clampMaPeriod(line?.period, item.period),
+      color: normalizeColor(line?.color, item.color),
+      enabled: typeof line?.enabled === "boolean" ? line.enabled : item.enabled,
+    };
+  });
+}
+
 function normalizeParams(raw: Partial<MainIndicatorParams> | undefined): MainIndicatorParams {
   const d = defaultMainIndicatorParams;
-  const ma = raw?.MA?.periods;
   const boll = raw?.BOLL;
   const bbi = raw?.BBI?.periods;
   const expma = raw?.EXPMA?.periods;
   const ene = raw?.ENE;
   const dkx = raw?.DKX;
   return {
-    MA: {
-      periods: [
-        clampPeriod(ma?.[0], d.MA.periods[0]),
-        clampPeriod(ma?.[1], d.MA.periods[1]),
-        clampPeriod(ma?.[2], d.MA.periods[2]),
-      ],
-    },
+    MA: { lines: normalizeMaLines(raw?.MA) },
     BOLL: {
       period: clampPeriod(boll?.period, d.BOLL.period),
       multiplier: Math.min(10, Math.max(0.1, Number(boll?.multiplier ?? d.BOLL.multiplier) || d.BOLL.multiplier)),
@@ -136,4 +193,8 @@ export function mainIndicatorShortName(id: MainIndicatorId) {
 
 export function mainIndicatorFullName(id: MainIndicatorId) {
   return MAIN_INDICATOR_OPTIONS.find((item) => item.id === id)?.name ?? id;
+}
+
+export function getEnabledMaLines(params: MaParams): MaLineConfig[] {
+  return params.lines.filter((line) => line.enabled);
 }

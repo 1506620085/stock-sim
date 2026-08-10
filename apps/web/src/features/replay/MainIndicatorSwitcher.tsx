@@ -5,10 +5,14 @@
 import { useEffect, useState, type Dispatch, type MouseEvent, type SetStateAction } from "react";
 import { Settings } from "lucide-react";
 import { AppDialogShell } from "../../components/AppDialog";
+import { AppSwitch } from "../../components/AppSwitch";
 import {
   MAIN_INDICATOR_OPTIONS,
+  MA_PERIOD_MAX,
+  MA_PERIOD_MIN,
   defaultMainIndicatorParams,
   mainIndicatorShortName,
+  type MaLineConfig,
   type MainIndicatorId,
   type MainIndicatorParams,
   type MainIndicatorState,
@@ -58,6 +62,12 @@ export function MainIndicatorSwitcher({ value, onChange }: Props) {
   }
 
   const triggerLabel = `${mainIndicatorShortName(value.active)}▼`;
+  const isMaParams = paramsTarget === "MA";
+  const paramsTitle = paramsTarget
+    ? isMaParams
+      ? "主图MA参数设置"
+      : `${MAIN_INDICATOR_OPTIONS.find((item) => item.id === paramsTarget)?.name ?? ""}参数`
+    : "参数设置";
 
   return (
     <>
@@ -114,18 +124,32 @@ export function MainIndicatorSwitcher({ value, onChange }: Props) {
       </AppDialogShell>
 
       <AppDialogShell
-        className="main-indicator-params-dialog"
+        className={`main-indicator-params-dialog${isMaParams ? " is-ma" : ""}`}
         onClose={() => setParamsTarget(null)}
         open={Boolean(paramsTarget)}
-        title={paramsTarget ? `${MAIN_INDICATOR_OPTIONS.find((item) => item.id === paramsTarget)?.name ?? ""}参数` : "参数设置"}
+        title={paramsTitle}
       >
         {paramsTarget ? (
           <>
-            <div className="main-indicator-params-form">{renderParamsFields(paramsTarget, draftParams, setDraftParams)}</div>
+            {isMaParams ? (
+              <div className="ma-params-toolbar">
+                <span className="ma-params-toolbar-hint">
+                  均线设置（范围：{MA_PERIOD_MIN} ~ {MA_PERIOD_MAX}）
+                </span>
+                <button className="ma-params-restore" onClick={restoreDefaults} type="button">
+                  恢复默认设置
+                </button>
+              </div>
+            ) : null}
+            <div className={`main-indicator-params-form${isMaParams ? " is-ma" : ""}`}>
+              {renderParamsFields(paramsTarget, draftParams, setDraftParams)}
+            </div>
             <div className="app-dialog-actions main-indicator-params-actions">
-              <button className="secondary-button" onClick={restoreDefaults} type="button">
-                恢复默认
-              </button>
+              {!isMaParams ? (
+                <button className="secondary-button" onClick={restoreDefaults} type="button">
+                  恢复默认
+                </button>
+              ) : null}
               <button className="secondary-button" onClick={() => setParamsTarget(null)} type="button">
                 取消
               </button>
@@ -146,22 +170,23 @@ function renderParamsFields(
   setParams: Dispatch<SetStateAction<MainIndicatorParams>>,
 ) {
   if (id === "MA") {
-    return params.MA.periods.map((period, index) => (
-      <label className="app-dialog-field" key={`ma-${index}`}>
-        <span>周期 {index + 1}</span>
-        <input
-          max={250}
-          min={2}
-          onChange={(event) => {
-            const next = [...params.MA.periods] as [number, number, number];
-            next[index] = Number(event.target.value);
-            setParams((prev) => ({ ...prev, MA: { periods: next } }));
-          }}
-          type="number"
-          value={period}
-        />
-      </label>
-    ));
+    return (
+      <div className="ma-line-list">
+        {params.MA.lines.map((line, index) => (
+          <MaLineRow
+            key={`ma-${index}`}
+            line={line}
+            onChange={(next) => {
+              setParams((prev) => {
+                const lines = [...prev.MA.lines];
+                lines[index] = next;
+                return { ...prev, MA: { lines } };
+              });
+            }}
+          />
+        ))}
+      </div>
+    );
   }
 
   if (id === "BOLL") {
@@ -306,5 +331,38 @@ function renderParamsFields(
         />
       </label>
     </>
+  );
+}
+
+function MaLineRow({ line, onChange }: { line: MaLineConfig; onChange: (next: MaLineConfig) => void }) {
+  return (
+    <div className={`ma-line-row${line.enabled ? "" : " is-disabled"}`}>
+      <input
+        aria-label="均线周期"
+        className="ma-line-period"
+        disabled={!line.enabled}
+        max={MA_PERIOD_MAX}
+        min={MA_PERIOD_MIN}
+        onChange={(event) => onChange({ ...line, period: Number(event.target.value) })}
+        type="number"
+        value={line.period}
+      />
+      <span className="ma-line-label">日均线</span>
+      <label className="ma-line-color" title="均线颜色">
+        <span aria-hidden="true" className="ma-line-color-swatch" style={{ background: line.color }} />
+        <input
+          aria-label="均线颜色"
+          disabled={!line.enabled}
+          onChange={(event) => onChange({ ...line, color: event.target.value })}
+          type="color"
+          value={line.color}
+        />
+      </label>
+      <AppSwitch
+        aria-label="开启均线"
+        checked={line.enabled}
+        onChange={(checked) => onChange({ ...line, enabled: checked })}
+      />
+    </div>
   );
 }

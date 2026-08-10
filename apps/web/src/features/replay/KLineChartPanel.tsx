@@ -6,6 +6,7 @@ import { resolveDirection } from "./marketQuote";
 import { resolveEffectiveSubCharts, type EffectiveSubCharts } from "./chartDisplay";
 import { MainIndicatorSwitcher } from "./MainIndicatorSwitcher";
 import type { MainIndicatorState } from "./mainIndicators";
+import { getEnabledMaLines } from "./mainIndicators";
 import { registerCustomIndicators } from "./registerCustomIndicators";
 import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 
@@ -1103,7 +1104,18 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
   const stackOptions = { isStack: true, pane: { id: candlePaneId } } as const;
 
   if (active === "MA") {
-    chart.createIndicator({ name: "MA", calcParams: [...params.MA.periods] }, stackOptions);
+    const lines = getEnabledMaLines(params.MA);
+    if (!lines.length) return;
+    chart.createIndicator(
+      {
+        name: "MA",
+        calcParams: lines.map((line) => line.period),
+        styles: {
+          lines: lines.map((line) => ({ color: line.color })),
+        },
+      },
+      stackOptions,
+    );
     return;
   }
   if (active === "BOLL") {
