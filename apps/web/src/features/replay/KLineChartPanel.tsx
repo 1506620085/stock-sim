@@ -67,8 +67,8 @@ const mainIndicatorTooltipOffsetTop = 6;
 const mainIndicatorTooltipTitleMarginTop = 4;
 const mainIndicatorTooltipTitleSize = 12;
 const mainIndicatorTriggerInsetLeftPx = 4;
-/** 副图切换按钮预留，避免挡住指标图例 */
-const subIndicatorTriggerReservePx = 56;
+/** 副图切换按钮预留，避免挡住指标图例（与主图同口径，测量前兜底） */
+const subIndicatorTriggerReservePx = 76;
 const subIndicatorTriggerInsetLeftPx = 4;
 const subIndicatorTriggerInsetTopPx = 4;
 /** 鼠标靠近平均成本线多少像素内显示标签 */
@@ -152,6 +152,7 @@ export function KLineChartPanel({
   const onHoveredBarIndexChangeRef = useRef(onHoveredBarIndexChange);
   const subIndicatorsRef = useRef(subIndicators);
   const [legendOffsetLeft, setLegendOffsetLeft] = useState(mainIndicatorTriggerReservePx);
+  const [subLegendOffsetLeft, setSubLegendOffsetLeft] = useState(subIndicatorTriggerReservePx);
   const [activeTrades, setActiveTrades] = useState<TradeRecord[] | null>(null);
   const [avgCostLabelVisible, setAvgCostLabelVisible] = useState(false);
   const [subPaneLayouts, setSubPaneLayouts] = useState<SubPaneLayout[]>([]);
@@ -204,6 +205,20 @@ export function KLineChartPanel({
     setLegendOffsetLeft((prev) => (prev === next ? prev : next));
   }, [mainIndicator.active, tradeOverlayLayout.pane?.left]);
 
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap || !subPaneLayouts.length) return;
+    let next = 0;
+    wrap.querySelectorAll<HTMLElement>(".sub-indicator-switcher-anchor").forEach((anchor) => {
+      const trigger = anchor.querySelector("button");
+      if (!trigger) return;
+      // 与主图一致：按钮左侧 inset + 按钮宽 + 与图例间距
+      next = Math.max(next, subIndicatorTriggerInsetLeftPx + trigger.offsetWidth + mainIndicatorLegendGapPx);
+    });
+    if (next <= 0) return;
+    setSubLegendOffsetLeft((prev) => (prev === next ? prev : next));
+  }, [subPaneLayouts, activeSubSlots]);
+
   const mainIndicatorSwitcherPosition = useMemo(() => {
     const paneTop = tradeOverlayLayout.pane?.top ?? 0;
     const paneLeft = tradeOverlayLayout.pane?.left ?? 0;
@@ -227,7 +242,7 @@ export function KLineChartPanel({
     if (!containerRef.current || chartRef.current) return;
 
     const chart = init(containerRef.current, {
-      styles: buildChartStyles(chartDisplay, bars, legendOffsetLeft),
+      styles: buildChartStyles(chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft),
     });
 
     if (!chart) return;
@@ -415,7 +430,7 @@ export function KLineChartPanel({
     chart.resetData();
     applyChartScrollLimits(chart);
     syncIndicators(chart, indicators, activeSubSlots, mainIndicator);
-    chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft));
+    chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft));
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
@@ -429,7 +444,7 @@ export function KLineChartPanel({
       period,
     );
     syncTradeOverlayLayout();
-  }, [chartData, code, indicators, activeSubSlots, mainIndicator, period, selectedDate, legendOffsetLeft]);
+  }, [chartData, code, indicators, activeSubSlots, mainIndicator, period, selectedDate, legendOffsetLeft, subLegendOffsetLeft]);
 
   useEffect(() => {
     syncTradeOverlayLayout();
@@ -438,8 +453,8 @@ export function KLineChartPanel({
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft));
-  }, [chartDisplay, bars, legendOffsetLeft]);
+    chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft));
+  }, [chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -1025,7 +1040,12 @@ function buildLastPriceMarkStyle(lastBar?: KLineBar, prevClose?: number) {
   };
 }
 
-function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], legendOffsetLeft = mainIndicatorTriggerReservePx) {
+function buildChartStyles(
+  display: ChartDisplaySettings,
+  bars: KLineBar[] = [],
+  legendOffsetLeft = mainIndicatorTriggerReservePx,
+  subLegendOffsetLeft = subIndicatorTriggerReservePx,
+) {
   const lastIndex = bars.length - 1;
   const lastBar = bars[lastIndex];
   const prevClose = bars[lastIndex - 1]?.close ?? lastBar?.open;
@@ -1059,6 +1079,8 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
     },
     indicator: {
       tooltip: {
+        // 副图指标图例起点：与主图同一套「按钮宽 + 间距」口径
+        offsetLeft: subLegendOffsetLeft,
         title: {
           marginLeft: 4,
           marginTop: mainIndicatorTooltipTitleMarginTop,
@@ -1141,14 +1163,12 @@ function syncIndicators(
       height: subPaneHeight(id),
       minHeight: subPaneMinHeight(id),
     };
-    const tooltipOffset = { tooltip: { offsetLeft: subIndicatorTriggerReservePx } };
 
     if (id === "VOL") {
       chart.createIndicator(
         {
           name: "VOL",
           styles: {
-            ...tooltipOffset,
             bars: [
               {
                 upColor: candleUpColor,
@@ -1165,23 +1185,18 @@ function syncIndicators(
 
     if (id === "BOLL") {
       chart.createIndicator(
-        {
-          name: "BOLL",
-          calcParams: [indicators.maSlow, 2],
-          precision: 3,
-          styles: tooltipOffset,
-        },
+        { name: "BOLL", calcParams: [indicators.maSlow, 2], precision: 3 },
         { pane },
       );
       return;
     }
 
     if (id === "KDJ") {
-      chart.createIndicator({ name: "KDJ", styles: tooltipOffset }, { pane });
+      chart.createIndicator("KDJ", { pane });
       return;
     }
 
-    chart.createIndicator({ name: "MACD", styles: tooltipOffset }, { pane });
+    chart.createIndicator("MACD", { pane });
   });
 }
 
