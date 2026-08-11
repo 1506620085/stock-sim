@@ -37,33 +37,14 @@ function isSubIndicatorId(value: unknown): value is SubIndicatorId {
 function normalizeSlots(raw: unknown): SubIndicatorState["slots"] {
   const defaults = defaultSubIndicatorState.slots;
   const list = Array.isArray(raw) ? raw : [];
-  const used = new Set<SubIndicatorId>();
   const next: SubIndicatorId[] = [];
 
   for (let i = 0; i < 4; i += 1) {
     const candidate = list[i];
-    if (isSubIndicatorId(candidate) && !used.has(candidate)) {
-      next.push(candidate);
-      used.add(candidate);
-    }
+    next.push(isSubIndicatorId(candidate) ? candidate : defaults[i] ?? "VOL");
   }
 
-  for (const id of defaults) {
-    if (next.length >= 4) break;
-    if (!used.has(id)) {
-      next.push(id);
-      used.add(id);
-    }
-  }
-
-  while (next.length < 4) {
-    const fallback = ALL_IDS.find((id) => !used.has(id));
-    if (!fallback) break;
-    next.push(fallback);
-    used.add(fallback);
-  }
-
-  return next.slice(0, 4) as SubIndicatorState["slots"];
+  return next as SubIndicatorState["slots"];
 }
 
 export function normalizeSubIndicatorState(state: Partial<SubIndicatorState> | undefined): SubIndicatorState {
@@ -110,7 +91,7 @@ export function getActiveSubSlots(state: SubIndicatorState): SubIndicatorId[] {
   return normalized.slots.slice(0, normalized.count);
 }
 
-/** 将某副图切换为指定指标；若该指标已在其他副图，则交换 */
+/** 将某副图切换为指定指标（各副图互不排斥，可重复） */
 export function assignSubSlot(
   state: SubIndicatorState,
   slotIndex: number,
@@ -118,14 +99,8 @@ export function assignSubSlot(
 ): SubIndicatorState {
   const next = normalizeSubIndicatorState(state);
   if (slotIndex < 0 || slotIndex >= next.count) return next;
+  if (next.slots[slotIndex] === indicatorId) return next;
   const slots = [...next.slots] as SubIndicatorState["slots"];
-  const current = slots[slotIndex];
-  if (current === indicatorId) return next;
-
-  const otherIndex = slots.findIndex((id, index) => index !== slotIndex && id === indicatorId);
-  if (otherIndex >= 0) {
-    slots[otherIndex] = current;
-  }
   slots[slotIndex] = indicatorId;
   return { ...next, slots };
 }
