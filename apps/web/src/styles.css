@@ -7263,6 +7263,15 @@ textarea {
   overflow: hidden;
 }
 
+.replay-day-guide-segment {
+  position: absolute;
+  z-index: 0;
+  width: 0;
+  transform: translateX(-50%);
+  border-left: 1px dashed rgba(23, 108, 143, 0.42);
+  pointer-events: none;
+}
+
 .holding-region {
   position: absolute;
   top: 34px;
@@ -7412,6 +7421,18 @@ textarea {
   pointer-events: none;
 }
 
+.trade-marker-tag.replay {
+  background: #176c8f;
+  cursor: default;
+  pointer-events: none;
+}
+
+.replay-label-layer .trade-marker-tag.replay {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-50%);
+}
+
 .trade-note-popover {
   position: absolute;
   top: 16px;
@@ -7496,20 +7517,6 @@ textarea {
   display: none;
   pointer-events: none;
   overflow: hidden;
-}
-
-.replay-date-label {
-  position: absolute;
-  top: 8px;
-  transform: translateX(-50%);
-  border-radius: 6px;
-  background: rgba(23, 32, 28, 0.9);
-  color: #ffffff;
-  font-size: 12px;
-  line-height: 1;
-  padding: 5px 7px;
-  white-space: nowrap;
-  pointer-events: none;
 }
 
 .crosshair-date-label-layer {

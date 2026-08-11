@@ -18,7 +18,7 @@ type Props = {
   "aria-label"?: string;
   /** 空态提示文案 */
   emptyHint?: string;
-  /** 是否显示右下角 B/S/L 说明，默认 false */
+  /** 是否显示右下角 B/S/L/R 说明，默认 false */
   showHelp?: boolean;
 };
 
@@ -102,6 +102,10 @@ export function QuoteSummary({
                 <div className="marker-legend-row">
                   <span className="trade-marker-tag pain">L</span>
                   <span>最差低点，青色，标记持仓期间最低价</span>
+                </div>
+                <div className="marker-legend-row">
+                  <span className="trade-marker-tag replay">R</span>
+                  <span>复盘日，蓝青色，标记当前复盘对应的 K 线，并以虚线引导该日位置</span>
                 </div>
               </div>
             }

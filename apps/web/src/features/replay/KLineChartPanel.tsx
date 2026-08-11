@@ -165,6 +165,12 @@ type TradeOverlayLayout = {
   painPoint: { x: number; y: number } | null;
 };
 
+/** 复盘日引导线：在 K 线实体与影线处留空，避免挡住上下影线 */
+type ReplayDayGuide = {
+  x: number;
+  segments: Array<{ top: number; height: number }>;
+};
+
 const emptyTradeOverlayLayout: TradeOverlayLayout = {
   pane: null,
   markers: [],
@@ -172,6 +178,8 @@ const emptyTradeOverlayLayout: TradeOverlayLayout = {
   avgCost: null,
   painPoint: null,
 };
+/** 影线周围额外留白（像素） */
+const replayDayGuideCandleGapPx = 6;
 
 export function KLineChartPanel({
   bars,
@@ -257,6 +265,7 @@ export function KLineChartPanel({
   );
   const tradeOverlaySpecRef = useRef(tradeOverlaySpec);
   const [tradeOverlayLayout, setTradeOverlayLayout] = useState<TradeOverlayLayout>(emptyTradeOverlayLayout);
+  const [replayDayGuide, setReplayDayGuide] = useState<ReplayDayGuide | null>(null);
 
   tradeOverlaySpecRef.current = tradeOverlaySpec;
 
@@ -300,6 +309,7 @@ export function KLineChartPanel({
     const chart = chartRef.current;
     if (!chart) return;
     setTradeOverlayLayout(computeTradeOverlayLayout(chart, tradeOverlaySpecRef.current));
+    setReplayDayGuide(computeReplayDayGuide(chart, barsRef.current, selectedDateRef.current));
     setSubPaneLayouts(computeSubPaneLayouts(chart, getActiveSubSlots(subIndicatorsRef.current)));
   };
 
@@ -409,6 +419,7 @@ export function KLineChartPanel({
           periodRef.current,
         );
         setTradeOverlayLayout(computeTradeOverlayLayout(currentChart, tradeOverlaySpecRef.current));
+        setReplayDayGuide(computeReplayDayGuide(currentChart, barsRef.current, selectedDateRef.current));
       });
     };
 
@@ -651,6 +662,21 @@ export function KLineChartPanel({
             : { display: "none" }
         }
       >
+        {replayDayGuide
+          ? replayDayGuide.segments.map((segment, index) => (
+              <div
+                aria-hidden="true"
+                className="replay-day-guide-segment"
+                key={`replay-day-guide-${index}`}
+                style={{
+                  left: `${replayDayGuide.x}px`,
+                  top: `${segment.top}px`,
+                  height: `${segment.height}px`,
+                }}
+              />
+            ))
+          : null}
+
         {tradeOverlayLayout.regions.map((region) => (
           <div
             className={`holding-region ${region.pnlPercent >= 0 ? "profit" : "loss"}`}
@@ -766,8 +792,8 @@ export function KLineChartPanel({
       </div>
       {selectedDate ? (
         <div className="replay-label-layer" ref={replayLabelLayerRef}>
-          <span className="replay-date-label" ref={replayDayLabelRef}>
-            复盘日
+          <span aria-label="复盘日" className="trade-marker-tag replay" ref={replayDayLabelRef}>
+            R
           </span>
         </div>
       ) : null}
@@ -812,41 +838,44 @@ function scrollChartToSelectedDate(chart: Chart, selectedDate?: string) {
   chart.scrollToRealTime(0);
 }
 
-function syncReplayDayOverlay(chart: Chart, selectedDate?: string) {
-  if (!selectedDate) {
-    chart.removeOverlay({ id: replayDayLineOverlayId });
-    return;
-  }
+function syncReplayDayOverlay(chart: Chart, _selectedDate?: string) {
+  // 复盘日改用 DOM 分段引导线（影线处留空），不再绘制贯穿 K 线的竖线
+  chart.removeOverlay({ id: replayDayLineOverlayId });
+}
+
+function computeReplayDayGuide(chart: Chart, bars: KLineBar[], selectedDate?: string): ReplayDayGuide | null {
+  if (!selectedDate || !bars.length) return null;
+
+  const dataIndex = resolveTradeBarIndex(bars, selectedDate);
+  if (dataIndex === undefined) return null;
+
+  const bar = bars[dataIndex];
+  if (!bar) return null;
 
   const paneId = resolveCandlePaneId(chart);
-  const timestamp = new Date(`${selectedDate}T00:00:00`).getTime();
-  const existing = chart.getOverlays({ id: replayDayLineOverlayId });
-  if (existing.length) {
-    chart.overrideOverlay({
-      id: replayDayLineOverlayId,
-      paneId,
-      points: [{ timestamp }],
-      visible: true,
-    });
-    return;
+  const mainSize = chart.getSize(paneId, "main");
+  if (!mainSize || mainSize.height <= 0) return null;
+
+  const highPoint = convertChartPoint(chart, paneId, dataIndex, bar.high);
+  const lowPoint = convertChartPoint(chart, paneId, dataIndex, bar.low);
+  if (!highPoint || !lowPoint || !Number.isFinite(highPoint.y) || !Number.isFinite(lowPoint.y)) {
+    return null;
   }
 
-  chart.createOverlay({
-    id: replayDayLineOverlayId,
-    name: "verticalStraightLine",
-    paneId,
-    lock: true,
-    visible: true,
-    points: [{ timestamp }],
-    styles: {
-      line: {
-        color: "rgba(23, 32, 28, 0.62)",
-        size: 1,
-        style: "solid",
-        dashedValue: [2, 2],
-      },
-    },
-  });
+  const x = highPoint.x;
+  const candleTop = Math.min(highPoint.y, lowPoint.y) - replayDayGuideCandleGapPx;
+  const candleBottom = Math.max(highPoint.y, lowPoint.y) + replayDayGuideCandleGapPx;
+  const segments: Array<{ top: number; height: number }> = [];
+
+  if (candleTop > 0) {
+    segments.push({ top: 0, height: candleTop });
+  }
+  if (candleBottom < mainSize.height) {
+    segments.push({ top: candleBottom, height: mainSize.height - candleBottom });
+  }
+
+  if (!segments.length) return null;
+  return { x, segments };
 }
 
 function updateReplayDayLabel(
