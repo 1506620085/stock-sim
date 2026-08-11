@@ -8,7 +8,7 @@
 apps/
   web/      React + TypeScript + Vite 前端
   api/      FastAPI + PostgreSQL 后端
-docs/       设计文档与开发内容顺序
+docs/       设计与后续开发备忘（含 archive 历史文档）
 prototype/ 旧静态交互原型
 ```
 
@@ -79,5 +79,7 @@ http://127.0.0.1:5173
 
 ## 文档
 
-- `docs/设计文档.md`
-- `docs/开发内容顺序.md`
+- `docs/后续开发备忘录.md`（未开发事项、多用户/登录等）
+- `docs/性能与架构优化.md`（性能与结构改造清单）
+- `docs/设计文档.md`（产品原则与早期设计）
+- `docs/archive/`（已归档的历史规划文档）
