@@ -141,12 +141,15 @@ export function SubIndicatorSwitcherDialog({ value, onChange, openRequest }: Pro
         value={value}
       />
 
-      <SubIndicatorParamsDialog
-        indicatorId={paramsTarget}
-        onChange={onChange}
-        onClose={() => setParamsTarget(null)}
-        value={value}
-      />
+      {paramsTarget && hasSubIndicatorParams(paramsTarget) ? (
+        <SubIndicatorParamsDialog
+          key={paramsTarget}
+          indicatorId={paramsTarget}
+          onChange={onChange}
+          onClose={() => setParamsTarget(null)}
+          value={value}
+        />
+      ) : null}
     </>
   );
 }
@@ -260,35 +263,33 @@ function SubIndicatorParamsDialog({
   onChange,
   onClose,
 }: {
-  indicatorId: SubIndicatorId | null;
+  indicatorId: SubIndicatorId;
   value: SubIndicatorState;
   onChange: (next: SubIndicatorState) => void;
   onClose: () => void;
 }) {
-  const schema = indicatorId ? SUB_INDICATOR_PARAM_SCHEMAS[indicatorId] : undefined;
-  const [draft, setDraft] = useState<number[]>([]);
+  const schema = SUB_INDICATOR_PARAM_SCHEMAS[indicatorId];
+  const [draft, setDraft] = useState<number[]>(() => {
+    if (!schema) return [];
+    const stored = value.params[indicatorId];
+    return schema.fields.map((field, index) => {
+      const raw = stored?.[index] ?? schema.defaults[index];
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : schema.defaults[index];
+    });
+  });
 
-  useEffect(() => {
-    if (!indicatorId || !schema) {
-      setDraft([]);
-      return;
-    }
-    setDraft([...(value.params[indicatorId] ?? schema.defaults)]);
-  }, [indicatorId, schema, value.params]);
-
-  if (!indicatorId || !schema) return null;
-
-  const targetId = indicatorId;
-  const targetSchema = schema;
+  if (!schema) return null;
+  const activeSchema = schema;
 
   function save() {
-    onChange(updateSubIndicatorParams(value, targetId, draft));
+    onChange(updateSubIndicatorParams(value, indicatorId, draft));
     onClose();
   }
 
   function restore() {
-    const next = resetSubIndicatorParams(value, targetId);
-    setDraft([...(next.params[targetId] ?? targetSchema.defaults)]);
+    const next = resetSubIndicatorParams(value, indicatorId);
+    setDraft([...(next.params[indicatorId] ?? activeSchema.defaults)]);
     onChange(next);
   }
 
@@ -301,13 +302,13 @@ function SubIndicatorParamsDialog({
         </button>
       }
       onClose={onClose}
-      open={Boolean(indicatorId)}
-      title={targetSchema.title}
+      open
+      title={activeSchema.title}
     >
       <div className="main-indicator-params-form is-sheet">
         <div className="indicator-params-panel">
-          {targetSchema.fields.map((field, index) => (
-            <div className="indicator-param-row" key={`${targetId}-${index}`}>
+          {activeSchema.fields.map((field, index) => (
+            <div className="indicator-param-row" key={`${indicatorId}-${index}`}>
               <span className="indicator-param-label">{field.label}</span>
               <input
                 aria-label={field.label}
@@ -321,7 +322,7 @@ function SubIndicatorParamsDialog({
                 }}
                 step={field.step ?? 1}
                 type="number"
-                value={draft[index] ?? ""}
+                value={Number.isFinite(draft[index]) ? draft[index] : field.min}
               />
               {field.unit ? <span className="indicator-param-unit">{field.unit}</span> : null}
               <span className="indicator-param-range">
@@ -329,7 +330,7 @@ function SubIndicatorParamsDialog({
               </span>
             </div>
           ))}
-          <p className="indicator-param-hint">{targetSchema.hint(draft)}</p>
+          <p className="indicator-param-hint">{activeSchema.hint(draft)}</p>
         </div>
       </div>
       <div className="app-dialog-actions main-indicator-params-actions is-sheet">
