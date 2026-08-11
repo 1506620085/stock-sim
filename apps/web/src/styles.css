@@ -5434,7 +5434,7 @@ textarea {
 
 .replay-page {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr) minmax(300px, 340px);
   align-items: start;
   gap: 6px;
 }
@@ -5470,7 +5470,8 @@ textarea {
 
 .chart-panel {
   position: relative;
-  min-height: 620px;
+  min-height: 0;
+  min-width: 0;
 }
 
 .chart-empty-state {
@@ -5496,16 +5497,30 @@ textarea {
   overflow: visible;
 }
 
+.chart-toolbar,
+.chart-meta {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 10px;
+}
+
 .chart-toolbar {
-  align-items: center;
+  align-items: flex-start;
 }
 
 .chart-toolbar-title-block {
   display: flex;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 220px;
   flex-direction: column;
   gap: 8px;
+}
+
+.chart-toolbar-title-block .eyebrow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .chart-toolbar-title-row {
@@ -5687,9 +5702,13 @@ textarea {
 
 .day-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   overflow: visible;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 
 .day-controls-divider {
@@ -5713,9 +5732,10 @@ textarea {
 
 .chart-toolbar-pro {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px 16px;
   width: 100%;
   min-height: 44px;
   background: #ffffff;
@@ -5780,10 +5800,13 @@ textarea {
 
 .chart-toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
   margin-left: auto;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .chart-toolbar-jump {
@@ -6378,6 +6401,7 @@ textarea {
 .kline-chart-wrap {
   position: relative;
   width: 100%;
+  min-width: 0;
   margin-top: 8px;
   overflow: hidden;
   isolation: isolate;
@@ -8630,15 +8654,22 @@ textarea {
   white-space: nowrap;
 }
 
+@media (max-width: 1280px) {
+  .replay-page {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(280px, 320px);
+  }
+}
+
 @media (max-width: 1180px) {
   .replay-page {
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   }
 
   .trade-column {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .calculator-layout {
@@ -8659,6 +8690,18 @@ textarea {
 
   .result-panel {
     position: static;
+  }
+}
+
+@media (max-width: 960px) {
+  .replay-page {
+    grid-template-columns: 1fr;
+  }
+
+  .trade-column {
+    grid-column: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -8790,6 +8833,7 @@ textarea {
 
   .trade-column {
     display: flex;
+    flex-direction: column;
   }
 
   .main-panel,
@@ -8797,8 +8841,23 @@ textarea {
     min-height: auto;
   }
 
-  .kline-chart {
-    height: 520px;
+  .chart-toolbar-title-block {
+    flex: 1 1 100%;
+  }
+
+  .day-controls {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .chart-toolbar-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .kline-period-switch {
+    flex-wrap: wrap;
   }
 }
 

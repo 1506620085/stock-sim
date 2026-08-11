@@ -65,10 +65,15 @@ function formatChartBigNumber(value: string | number) {
   if (!Number.isFinite(numeric)) return `${value}`;
   return `${+(numeric / 10_000).toFixed(2)}万`;
 }
-const mainPaneHeight = 360;
-const volumePaneHeight = 118;
-const bollPaneHeight = 126;
-const oscillatorPaneHeight = 126;
+
+/** 桌面默认窗格高度；短视口按比例收缩 */
+const BASE_MAIN_PANE_HEIGHT = 360;
+const BASE_MAIN_PANE_MIN_HEIGHT = 300;
+const BASE_VOLUME_PANE_HEIGHT = 118;
+const BASE_BOLL_PANE_HEIGHT = 126;
+const BASE_OSCILLATOR_PANE_HEIGHT = 126;
+const BASE_VOLUME_PANE_MIN_HEIGHT = 96;
+const BASE_OTHER_SUB_PANE_MIN_HEIGHT = 108;
 const xAxisHeight = 36;
 /** 主图与副图之间留给十字光标时间标签的高度 */
 const crosshairDateBandHeight = 28;
@@ -92,18 +97,48 @@ const subIndicatorTriggerInsetTopPx = 4;
 /** 鼠标靠近平均成本线多少像素内显示标签 */
 const avgCostLabelHoverThresholdPx = 12;
 
+type ChartPaneMetrics = {
+  main: number;
+  mainMin: number;
+  volume: number;
+  boll: number;
+  oscillator: number;
+  volumeMin: number;
+  otherMin: number;
+};
+
+function resolveChartScale(viewportHeight: number) {
+  if (viewportHeight >= 900) return 1;
+  if (viewportHeight <= 640) return 0.7;
+  return 0.7 + ((viewportHeight - 640) / (900 - 640)) * 0.3;
+}
+
+function resolveChartPaneMetrics(viewportHeight: number): ChartPaneMetrics {
+  const scale = resolveChartScale(viewportHeight);
+  const scaled = (value: number, min: number) => Math.max(min, Math.round(value * scale));
+  return {
+    main: scaled(BASE_MAIN_PANE_HEIGHT, 220),
+    mainMin: scaled(BASE_MAIN_PANE_MIN_HEIGHT, 180),
+    volume: scaled(BASE_VOLUME_PANE_HEIGHT, 88),
+    boll: scaled(BASE_BOLL_PANE_HEIGHT, 96),
+    oscillator: scaled(BASE_OSCILLATOR_PANE_HEIGHT, 96),
+    volumeMin: scaled(BASE_VOLUME_PANE_MIN_HEIGHT, 72),
+    otherMin: scaled(BASE_OTHER_SUB_PANE_MIN_HEIGHT, 84),
+  };
+}
+
 function subPaneId(index: number) {
   return `sub-pane-${index}`;
 }
 
-function subPaneHeight(id: SubIndicatorId) {
-  if (id === "VOL") return volumePaneHeight;
-  if (id === "BOLL" || id === "ENE") return bollPaneHeight;
-  return oscillatorPaneHeight;
+function subPaneHeight(id: SubIndicatorId, metrics: ChartPaneMetrics) {
+  if (id === "VOL") return metrics.volume;
+  if (id === "BOLL" || id === "ENE") return metrics.boll;
+  return metrics.oscillator;
 }
 
-function subPaneMinHeight(id: SubIndicatorId) {
-  return id === "VOL" ? 96 : 108;
+function subPaneMinHeight(id: SubIndicatorId, metrics: ChartPaneMetrics) {
+  return id === "VOL" ? metrics.volumeMin : metrics.otherMin;
 }
 
 type SubPaneLayout = {
@@ -179,12 +214,21 @@ export function KLineChartPanel({
   const [subSwitchOpenRequest, setSubSwitchOpenRequest] = useState<{ token: number; focusSlot?: number }>({
     token: 0,
   });
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    typeof window === "undefined" ? 900 : window.innerHeight,
+  );
 
   selectedDateRef.current = selectedDate;
   barsRef.current = bars;
   periodRef.current = period;
   onHoveredBarIndexChangeRef.current = onHoveredBarIndexChange;
   subIndicatorsRef.current = subIndicators;
+
+  useEffect(() => {
+    const onResize = () => setViewportHeight(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const chartData = useMemo<KLineData[]>(
     () =>
@@ -199,7 +243,8 @@ export function KLineChartPanel({
     [bars],
   );
   const activeSubSlots = useMemo(() => getActiveSubSlots(subIndicators), [subIndicators]);
-  const chartHeight = useMemo(() => getChartHeight(activeSubSlots), [activeSubSlots]);
+  const paneMetrics = useMemo(() => resolveChartPaneMetrics(viewportHeight), [viewportHeight]);
+  const chartHeight = useMemo(() => getChartHeight(activeSubSlots, paneMetrics), [activeSubSlots, paneMetrics]);
   const tradeOverlaySpec = useMemo(
     () =>
       buildTradeOverlaySpec(
@@ -453,7 +498,7 @@ export function KLineChartPanel({
     chart.resetData();
     applyChartScrollLimits(chart);
     chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft));
-    syncIndicators(chart, indicators, activeSubSlots, mainIndicator, subIndicators);
+    syncIndicators(chart, indicators, activeSubSlots, mainIndicator, subIndicators, paneMetrics);
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
@@ -467,7 +512,7 @@ export function KLineChartPanel({
       period,
     );
     syncTradeOverlayLayout();
-  }, [chartData, code, indicators, activeSubSlots, mainIndicator, subIndicators, period, selectedDate, legendOffsetLeft, subLegendOffsetLeft]);
+  }, [chartData, code, indicators, activeSubSlots, mainIndicator, subIndicators, period, selectedDate, legendOffsetLeft, subLegendOffsetLeft, paneMetrics, chartDisplay, bars]);
 
   useEffect(() => {
     syncTradeOverlayLayout();
@@ -1157,9 +1202,10 @@ function syncIndicators(
   subSlots: SubIndicatorId[],
   mainIndicator: MainIndicatorState,
   subIndicators: SubIndicatorState,
+  paneMetrics: ChartPaneMetrics,
 ) {
   chart.removeIndicator();
-  chart.setPaneOptions({ id: candlePaneId, height: mainPaneHeight, minHeight: 300 });
+  chart.setPaneOptions({ id: candlePaneId, height: paneMetrics.main, minHeight: paneMetrics.mainMin });
   createMainPaneIndicator(chart, mainIndicator);
 
   if (subSlots.length) {
@@ -1192,8 +1238,8 @@ function syncIndicators(
   subSlots.forEach((id, index) => {
     const pane = {
       id: subPaneId(index),
-      height: subPaneHeight(id),
-      minHeight: subPaneMinHeight(id),
+      height: subPaneHeight(id, paneMetrics),
+      minHeight: subPaneMinHeight(id, paneMetrics),
     };
     const calcParams = getSubIndicatorCalcParams(subIndicators.params, id);
 
@@ -1324,12 +1370,12 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
   );
 }
 
-function getChartHeight(subSlots: SubIndicatorId[]) {
+function getChartHeight(subSlots: SubIndicatorId[], paneMetrics: ChartPaneMetrics) {
   return (
-    mainPaneHeight +
+    paneMetrics.main +
     xAxisHeight +
     (subSlots.length ? crosshairDateBandHeight : 0) +
-    subSlots.reduce((sum, id) => sum + subPaneHeight(id), 0)
+    subSlots.reduce((sum, id) => sum + subPaneHeight(id, paneMetrics), 0)
   );
 }
 
