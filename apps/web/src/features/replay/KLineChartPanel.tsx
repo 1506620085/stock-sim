@@ -1080,6 +1080,26 @@ function buildChartStyles(
       },
     },
     indicator: {
+      // 与主图 K 线一致：红涨绿跌（覆盖库默认的绿涨红跌）
+      ohlc: {
+        upColor: candleUpColor,
+        downColor: candleDownColor,
+        noChangeColor: candleNoChangeColor,
+      },
+      bars: [
+        {
+          upColor: candleUpColor,
+          downColor: candleDownColor,
+          noChangeColor: candleNoChangeColor,
+        },
+      ],
+      circles: [
+        {
+          upColor: candleUpColor,
+          downColor: candleDownColor,
+          noChangeColor: candleNoChangeColor,
+        },
+      ],
       tooltip: {
         // 副图指标图例起点：与主图同一套「按钮宽 + 间距」口径
         offsetLeft: subLegendOffsetLeft,
