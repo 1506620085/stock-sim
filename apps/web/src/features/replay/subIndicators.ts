@@ -19,14 +19,11 @@ export type SubIndicatorState = {
   count: number;
   /** 各副图槽位指标（长度固定为 4，实际取前 count 个） */
   slots: [SubIndicatorId, SubIndicatorId, SubIndicatorId, SubIndicatorId];
-  /** 点击副图区域打开切换面板 */
-  clickToSwitch: boolean;
 };
 
 export const defaultSubIndicatorState: SubIndicatorState = {
   count: 3,
   slots: ["VOL", "BOLL", "KDJ", "MACD"],
-  clickToSwitch: true,
 };
 
 const STORAGE_KEY = "stock-sim.sub-indicator";
@@ -77,7 +74,6 @@ export function normalizeSubIndicatorState(state: Partial<SubIndicatorState> | u
   return {
     count,
     slots: normalizeSlots(state?.slots),
-    clickToSwitch: typeof state?.clickToSwitch === "boolean" ? state.clickToSwitch : defaultSubIndicatorState.clickToSwitch,
   };
 }
 

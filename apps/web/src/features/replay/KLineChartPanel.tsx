@@ -520,32 +520,6 @@ export function KLineChartPanel({
     };
   }, [tradeOverlayLayout.avgCost, tradeOverlayLayout.pane]);
 
-  useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
-
-    const handleClick = (event: MouseEvent) => {
-      if (!subIndicatorsRef.current.clickToSwitch) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("button, a, input, textarea, select, [role='dialog']")) return;
-
-      const chart = chartRef.current;
-      if (!chart) return;
-      const rect = wrap.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const layouts = computeSubPaneLayouts(chart, getActiveSubSlots(subIndicatorsRef.current));
-      const hit = layouts.find(
-        (pane) => x >= pane.left && x <= pane.left + pane.width && y >= pane.top && y <= pane.top + pane.height,
-      );
-      if (!hit) return;
-      setSubSwitchOpenRequest((prev) => ({ token: prev.token + 1, focusSlot: hit.index }));
-    };
-
-    wrap.addEventListener("click", handleClick);
-    return () => wrap.removeEventListener("click", handleClick);
-  }, []);
-
   function openSubIndicatorSwitch(focusSlot?: number) {
     setSubSwitchOpenRequest((prev) => ({ token: prev.token + 1, focusSlot }));
   }

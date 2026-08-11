@@ -114,15 +114,6 @@ export function SubIndicatorSwitcherDialog({ value, onChange, openRequest }: Pro
             })}
           </div>
         </div>
-
-        <label className="sub-indicator-click-toggle">
-          <input
-            checked={value.clickToSwitch}
-            onChange={(event) => onChange({ ...value, clickToSwitch: event.target.checked })}
-            type="checkbox"
-          />
-          <span>点击副图切换</span>
-        </label>
       </div>
     </AppDialogShell>
   );
