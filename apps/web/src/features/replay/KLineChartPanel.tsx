@@ -904,13 +904,11 @@ function updateReplayDayLabel(
   labelLayer.style.top = `${mainSize.top}px`;
   labelLayer.style.width = `${mainSize.width}px`;
   labelLayer.style.height = `${mainSize.height}px`;
-  label.style.left = `${left}px`;
   label.style.transform = "translateX(-50%)";
 
-  const labelHalfWidth = label.offsetWidth / 2;
-  if (!isReplayDayLabelInPane(left, mainSize.width, labelHalfWidth)) {
-    labelLayer.style.display = "none";
-  }
+  // 与 B/S 一致：贴边时钳制在可视区内，不因越界隐藏
+  const labelHalfWidth = (label.offsetWidth || TRADE_MARKER_TAG_W) / 2;
+  label.style.left = `${clampLabelCenterLeft(left, mainSize.width, labelHalfWidth)}px`;
 }
 
 function updateCrosshairDateLabel(
@@ -1068,14 +1066,6 @@ function formatCrosshairBarTime(date: string, period: KlinePeriod) {
     return `${year}-Q${Math.ceil(month / 3)}`;
   }
   return date;
-}
-
-function isReplayDayLabelInPane(left: number, paneWidth: number, labelHalfWidth: number): boolean {
-  if (paneWidth <= 0) return false;
-  if (labelHalfWidth <= 0) {
-    return left >= 0 && left <= paneWidth;
-  }
-  return left - labelHalfWidth >= 0 && left + labelHalfWidth <= paneWidth;
 }
 
 /** 十字光标时间标签中心点钳制到绘图区内，贴边时贴紧左右，文案仍随 K 线更新 */
