@@ -7,6 +7,18 @@ export type MainIndicatorId = "none" | "MA" | "BOLL" | "BBI" | "EXPMA" | "ENE" |
 export const MA_LINE_COUNT = 8;
 export const MA_PERIOD_MIN = 1;
 export const MA_PERIOD_MAX = 900;
+export const BOLL_PERIOD_MIN = 2;
+export const BOLL_PERIOD_MAX = 500;
+export const BBI_PERIOD_MIN = 2;
+export const BBI_PERIOD_MAX = 200;
+export const EXPMA_PERIOD_MIN = 2;
+export const EXPMA_PERIOD_MAX = 365;
+export const ENE_BAND_MIN = 2;
+export const ENE_BAND_MAX = 120;
+export const ENE_PERIOD_MIN = 2;
+export const ENE_PERIOD_MAX = 999;
+export const DKX_MA_PERIOD_MIN = 2;
+export const DKX_MA_PERIOD_MAX = 900;
 
 export type MaLineConfig = {
   period: number;
@@ -136,28 +148,31 @@ function normalizeParams(raw: Partial<MainIndicatorParams> | undefined): MainInd
   return {
     MA: { lines: normalizeMaLines(raw?.MA) },
     BOLL: {
-      period: clampPeriod(boll?.period, d.BOLL.period),
+      period: clampPeriod(boll?.period, d.BOLL.period, BOLL_PERIOD_MIN, BOLL_PERIOD_MAX),
       multiplier: Math.min(10, Math.max(0.1, Number(boll?.multiplier ?? d.BOLL.multiplier) || d.BOLL.multiplier)),
     },
     BBI: {
       periods: [
-        clampPeriod(bbi?.[0], d.BBI.periods[0]),
-        clampPeriod(bbi?.[1], d.BBI.periods[1]),
-        clampPeriod(bbi?.[2], d.BBI.periods[2]),
-        clampPeriod(bbi?.[3], d.BBI.periods[3]),
+        clampPeriod(bbi?.[0], d.BBI.periods[0], BBI_PERIOD_MIN, BBI_PERIOD_MAX),
+        clampPeriod(bbi?.[1], d.BBI.periods[1], BBI_PERIOD_MIN, BBI_PERIOD_MAX),
+        clampPeriod(bbi?.[2], d.BBI.periods[2], BBI_PERIOD_MIN, BBI_PERIOD_MAX),
+        clampPeriod(bbi?.[3], d.BBI.periods[3], BBI_PERIOD_MIN, BBI_PERIOD_MAX),
       ],
     },
     EXPMA: {
-      periods: [clampPeriod(expma?.[0], d.EXPMA.periods[0]), clampPeriod(expma?.[1], d.EXPMA.periods[1])],
+      periods: [
+        clampPeriod(expma?.[0], d.EXPMA.periods[0], EXPMA_PERIOD_MIN, EXPMA_PERIOD_MAX),
+        clampPeriod(expma?.[1], d.EXPMA.periods[1], EXPMA_PERIOD_MIN, EXPMA_PERIOD_MAX),
+      ],
     },
     ENE: {
-      period: clampPeriod(ene?.period, d.ENE.period),
-      upperPercent: Math.min(50, Math.max(0.1, Number(ene?.upperPercent ?? d.ENE.upperPercent) || d.ENE.upperPercent)),
-      lowerPercent: Math.min(50, Math.max(0.1, Number(ene?.lowerPercent ?? d.ENE.lowerPercent) || d.ENE.lowerPercent)),
+      period: clampPeriod(ene?.period, d.ENE.period, ENE_PERIOD_MIN, ENE_PERIOD_MAX),
+      upperPercent: clampPeriod(ene?.upperPercent, d.ENE.upperPercent, ENE_BAND_MIN, ENE_BAND_MAX),
+      lowerPercent: clampPeriod(ene?.lowerPercent, d.ENE.lowerPercent, ENE_BAND_MIN, ENE_BAND_MAX),
     },
     DKX: {
       midPeriod: clampPeriod(dkx?.midPeriod, d.DKX.midPeriod),
-      maPeriod: clampPeriod(dkx?.maPeriod, d.DKX.maPeriod),
+      maPeriod: clampPeriod(dkx?.maPeriod, d.DKX.maPeriod, DKX_MA_PERIOD_MIN, DKX_MA_PERIOD_MAX),
     },
   };
 }

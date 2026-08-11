@@ -16,6 +16,8 @@ type AppDialogShellProps = {
   closeOnBackdrop?: boolean;
   /** 标题栏右侧是否显示关闭按钮，默认 false */
   showCloseButton?: boolean;
+  /** 标题栏右侧额外操作（如「恢复默认」） */
+  headerActions?: ReactNode;
 };
 
 export function AppDialogShell({
@@ -27,6 +29,7 @@ export function AppDialogShell({
   className = "",
   closeOnBackdrop = true,
   showCloseButton = false,
+  headerActions,
 }: AppDialogShellProps) {
   const titleId = useId();
 
@@ -58,10 +61,15 @@ export function AppDialogShell({
           <h2 className="app-dialog-title" id={titleId}>
             {title}
           </h2>
-          {showCloseButton ? (
-            <button aria-label="关闭" className="app-dialog-close" onClick={onClose} type="button">
-              <X aria-hidden="true" size={18} strokeWidth={2} />
-            </button>
+          {headerActions || showCloseButton ? (
+            <div className="app-dialog-header-actions">
+              {headerActions}
+              {showCloseButton ? (
+                <button aria-label="关闭" className="app-dialog-close" onClick={onClose} type="button">
+                  <X aria-hidden="true" size={18} strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
         {children}

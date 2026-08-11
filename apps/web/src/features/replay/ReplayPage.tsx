@@ -47,6 +47,13 @@ import {
   SHARES_PER_LOT,
 } from "./tradeFunds";
 import { loadMainIndicatorState, normalizeMainIndicatorState, saveMainIndicatorState, type MainIndicatorState } from "./mainIndicators";
+import {
+  loadSubIndicatorState,
+  normalizeSubIndicatorState,
+  saveSubIndicatorState,
+  setSubChartCount,
+  type SubIndicatorState,
+} from "./subIndicators";
 import type { ChartDisplaySettings, Instrument, IndicatorSettings, KLineBar, KlinePeriod, ReplaySession, TradeRecord, TradeReview, TradeSide } from "./types";
 
 const defaultIndicators: IndicatorSettings = {
@@ -74,6 +81,7 @@ export function ReplayPage() {
   const [hideFuture, setHideFuture] = useState(true);
   const [indicators, setIndicators] = useState(defaultIndicators);
   const [mainIndicator, setMainIndicator] = useState<MainIndicatorState>(() => loadMainIndicatorState());
+  const [subIndicators, setSubIndicators] = useState<SubIndicatorState>(() => loadSubIndicatorState());
   const [tradeSide, setTradeSide] = useState<TradeSide>("buy");
   const [quantity, setQuantity] = useState(SHARES_PER_LOT * 10);
   const [fee, setFee] = useState(5);
@@ -103,7 +111,10 @@ export function ReplayPage() {
   const [viewScrollDate, setViewScrollDate] = useState("");
   const [klinePeriod, setKlinePeriod] = useState<KlinePeriod>("day");
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
-  const [chartDisplay, setChartDisplay] = useState<ChartDisplaySettings>(defaultChartDisplaySettings);
+  const [chartDisplay, setChartDisplay] = useState<ChartDisplaySettings>(() => ({
+    ...defaultChartDisplaySettings,
+    subChartCount: loadSubIndicatorState().count,
+  }));
   const [preferences, setPreferences] = useState(() => loadPreferences());
   const buyPriceBasis: ReplayPriceBasis = preferences.replayBuyPriceBasis;
   const sellPriceBasis: ReplayPriceBasis = preferences.replaySellPriceBasis;
@@ -619,6 +630,15 @@ export function ReplayPage() {
     saveMainIndicatorState(normalized);
   }
 
+  function updateSubIndicators(next: SubIndicatorState) {
+    const normalized = normalizeSubIndicatorState(next);
+    setSubIndicators(normalized);
+    saveSubIndicatorState(normalized);
+    setChartDisplay((current) =>
+      current.subChartCount === normalized.count ? current : { ...current, subChartCount: normalized.count },
+    );
+  }
+
   function updateHideFuture(checked: boolean) {
     setHideFuture(checked);
     if (replaySession) {
@@ -723,6 +743,13 @@ export function ReplayPage() {
           if (replaySession) {
             syncReplaySession(replaySession.id, { indicatorConfig: updated });
           }
+          return updated;
+        });
+      }
+      if (key === "subChartCount") {
+        setSubIndicators((currentSub) => {
+          const updated = setSubChartCount(currentSub, Number(value));
+          saveSubIndicatorState(updated);
           return updated;
         });
       }
@@ -956,10 +983,8 @@ export function ReplayPage() {
               availableDates={availableReplayDates}
               disabled={!bars.length}
               displaySettings={chartDisplay}
-              indicators={indicators}
               klinePeriod={klinePeriod}
               onDisplaySettingsChange={updateChartDisplay}
-              onIndicatorChange={updateIndicator}
               onPeriodChange={updateKlinePeriod}
               onReplayDateChange={setJumpDate}
               onReplayDateSubmit={jumpToDate}
@@ -995,6 +1020,7 @@ export function ReplayPage() {
               indicators={indicators}
               mainIndicator={mainIndicator}
               onMainIndicatorChange={updateMainIndicator}
+              onSubIndicatorsChange={updateSubIndicators}
               onHoveredBarIndexChange={setHoveredBarIndex}
               period={klinePeriod}
               painPoint={{ date: position.worstLowDate, price: position.worstLowPrice }}
@@ -1003,6 +1029,7 @@ export function ReplayPage() {
               viewScrollDate={viewScrollDate}
               viewScrollToken={viewScrollToken}
               selectedDate={chartReplayDate}
+              subIndicators={subIndicators}
               trades={visibleTrades}
             />
           ) : (

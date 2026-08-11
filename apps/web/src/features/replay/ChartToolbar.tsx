@@ -3,20 +3,18 @@ import { RefreshCcw, Settings } from "lucide-react";
 import { AppSelect } from "../../components/AppSelect";
 import { KLINE_PERIOD_OPTIONS } from "./aggregateKlines";
 import { ReplayDatePicker } from "./ReplayDatePicker";
-import type { ChartDisplaySettings, IndicatorSettings, KlinePeriod } from "./types";
+import type { ChartDisplaySettings, KlinePeriod } from "./types";
 
 type Props = {
   klinePeriod: KlinePeriod;
   disabled?: boolean;
   displaySettings: ChartDisplaySettings;
-  indicators: IndicatorSettings;
   replayDate: string;
   availableDates: string[];
   onPeriodChange: (period: KlinePeriod) => void;
   onReplayDateChange: (date: string) => void;
   onReplayDateSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDisplaySettingsChange: <K extends keyof ChartDisplaySettings>(key: K, value: ChartDisplaySettings[K]) => void;
-  onIndicatorChange: <K extends keyof IndicatorSettings>(key: K, value: IndicatorSettings[K]) => void;
   onResetIndicators: () => void;
 };
 
@@ -24,14 +22,12 @@ export function ChartToolbar({
   klinePeriod,
   disabled = false,
   displaySettings,
-  indicators,
   replayDate,
   availableDates,
   onPeriodChange,
   onReplayDateChange,
   onReplayDateSubmit,
   onDisplaySettingsChange,
-  onIndicatorChange,
   onResetIndicators,
 }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -116,11 +112,6 @@ export function ChartToolbar({
               </label>
 
               <SettingToggle
-                checked={displaySettings.showVolume}
-                label="显示成交量"
-                onChange={(checked) => onDisplaySettingsChange("showVolume", checked)}
-              />
-              <SettingToggle
                 checked={displaySettings.showGrid}
                 label="网格线"
                 onChange={(checked) => onDisplaySettingsChange("showGrid", checked)}
@@ -136,13 +127,7 @@ export function ChartToolbar({
                 onChange={(checked) => onDisplaySettingsChange("showAvgCostLine", checked)}
               />
 
-              <div className="chart-settings-divider" />
-
-              <p className="chart-settings-subtitle">副图指标</p>
-
-              <SettingToggle checked={indicators.showBoll} label="BOLL" onChange={(checked) => onIndicatorChange("showBoll", checked)} />
-              <SettingToggle checked={indicators.showKdj} label="KDJ" onChange={(checked) => onIndicatorChange("showKdj", checked)} />
-              <SettingToggle checked={indicators.showMacd} label="MACD" onChange={(checked) => onIndicatorChange("showMacd", checked)} />
+              <p className="chart-settings-hint">副图指标请点击各副图左上角按钮切换</p>
             </div>
           ) : null}
         </div>

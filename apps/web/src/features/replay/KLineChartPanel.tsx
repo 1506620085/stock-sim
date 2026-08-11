@@ -3,11 +3,12 @@ import { dispose, init, type Chart, type Crosshair, type KLineData } from "kline
 import { showInfo } from "../../components/ToastProvider";
 import { periodToChartSetting, findBarIndexByDate } from "./aggregateKlines";
 import { resolveDirection } from "./marketQuote";
-import { resolveEffectiveSubCharts, type EffectiveSubCharts } from "./chartDisplay";
 import { MainIndicatorSwitcher } from "./MainIndicatorSwitcher";
 import type { MainIndicatorState } from "./mainIndicators";
 import { getEnabledMaLines } from "./mainIndicators";
 import { registerCustomIndicators } from "./registerCustomIndicators";
+import { SubIndicatorSwitcherDialog, SubIndicatorTrigger } from "./SubIndicatorSwitcher";
+import { getActiveSubSlots, type SubIndicatorId, type SubIndicatorState } from "./subIndicators";
 import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 
 registerCustomIndicators();
@@ -18,6 +19,8 @@ type Props = {
   indicators: IndicatorSettings;
   mainIndicator: MainIndicatorState;
   onMainIndicatorChange: (next: MainIndicatorState) => void;
+  subIndicators: SubIndicatorState;
+  onSubIndicatorsChange: (next: SubIndicatorState) => void;
   chartDisplay: ChartDisplaySettings;
   period?: KlinePeriod;
   selectedDate?: string;
@@ -33,7 +36,6 @@ type Props = {
 
 const candlePaneId = "candle_pane";
 const crosshairDateBandPaneId = "crosshair-date-band";
-const indicatorPaneIds = ["volume-pane", "boll-pane", "kdj-pane", "macd-pane"];
 const replayDayLineOverlayId = "replay-day-line";
 /** B/S 标签固定尺寸（与 CSS 保持一致） */
 const TRADE_MARKER_TAG_W = 22;
@@ -65,8 +67,33 @@ const mainIndicatorTooltipOffsetTop = 6;
 const mainIndicatorTooltipTitleMarginTop = 4;
 const mainIndicatorTooltipTitleSize = 12;
 const mainIndicatorTriggerInsetLeftPx = 4;
+/** 副图切换按钮预留，避免挡住指标图例 */
+const subIndicatorTriggerReservePx = 56;
+const subIndicatorTriggerInsetLeftPx = 4;
+const subIndicatorTriggerInsetTopPx = 4;
 /** 鼠标靠近平均成本线多少像素内显示标签 */
 const avgCostLabelHoverThresholdPx = 12;
+
+function subPaneId(index: number) {
+  return `sub-pane-${index}`;
+}
+
+function subPaneHeight(id: SubIndicatorId) {
+  return id === "VOL" ? volumePaneHeight : id === "BOLL" ? bollPaneHeight : oscillatorPaneHeight;
+}
+
+function subPaneMinHeight(id: SubIndicatorId) {
+  return id === "VOL" ? 96 : 108;
+}
+
+type SubPaneLayout = {
+  index: number;
+  indicatorId: SubIndicatorId;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
 
 type TradeOverlaySpec = {
   markers: Array<{ trade: TradeRecord; trades: TradeRecord[]; dataIndex: number; anchorPrice: number }>;
@@ -91,7 +118,25 @@ const emptyTradeOverlayLayout: TradeOverlayLayout = {
   painPoint: null,
 };
 
-export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainIndicatorChange, chartDisplay, period = "day", selectedDate, recenterToken = 0, viewScrollDate, viewScrollToken = 0, trades = [], avgCost = null, painPoint, onHoveredBarIndexChange }: Props) {
+export function KLineChartPanel({
+  bars,
+  code,
+  indicators,
+  mainIndicator,
+  onMainIndicatorChange,
+  subIndicators,
+  onSubIndicatorsChange,
+  chartDisplay,
+  period = "day",
+  selectedDate,
+  recenterToken = 0,
+  viewScrollDate,
+  viewScrollToken = 0,
+  trades = [],
+  avgCost = null,
+  painPoint,
+  onHoveredBarIndexChange,
+}: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -105,14 +150,20 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
   const periodRef = useRef(period);
   const hoveredBarIndexRef = useRef<number | null>(null);
   const onHoveredBarIndexChangeRef = useRef(onHoveredBarIndexChange);
+  const subIndicatorsRef = useRef(subIndicators);
   const [legendOffsetLeft, setLegendOffsetLeft] = useState(mainIndicatorTriggerReservePx);
   const [activeTrades, setActiveTrades] = useState<TradeRecord[] | null>(null);
   const [avgCostLabelVisible, setAvgCostLabelVisible] = useState(false);
+  const [subPaneLayouts, setSubPaneLayouts] = useState<SubPaneLayout[]>([]);
+  const [subSwitchOpenRequest, setSubSwitchOpenRequest] = useState<{ token: number; focusSlot?: number }>({
+    token: 0,
+  });
 
   selectedDateRef.current = selectedDate;
   barsRef.current = bars;
   periodRef.current = period;
   onHoveredBarIndexChangeRef.current = onHoveredBarIndexChange;
+  subIndicatorsRef.current = subIndicators;
 
   const chartData = useMemo<KLineData[]>(
     () =>
@@ -126,8 +177,8 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       })),
     [bars],
   );
-  const effectiveSubCharts = useMemo(() => resolveEffectiveSubCharts(chartDisplay, indicators), [chartDisplay, indicators]);
-  const chartHeight = useMemo(() => getChartHeight(effectiveSubCharts), [effectiveSubCharts]);
+  const activeSubSlots = useMemo(() => getActiveSubSlots(subIndicators), [subIndicators]);
+  const chartHeight = useMemo(() => getChartHeight(activeSubSlots), [activeSubSlots]);
   const tradeOverlaySpec = useMemo(
     () =>
       buildTradeOverlaySpec(
@@ -169,6 +220,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     const chart = chartRef.current;
     if (!chart) return;
     setTradeOverlayLayout(computeTradeOverlayLayout(chart, tradeOverlaySpecRef.current));
+    setSubPaneLayouts(computeSubPaneLayouts(chart, getActiveSubSlots(subIndicatorsRef.current)));
   };
 
   useEffect(() => {
@@ -362,7 +414,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     });
     chart.resetData();
     applyChartScrollLimits(chart);
-    syncIndicators(chart, indicators, effectiveSubCharts, mainIndicator);
+    syncIndicators(chart, indicators, activeSubSlots, mainIndicator);
     chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft));
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
@@ -377,7 +429,7 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       period,
     );
     syncTradeOverlayLayout();
-  }, [chartData, code, indicators, effectiveSubCharts, mainIndicator, period, selectedDate, legendOffsetLeft]);
+  }, [chartData, code, indicators, activeSubSlots, mainIndicator, period, selectedDate, legendOffsetLeft]);
 
   useEffect(() => {
     syncTradeOverlayLayout();
@@ -468,6 +520,36 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
     };
   }, [tradeOverlayLayout.avgCost, tradeOverlayLayout.pane]);
 
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    const handleClick = (event: MouseEvent) => {
+      if (!subIndicatorsRef.current.clickToSwitch) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("button, a, input, textarea, select, [role='dialog']")) return;
+
+      const chart = chartRef.current;
+      if (!chart) return;
+      const rect = wrap.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const layouts = computeSubPaneLayouts(chart, getActiveSubSlots(subIndicatorsRef.current));
+      const hit = layouts.find(
+        (pane) => x >= pane.left && x <= pane.left + pane.width && y >= pane.top && y <= pane.top + pane.height,
+      );
+      if (!hit) return;
+      setSubSwitchOpenRequest((prev) => ({ token: prev.token + 1, focusSlot: hit.index }));
+    };
+
+    wrap.addEventListener("click", handleClick);
+    return () => wrap.removeEventListener("click", handleClick);
+  }, []);
+
+  function openSubIndicatorSwitch(focusSlot?: number) {
+    setSubSwitchOpenRequest((prev) => ({ token: prev.token + 1, focusSlot }));
+  }
+
   return (
     <div className="kline-chart-wrap" ref={wrapRef}>
       <div
@@ -481,6 +563,23 @@ export function KLineChartPanel({ bars, code, indicators, mainIndicator, onMainI
       >
         <MainIndicatorSwitcher onChange={onMainIndicatorChange} value={mainIndicator} />
       </div>
+      {subPaneLayouts.map((pane) => (
+        <div
+          className="main-indicator-switcher-anchor sub-indicator-switcher-anchor"
+          key={`sub-trigger-${pane.index}-${pane.indicatorId}`}
+          style={{
+            top: `${pane.top + subIndicatorTriggerInsetTopPx}px`,
+            left: `${pane.left + subIndicatorTriggerInsetLeftPx}px`,
+          }}
+        >
+          <SubIndicatorTrigger indicatorId={pane.indicatorId} onClick={() => openSubIndicatorSwitch(pane.index)} />
+        </div>
+      ))}
+      <SubIndicatorSwitcherDialog
+        onChange={onSubIndicatorsChange}
+        openRequest={subSwitchOpenRequest}
+        value={subIndicators}
+      />
       <div className="kline-chart" ref={containerRef} style={{ height: chartHeight }} />
       <div
         className="trade-overlay-layer"
@@ -1028,15 +1127,14 @@ function buildChartStyles(display: ChartDisplaySettings, bars: KLineBar[] = [], 
 function syncIndicators(
   chart: Chart,
   indicators: IndicatorSettings,
-  subCharts: EffectiveSubCharts,
+  subSlots: SubIndicatorId[],
   mainIndicator: MainIndicatorState,
 ) {
   chart.removeIndicator();
   chart.setPaneOptions({ id: candlePaneId, height: mainPaneHeight, minHeight: 300 });
   createMainPaneIndicator(chart, mainIndicator);
 
-  const hasSubCharts = subCharts.showVolume || subCharts.showBoll || subCharts.showKdj || subCharts.showMacd;
-  if (hasSubCharts) {
+  if (subSlots.length) {
     // 主图与副图之间插入空白窗格，专供十字光标时间，避免挡住副图指标
     chart.createIndicator(
       {
@@ -1063,38 +1161,54 @@ function syncIndicators(
     );
   }
 
-  if (subCharts.showVolume) {
-    chart.createIndicator(
-      {
-        name: "VOL",
-        styles: {
-          bars: [
-            {
-              upColor: candleUpColor,
-              downColor: candleDownColor,
-              noChangeColor: candleNoChangeColor,
-            },
-          ],
+  subSlots.forEach((id, index) => {
+    const pane = {
+      id: subPaneId(index),
+      height: subPaneHeight(id),
+      minHeight: subPaneMinHeight(id),
+    };
+    const tooltipOffset = { tooltip: { offsetLeft: subIndicatorTriggerReservePx } };
+
+    if (id === "VOL") {
+      chart.createIndicator(
+        {
+          name: "VOL",
+          styles: {
+            ...tooltipOffset,
+            bars: [
+              {
+                upColor: candleUpColor,
+                downColor: candleDownColor,
+                noChangeColor: candleNoChangeColor,
+              },
+            ],
+          },
         },
-      },
-      { pane: { id: indicatorPaneIds[0], height: volumePaneHeight, minHeight: 96 } },
-    );
-  }
+        { pane },
+      );
+      return;
+    }
 
-  if (subCharts.showBoll) {
-    chart.createIndicator(
-      { name: "BOLL", calcParams: [indicators.maSlow, 2], precision: 3 },
-      { pane: { id: indicatorPaneIds[1], height: bollPaneHeight, minHeight: 108 } },
-    );
-  }
+    if (id === "BOLL") {
+      chart.createIndicator(
+        {
+          name: "BOLL",
+          calcParams: [indicators.maSlow, 2],
+          precision: 3,
+          styles: tooltipOffset,
+        },
+        { pane },
+      );
+      return;
+    }
 
-  if (subCharts.showKdj) {
-    chart.createIndicator("KDJ", { pane: { id: indicatorPaneIds[2], height: oscillatorPaneHeight, minHeight: 108 } });
-  }
+    if (id === "KDJ") {
+      chart.createIndicator({ name: "KDJ", styles: tooltipOffset }, { pane });
+      return;
+    }
 
-  if (subCharts.showMacd) {
-    chart.createIndicator("MACD", { pane: { id: indicatorPaneIds[3], height: oscillatorPaneHeight, minHeight: 108 } });
-  }
+    chart.createIndicator({ name: "MACD", styles: tooltipOffset }, { pane });
+  });
 }
 
 function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState) {
@@ -1150,17 +1264,30 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
   );
 }
 
-function getChartHeight(subCharts: EffectiveSubCharts) {
-  const hasSubCharts = subCharts.showVolume || subCharts.showBoll || subCharts.showKdj || subCharts.showMacd;
+function getChartHeight(subSlots: SubIndicatorId[]) {
   return (
     mainPaneHeight +
     xAxisHeight +
-    (hasSubCharts ? crosshairDateBandHeight : 0) +
-    (subCharts.showVolume ? volumePaneHeight : 0) +
-    (subCharts.showBoll ? bollPaneHeight : 0) +
-    (subCharts.showKdj ? oscillatorPaneHeight : 0) +
-    (subCharts.showMacd ? oscillatorPaneHeight : 0)
+    (subSlots.length ? crosshairDateBandHeight : 0) +
+    subSlots.reduce((sum, id) => sum + subPaneHeight(id), 0)
   );
+}
+
+function computeSubPaneLayouts(chart: Chart, subSlots: SubIndicatorId[]): SubPaneLayout[] {
+  return subSlots.flatMap((indicatorId, index) => {
+    const size = chart.getSize(subPaneId(index), "main");
+    if (!size) return [];
+    return [
+      {
+        index,
+        indicatorId,
+        left: size.left,
+        top: size.top,
+        width: size.width,
+        height: size.height,
+      },
+    ];
+  });
 }
 
 function round(value: number) {

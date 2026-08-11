@@ -2606,6 +2606,13 @@ textarea {
   gap: 12px;
 }
 
+.app-dialog-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 .app-dialog-title {
   margin: 0;
   font-size: 18px;
@@ -6419,6 +6426,165 @@ textarea {
   pointer-events: auto;
 }
 
+.sub-indicator-switch-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.sub-indicator-switch-tab {
+  margin: 2px 0 12px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.sub-indicator-switch-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.sub-indicator-switch-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sub-indicator-slot-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.sub-indicator-slot-section.is-focused {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.sub-indicator-slot-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.sub-indicator-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sub-indicator-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f7f8f7;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sub-indicator-chip:hover {
+  border-color: rgba(23, 32, 28, 0.22);
+  background: #ffffff;
+}
+
+.sub-indicator-chip.is-active {
+  border-color: color-mix(in srgb, #d83a31 35%, transparent);
+  background: color-mix(in srgb, #d83a31 10%, #fff);
+  color: #d83a31;
+}
+
+.sub-indicator-switch-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.sub-indicator-count-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sub-indicator-count-label {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.sub-indicator-count-seg {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 8px;
+  background: #eef0ef;
+}
+
+.sub-indicator-count-btn {
+  min-width: 44px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sub-indicator-count-btn.is-active {
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(23, 32, 28, 0.08);
+}
+
+.sub-indicator-click-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.3;
+  user-select: none;
+}
+
+.sub-indicator-click-toggle input {
+  margin: 0;
+}
+
+.chart-settings-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .main-indicator-trigger {
   display: inline-flex;
   align-items: center;
@@ -6536,6 +6702,10 @@ textarea {
   width: min(420px, calc(100vw - 32px));
 }
 
+.main-indicator-params-dialog.is-sheet {
+  width: min(480px, calc(100vw - 32px));
+}
+
 .main-indicator-params-form {
   display: grid;
   gap: 12px;
@@ -6547,8 +6717,121 @@ textarea {
   margin-top: 0;
 }
 
+.main-indicator-params-form.is-sheet {
+  gap: 0;
+  margin-top: 0;
+}
+
 .main-indicator-params-actions {
   margin-top: 18px;
+}
+
+.main-indicator-params-actions.is-sheet {
+  margin-top: 20px;
+  justify-content: stretch;
+}
+
+.main-indicator-params-actions.is-sheet .indicator-params-save {
+  flex: 1;
+}
+
+.indicator-params-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 -4px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f5f6f7;
+}
+
+.indicator-param-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+
+.indicator-param-label {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.indicator-param-period {
+  width: 64px;
+  height: 34px;
+  box-sizing: border-box;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f5f7f6;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.indicator-param-period::-webkit-outer-spin-button,
+.indicator-param-period::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.indicator-param-period:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #ffffff;
+}
+
+.indicator-param-unit {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.indicator-param-range {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.indicator-param-hint {
+  margin: 0;
+  padding: 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.indicator-params-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.indicator-params-save:hover {
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
 }
 
 .ma-params-toolbar {
@@ -6642,9 +6925,18 @@ textarea {
 .ma-line-color {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: pointer;
+}
+
+.ma-line-color:disabled {
+  cursor: not-allowed;
 }
 
 .ma-line-color-swatch {
@@ -6655,15 +6947,20 @@ textarea {
   box-shadow: inset 0 0 0 1px rgba(23, 32, 28, 0.12);
 }
 
-.ma-line-color input[type="color"] {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+.ma-line-color-picker {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.ma-line-color-picker .ant-color-picker-trigger,
+.ma-line-color-picker.ant-color-picker-trigger {
+  width: auto;
+  height: auto;
+  min-width: 0;
   padding: 0;
   border: 0;
-  opacity: 0;
-  cursor: pointer;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ma-line-row.is-disabled .ma-line-color {
@@ -6673,6 +6970,48 @@ textarea {
 
 .ma-line-row .app-switch-row {
   margin: 0;
+}
+
+/* 颜色格式旁上下箭头改为「切换」按钮，提示可切换 RGB / HSB / HEX */
+.ma-color-picker-popup .ant-color-picker-format-select {
+  min-width: 88px !important;
+}
+
+.ma-color-picker-popup .ant-color-picker-format-select .ant-select-selector {
+  padding-inline-end: 52px !important;
+}
+
+.ma-color-picker-popup .ant-color-picker-format-select .ant-select-arrow {
+  inset-inline-end: 4px !important;
+  width: auto !important;
+  height: auto !important;
+  margin-top: 0 !important;
+  transform: translateY(-50%) !important;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+.ma-color-picker-popup .ant-color-picker-format-select .ant-select-arrow .anticon {
+  display: none !important;
+}
+
+.ma-color-picker-popup .ant-color-picker-format-select .ant-select-arrow::before {
+  content: "切换";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .quote-summary-price-block {
