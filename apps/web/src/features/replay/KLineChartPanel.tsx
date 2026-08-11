@@ -904,11 +904,9 @@ function updateReplayDayLabel(
   labelLayer.style.top = `${mainSize.top}px`;
   labelLayer.style.width = `${mainSize.width}px`;
   labelLayer.style.height = `${mainSize.height}px`;
+  // 与 B/S 一致：按 K 线位置放置，越出 pane 由 overflow 裁切，不钳制贴边常显
+  label.style.left = `${left}px`;
   label.style.transform = "translateX(-50%)";
-
-  // 与 B/S 一致：贴边时钳制在可视区内，不因越界隐藏
-  const labelHalfWidth = (label.offsetWidth || TRADE_MARKER_TAG_W) / 2;
-  label.style.left = `${clampLabelCenterLeft(left, mainSize.width, labelHalfWidth)}px`;
 }
 
 function updateCrosshairDateLabel(
