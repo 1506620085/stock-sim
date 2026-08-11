@@ -6431,11 +6431,119 @@ textarea {
 }
 
 .sub-indicator-switch-tab {
+  display: inline-flex;
+  align-items: center;
   margin: 2px 0 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--accent);
+  cursor: pointer;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.3;
+}
+
+.sub-indicator-switch-tab:hover {
+  text-decoration: underline;
+}
+
+.sub-favorite-settings-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: min(80vh, 720px);
+  overflow: auto;
+}
+
+.sub-favorite-section {
+  margin-top: 12px;
+}
+
+.sub-favorite-section:first-of-type {
+  margin-top: 4px;
+}
+
+.sub-favorite-section-head {
+  margin: 0 -4px;
+  padding: 8px 12px;
+  background: #f3f4f5;
+  border-radius: 6px;
+}
+
+.sub-favorite-section-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.sub-favorite-section-title span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.sub-favorite-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sub-favorite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sub-favorite-name {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.sub-favorite-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.sub-favorite-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+
+.sub-favorite-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sub-favorite-action.is-remove {
+  color: #d83a31;
+}
+
+.sub-favorite-action.is-add {
+  color: #d83a31;
+}
+
+.sub-favorite-action:hover {
+  background: rgba(216, 58, 49, 0.08);
 }
 
 .sub-indicator-switch-body {

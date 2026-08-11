@@ -79,7 +79,9 @@ function subPaneId(index: number) {
 }
 
 function subPaneHeight(id: SubIndicatorId) {
-  return id === "VOL" ? volumePaneHeight : id === "BOLL" ? bollPaneHeight : oscillatorPaneHeight;
+  if (id === "VOL") return volumePaneHeight;
+  if (id === "BOLL" || id === "ENE") return bollPaneHeight;
+  return oscillatorPaneHeight;
 }
 
 function subPaneMinHeight(id: SubIndicatorId) {
@@ -1191,12 +1193,19 @@ function syncIndicators(
       return;
     }
 
-    if (id === "KDJ") {
-      chart.createIndicator("KDJ", { pane });
+    if (id === "ENE") {
+      chart.createIndicator(
+        {
+          name: "ENE",
+          calcParams: [10, 11, 9],
+          precision: 3,
+        },
+        { pane },
+      );
       return;
     }
 
-    chart.createIndicator("MACD", { pane });
+    chart.createIndicator(id, { pane });
   });
 }
 
