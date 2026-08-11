@@ -266,7 +266,6 @@ function SubIndicatorHelpTip({ item }: { item: SubIndicatorMeta }) {
       aria-label={`${item.helpTitle}说明`}
       className="sub-favorite-help"
       mode="click"
-      placement="top-left"
       size={16}
       tip={
         <div className="sub-indicator-help-content">

@@ -128,13 +128,13 @@ export function FieldHelpTip({
           ? createPortal(
               <div
                 aria-label={ariaLabel}
-                className="field-help-popover field-help-popover--portal"
+                className="tooltip-bubble tooltip-bubble--portal field-help-popover"
                 id={tipId}
                 ref={(node) => {
                   bubbleRef.current = node;
                 }}
                 role="dialog"
-                style={bubbleStyle}
+                style={{ ...bubbleStyle, pointerEvents: "auto" }}
               >
                 {tip}
               </div>,

@@ -87,7 +87,6 @@ export function QuoteSummary({
           <FieldHelpTip
             aria-label="买卖点标记说明"
             mode="click"
-            placement="top-left"
             size={15}
             tip={
               <div className="marker-legend">

@@ -6071,49 +6071,18 @@ textarea {
   color: var(--accent);
 }
 
+/* 点击模式复用 tooltip-bubble 外观；仅补充可点击与富文本继承色 */
 .field-help-popover {
-  position: absolute;
-  z-index: 30;
-  min-width: 220px;
-  max-width: min(280px, 70vw);
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #ffffff;
-  color: var(--ink);
-  box-shadow: var(--shadow);
-  text-align: left;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  text-align: center;
 }
 
-.field-help-popover--portal {
-  max-width: min(320px, calc(100vw - 24px));
-}
-
-.field-help-popover--top {
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.field-help-popover--top-left {
-  bottom: calc(100% + 8px);
-  right: 0;
-  left: auto;
-}
-
-.field-help-popover--bottom {
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.field-help-popover--bottom-left {
-  top: calc(100% + 8px);
-  right: 0;
-  left: auto;
+.field-help-popover .sub-indicator-help-title,
+.field-help-popover .sub-indicator-help-body,
+.field-help-popover .marker-legend-title,
+.field-help-popover .marker-legend-row {
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .marker-legend-title {
@@ -6564,23 +6533,23 @@ textarea {
 .sub-indicator-help-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .sub-indicator-help-title {
   margin: 0;
-  color: var(--ink);
-  font-size: 14px;
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .sub-indicator-help-body {
   margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.55;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 
 .sub-favorite-action:hover {
