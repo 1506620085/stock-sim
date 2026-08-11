@@ -2,6 +2,19 @@
  * subIndicators
  * 副图指标目录、常用收藏、槽位配置与本地持久化。
  */
+import {
+  defaultSubIndicatorParams,
+  normalizeSubIndicatorParams,
+  type SubIndicatorParams,
+} from "./subIndicatorParams";
+
+export type { SubIndicatorParams } from "./subIndicatorParams";
+export {
+  SUB_INDICATOR_PARAM_SCHEMAS,
+  getSubIndicatorCalcParams,
+  hasSubIndicatorParams,
+} from "./subIndicatorParams";
+
 export type SubIndicatorId =
   | "VOL"
   | "MACD"
@@ -80,6 +93,8 @@ export type SubIndicatorState = {
   slots: [SubIndicatorId, SubIndicatorId, SubIndicatorId, SubIndicatorId];
   /** 「常用指标」快捷切换列表 */
   favorites: SubIndicatorId[];
+  /** 各副图指标参数 */
+  params: SubIndicatorParams;
 };
 
 export const DEFAULT_SUB_FAVORITES: SubIndicatorId[] = ["VOL", "MACD", "KDJ", "BOLL"];
@@ -88,6 +103,7 @@ export const defaultSubIndicatorState: SubIndicatorState = {
   count: 3,
   slots: ["VOL", "BOLL", "KDJ", "MACD"],
   favorites: [...DEFAULT_SUB_FAVORITES],
+  params: defaultSubIndicatorParams(),
 };
 
 const STORAGE_KEY = "stock-sim.sub-indicator";
@@ -148,6 +164,7 @@ export function normalizeSubIndicatorState(state: Partial<SubIndicatorState> | u
     count,
     slots,
     favorites,
+    params: normalizeSubIndicatorParams(state?.params),
   };
 }
 
@@ -246,4 +263,24 @@ export function removeFavoriteSubIndicator(state: SubIndicatorState, id: SubIndi
   const fallback = favorites[0] ?? "VOL";
   const slots = next.slots.map((slot) => (slot === id ? fallback : slot)) as SubIndicatorState["slots"];
   return normalizeSubIndicatorState({ ...next, favorites, slots });
+}
+
+export function updateSubIndicatorParams(
+  state: SubIndicatorState,
+  id: SubIndicatorId,
+  values: number[],
+): SubIndicatorState {
+  const next = normalizeSubIndicatorState(state);
+  return normalizeSubIndicatorState({
+    ...next,
+    params: {
+      ...next.params,
+      [id]: values,
+    },
+  });
+}
+
+export function resetSubIndicatorParams(state: SubIndicatorState, id: SubIndicatorId): SubIndicatorState {
+  const defaults = defaultSubIndicatorParams();
+  return updateSubIndicatorParams(state, id, defaults[id] ?? []);
 }

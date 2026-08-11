@@ -8,7 +8,7 @@ import type { MainIndicatorState } from "./mainIndicators";
 import { getEnabledMaLines } from "./mainIndicators";
 import { registerCustomIndicators } from "./registerCustomIndicators";
 import { SubIndicatorSwitcherDialog, SubIndicatorTrigger } from "./SubIndicatorSwitcher";
-import { getActiveSubSlots, type SubIndicatorId, type SubIndicatorState } from "./subIndicators";
+import { getActiveSubSlots, getSubIndicatorCalcParams, type SubIndicatorId, type SubIndicatorState } from "./subIndicators";
 import type { ChartDisplaySettings, IndicatorSettings, KLineBar, KlinePeriod, TradeRecord } from "./types";
 
 registerCustomIndicators();
@@ -431,7 +431,7 @@ export function KLineChartPanel({
     });
     chart.resetData();
     applyChartScrollLimits(chart);
-    syncIndicators(chart, indicators, activeSubSlots, mainIndicator);
+    syncIndicators(chart, indicators, activeSubSlots, mainIndicator, subIndicators);
     chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft));
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
@@ -446,7 +446,7 @@ export function KLineChartPanel({
       period,
     );
     syncTradeOverlayLayout();
-  }, [chartData, code, indicators, activeSubSlots, mainIndicator, period, selectedDate, legendOffsetLeft, subLegendOffsetLeft]);
+  }, [chartData, code, indicators, activeSubSlots, mainIndicator, subIndicators, period, selectedDate, legendOffsetLeft, subLegendOffsetLeft]);
 
   useEffect(() => {
     syncTradeOverlayLayout();
@@ -1127,6 +1127,7 @@ function syncIndicators(
   indicators: IndicatorSettings,
   subSlots: SubIndicatorId[],
   mainIndicator: MainIndicatorState,
+  subIndicators: SubIndicatorState,
 ) {
   chart.removeIndicator();
   chart.setPaneOptions({ id: candlePaneId, height: mainPaneHeight, minHeight: 300 });
@@ -1165,11 +1166,13 @@ function syncIndicators(
       height: subPaneHeight(id),
       minHeight: subPaneMinHeight(id),
     };
+    const calcParams = getSubIndicatorCalcParams(subIndicators.params, id);
 
     if (id === "VOL") {
       chart.createIndicator(
         {
           name: "VOL",
+          calcParams: calcParams ?? [5, 10, 20],
           styles: {
             bars: [
               {
@@ -1187,7 +1190,11 @@ function syncIndicators(
 
     if (id === "BOLL") {
       chart.createIndicator(
-        { name: "BOLL", calcParams: [indicators.maSlow, 2], precision: 3 },
+        {
+          name: "BOLL",
+          calcParams: calcParams ?? [indicators.maSlow, 2],
+          precision: 3,
+        },
         { pane },
       );
       return;
@@ -1197,7 +1204,7 @@ function syncIndicators(
       chart.createIndicator(
         {
           name: "ENE",
-          calcParams: [10, 11, 9],
+          calcParams: calcParams ?? [10, 11, 9],
           precision: 3,
         },
         { pane },
@@ -1205,7 +1212,12 @@ function syncIndicators(
       return;
     }
 
-    chart.createIndicator(id, { pane });
+    if (id === "PVT" || !calcParams) {
+      chart.createIndicator(id, { pane });
+      return;
+    }
+
+    chart.createIndicator({ name: id, calcParams }, { pane });
   });
 }
 

@@ -1,6 +1,6 @@
 /**
  * SubIndicatorSwitcher
- * 副图指标切换：各副图左上角按钮、「K线指标切换」与「常用指标」配置。
+ * 副图指标切换：各副图左上角按钮、「K线指标切换」、常用指标与参数设置。
  */
 import { useEffect, useState } from "react";
 import { CircleMinus, CirclePlus, Settings } from "lucide-react";
@@ -8,14 +8,18 @@ import { AppDialogShell } from "../../components/AppDialog";
 import {
   SUB_CHART_COUNT_MAX,
   SUB_CHART_COUNT_MIN,
+  SUB_INDICATOR_PARAM_SCHEMAS,
   addFavoriteSubIndicator,
   assignSubSlot,
   getFavoriteSubIndicatorOptions,
   getUnselectedSubIndicatorOptions,
+  hasSubIndicatorParams,
   removeFavoriteSubIndicator,
+  resetSubIndicatorParams,
   setSubChartCount,
   subChartOrdinalLabel,
   subIndicatorShortName,
+  updateSubIndicatorParams,
   type SubIndicatorId,
   type SubIndicatorState,
 } from "./subIndicators";
@@ -30,6 +34,7 @@ type Props = {
 export function SubIndicatorSwitcherDialog({ value, onChange, openRequest }: Props) {
   const [open, setOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const [paramsTarget, setParamsTarget] = useState<SubIndicatorId | null>(null);
   const [focusSlot, setFocusSlot] = useState(0);
   const favoriteOptions = getFavoriteSubIndicatorOptions(value);
 
@@ -41,6 +46,7 @@ export function SubIndicatorSwitcherDialog({ value, onChange, openRequest }: Pro
         : 0,
     );
     setFavoritesOpen(false);
+    setParamsTarget(null);
     setOpen(true);
   }, [openRequest, value.count]);
 
@@ -61,11 +67,7 @@ export function SubIndicatorSwitcherDialog({ value, onChange, openRequest }: Pro
         showCloseButton
         title="K线指标切换"
       >
-        <button
-          className="sub-indicator-switch-tab"
-          onClick={() => setFavoritesOpen(true)}
-          type="button"
-        >
+        <button className="sub-indicator-switch-tab" onClick={() => setFavoritesOpen(true)} type="button">
           常用指标
         </button>
 
@@ -134,7 +136,15 @@ export function SubIndicatorSwitcherDialog({ value, onChange, openRequest }: Pro
       <SubFavoriteSettingsDialog
         onChange={onChange}
         onClose={() => setFavoritesOpen(false)}
+        onOpenParams={(id) => setParamsTarget(id)}
         open={favoritesOpen}
+        value={value}
+      />
+
+      <SubIndicatorParamsDialog
+        indicatorId={paramsTarget}
+        onChange={onChange}
+        onClose={() => setParamsTarget(null)}
         value={value}
       />
     </>
@@ -146,11 +156,13 @@ function SubFavoriteSettingsDialog({
   value,
   onChange,
   onClose,
+  onOpenParams,
 }: {
   open: boolean;
   value: SubIndicatorState;
   onChange: (next: SubIndicatorState) => void;
   onClose: () => void;
+  onOpenParams: (id: SubIndicatorId) => void;
 }) {
   const selected = getFavoriteSubIndicatorOptions(value);
   const unselected = getUnselectedSubIndicatorOptions(value);
@@ -158,6 +170,18 @@ function SubFavoriteSettingsDialog({
   return (
     <AppDialogShell
       className="sub-favorite-settings-dialog"
+      headerActions={
+        <button
+          className="ma-params-restore"
+          onClick={() => {
+            const firstConfigurable = selected.find((item) => hasSubIndicatorParams(item.id));
+            if (firstConfigurable) onOpenParams(firstConfigurable.id);
+          }}
+          type="button"
+        >
+          指标参数自定义
+        </button>
+      }
       onClose={onClose}
       open={open}
       showCloseButton
@@ -174,9 +198,18 @@ function SubFavoriteSettingsDialog({
             <li className="sub-favorite-row" key={item.id}>
               <span className="sub-favorite-name">{item.fullName}</span>
               <div className="sub-favorite-actions">
-                <span aria-hidden="true" className="sub-favorite-gear" title="参数设置即将支持">
-                  <Settings size={15} strokeWidth={2} />
-                </span>
+                {hasSubIndicatorParams(item.id) ? (
+                  <button
+                    aria-label={`${item.fullName}参数设置`}
+                    className="sub-favorite-action is-gear"
+                    onClick={() => onOpenParams(item.id)}
+                    type="button"
+                  >
+                    <Settings size={15} strokeWidth={2} />
+                  </button>
+                ) : (
+                  <span aria-hidden="true" className="sub-favorite-gear" />
+                )}
                 {!item.pinned ? (
                   <button
                     aria-label={`移除${item.fullName}`}
@@ -217,6 +250,93 @@ function SubFavoriteSettingsDialog({
           ))}
         </ul>
       </section>
+    </AppDialogShell>
+  );
+}
+
+function SubIndicatorParamsDialog({
+  indicatorId,
+  value,
+  onChange,
+  onClose,
+}: {
+  indicatorId: SubIndicatorId | null;
+  value: SubIndicatorState;
+  onChange: (next: SubIndicatorState) => void;
+  onClose: () => void;
+}) {
+  const schema = indicatorId ? SUB_INDICATOR_PARAM_SCHEMAS[indicatorId] : undefined;
+  const [draft, setDraft] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!indicatorId || !schema) {
+      setDraft([]);
+      return;
+    }
+    setDraft([...(value.params[indicatorId] ?? schema.defaults)]);
+  }, [indicatorId, schema, value.params]);
+
+  if (!indicatorId || !schema) return null;
+
+  const targetId = indicatorId;
+  const targetSchema = schema;
+
+  function save() {
+    onChange(updateSubIndicatorParams(value, targetId, draft));
+    onClose();
+  }
+
+  function restore() {
+    const next = resetSubIndicatorParams(value, targetId);
+    setDraft([...(next.params[targetId] ?? targetSchema.defaults)]);
+    onChange(next);
+  }
+
+  return (
+    <AppDialogShell
+      className="main-indicator-params-dialog is-sheet"
+      headerActions={
+        <button className="ma-params-restore" onClick={restore} type="button">
+          恢复默认
+        </button>
+      }
+      onClose={onClose}
+      open={Boolean(indicatorId)}
+      title={targetSchema.title}
+    >
+      <div className="main-indicator-params-form is-sheet">
+        <div className="indicator-params-panel">
+          {targetSchema.fields.map((field, index) => (
+            <div className="indicator-param-row" key={`${targetId}-${index}`}>
+              <span className="indicator-param-label">{field.label}</span>
+              <input
+                aria-label={field.label}
+                className="indicator-param-period"
+                max={field.max}
+                min={field.min}
+                onChange={(event) => {
+                  const next = [...draft];
+                  next[index] = Number(event.target.value);
+                  setDraft(next);
+                }}
+                step={field.step ?? 1}
+                type="number"
+                value={draft[index] ?? ""}
+              />
+              {field.unit ? <span className="indicator-param-unit">{field.unit}</span> : null}
+              <span className="indicator-param-range">
+                范围：{field.min} ~ {field.max}
+              </span>
+            </div>
+          ))}
+          <p className="indicator-param-hint">{targetSchema.hint(draft)}</p>
+        </div>
+      </div>
+      <div className="app-dialog-actions main-indicator-params-actions is-sheet">
+        <button className="indicator-params-save" onClick={save} type="button">
+          保存设置
+        </button>
+      </div>
     </AppDialogShell>
   );
 }

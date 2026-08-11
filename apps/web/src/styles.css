@@ -6534,6 +6534,10 @@ textarea {
   cursor: pointer;
 }
 
+.sub-favorite-action.is-gear {
+  color: var(--muted);
+}
+
 .sub-favorite-action.is-remove {
   color: #d83a31;
 }
