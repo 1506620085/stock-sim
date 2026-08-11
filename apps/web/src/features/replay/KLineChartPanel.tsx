@@ -46,7 +46,25 @@ const TRADE_MARKER_STACK_GAP = 4;
 const candleUpColor = "#d83a31";
 const candleDownColor = "#15845f";
 const candleNoChangeColor = "#68736e";
+/** 指标柱/OHLC/圆点与主图一致：红涨绿跌 */
+const indicatorRiseFallColors = {
+  upColor: candleUpColor,
+  downColor: candleDownColor,
+  noChangeColor: candleNoChangeColor,
+};
+const indicatorRiseFallStyles = {
+  ohlc: { ...indicatorRiseFallColors },
+  bars: [{ ...indicatorRiseFallColors }],
+  circles: [{ ...indicatorRiseFallColors }],
+};
 const chartPaneBackground = "#ffffff";
+
+/** 成交量等大数：一律以「万」为单位（覆盖库默认 K/M/B） */
+function formatChartBigNumber(value: string | number) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return `${value}`;
+  return `${+(numeric / 10_000).toFixed(2)}万`;
+}
 const mainPaneHeight = 360;
 const volumePaneHeight = 118;
 const bollPaneHeight = 126;
@@ -245,6 +263,9 @@ export function KLineChartPanel({
 
     const chart = init(containerRef.current, {
       styles: buildChartStyles(chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft),
+      formatter: {
+        formatBigNumber: formatChartBigNumber,
+      },
     });
 
     if (!chart) return;
@@ -431,8 +452,8 @@ export function KLineChartPanel({
     });
     chart.resetData();
     applyChartScrollLimits(chart);
-    syncIndicators(chart, indicators, activeSubSlots, mainIndicator, subIndicators);
     chart.setStyles(buildChartStyles(chartDisplay, bars, legendOffsetLeft, subLegendOffsetLeft));
+    syncIndicators(chart, indicators, activeSubSlots, mainIndicator, subIndicators);
     scheduleChartResize(chart);
     scrollChartToSelectedDate(chart, selectedDate);
     syncReplayDayOverlay(chart, selectedDate);
@@ -856,15 +877,13 @@ function updateCrosshairDateLabel(
 
     label.textContent = formatCrosshairBarTime(bar.date, period);
     label.style.visibility = "visible";
-    label.style.left = `${left}px`;
     label.style.top = "";
     label.style.transform = "";
 
-    // 仅在整段越出绘图区时隐藏；靠近左右范围日期时保留，由更高 z-index 浮于其上
+    // 贴边时钳制在可视区内，避免最左/最右 K 线时间标签被隐藏
+    const paneWidth = dedicatedBand.width - yAxisWidth;
     const labelHalfWidth = label.offsetWidth / 2;
-    if (!isReplayDayLabelInPane(left, dedicatedBand.width - yAxisWidth, labelHalfWidth)) {
-      label.style.visibility = "hidden";
-    }
+    label.style.left = `${clampLabelCenterLeft(left, paneWidth, labelHalfWidth)}px`;
     return;
   }
 
@@ -895,14 +914,11 @@ function updateCrosshairDateLabel(
 
   label.textContent = formatCrosshairBarTime(bar.date, period);
   label.style.visibility = "visible";
-  label.style.left = `${left}px`;
   label.style.top = "";
   label.style.transform = "";
 
   const labelHalfWidth = label.offsetWidth / 2;
-  if (!isReplayDayLabelInPane(left, mainSize.width, labelHalfWidth)) {
-    label.style.visibility = "hidden";
-  }
+  label.style.left = `${clampLabelCenterLeft(left, mainSize.width, labelHalfWidth)}px`;
 }
 
 function syncVisibleRangeDateLabels(
@@ -986,6 +1002,17 @@ function isReplayDayLabelInPane(left: number, paneWidth: number, labelHalfWidth:
     return left >= 0 && left <= paneWidth;
   }
   return left - labelHalfWidth >= 0 && left + labelHalfWidth <= paneWidth;
+}
+
+/** 十字光标时间标签中心点钳制到绘图区内，贴边时贴紧左右，文案仍随 K 线更新 */
+function clampLabelCenterLeft(left: number, paneWidth: number, labelHalfWidth: number): number {
+  if (paneWidth <= 0) return left;
+  if (labelHalfWidth <= 0) {
+    return Math.min(Math.max(left, 0), paneWidth);
+  }
+  const min = labelHalfWidth;
+  const max = Math.max(min, paneWidth - labelHalfWidth);
+  return Math.min(Math.max(left, min), max);
 }
 
 function getReplayDayLabelLeft(chart: Chart, selectedDate: string): number | null {
@@ -1081,25 +1108,7 @@ function buildChartStyles(
     },
     indicator: {
       // 与主图 K 线一致：红涨绿跌（覆盖库默认的绿涨红跌）
-      ohlc: {
-        upColor: candleUpColor,
-        downColor: candleDownColor,
-        noChangeColor: candleNoChangeColor,
-      },
-      bars: [
-        {
-          upColor: candleUpColor,
-          downColor: candleDownColor,
-          noChangeColor: candleNoChangeColor,
-        },
-      ],
-      circles: [
-        {
-          upColor: candleUpColor,
-          downColor: candleDownColor,
-          noChangeColor: candleNoChangeColor,
-        },
-      ],
+      ...indicatorRiseFallStyles,
       tooltip: {
         // 副图指标图例起点：与主图同一套「按钮宽 + 间距」口径
         offsetLeft: subLegendOffsetLeft,
@@ -1189,19 +1198,12 @@ function syncIndicators(
     const calcParams = getSubIndicatorCalcParams(subIndicators.params, id);
 
     if (id === "VOL") {
-      chart.createIndicator(
+      createChartIndicator(
+        chart,
         {
           name: "VOL",
           calcParams: calcParams ?? [5, 10, 20],
-          styles: {
-            bars: [
-              {
-                upColor: candleUpColor,
-                downColor: candleDownColor,
-                noChangeColor: candleNoChangeColor,
-              },
-            ],
-          },
+          shouldFormatBigNumber: true,
         },
         { pane },
       );
@@ -1209,7 +1211,8 @@ function syncIndicators(
     }
 
     if (id === "BOLL") {
-      chart.createIndicator(
+      createChartIndicator(
+        chart,
         {
           name: "BOLL",
           calcParams: calcParams ?? [indicators.maSlow, 2],
@@ -1221,7 +1224,8 @@ function syncIndicators(
     }
 
     if (id === "ENE") {
-      chart.createIndicator(
+      createChartIndicator(
+        chart,
         {
           name: "ENE",
           calcParams: calcParams ?? [10, 11, 9],
@@ -1233,12 +1237,34 @@ function syncIndicators(
     }
 
     if (id === "PVT" || !calcParams) {
-      chart.createIndicator(id, { pane });
+      createChartIndicator(chart, id, { pane });
       return;
     }
 
-    chart.createIndicator({ name: id, calcParams }, { pane });
+    createChartIndicator(chart, { name: id, calcParams }, { pane });
   });
+}
+
+/** 创建指标时强制挂上红涨绿跌，避免沿用库默认绿涨红跌 */
+function createChartIndicator(
+  chart: Chart,
+  indicator: string | (Record<string, unknown> & { name: string }),
+  options?: Parameters<Chart["createIndicator"]>[1],
+) {
+  if (typeof indicator === "string") {
+    return chart.createIndicator({ name: indicator, styles: { ...indicatorRiseFallStyles } }, options);
+  }
+  const prevStyles = (indicator.styles ?? {}) as Record<string, unknown>;
+  return chart.createIndicator(
+    {
+      ...indicator,
+      styles: {
+        ...indicatorRiseFallStyles,
+        ...prevStyles,
+      },
+    } as Parameters<Chart["createIndicator"]>[0],
+    options,
+  );
 }
 
 function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState) {
@@ -1250,7 +1276,8 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
   if (active === "MA") {
     const lines = getEnabledMaLines(params.MA);
     if (!lines.length) return;
-    chart.createIndicator(
+    createChartIndicator(
+      chart,
       {
         name: "MA",
         calcParams: lines.map((line) => line.period),
@@ -1263,22 +1290,24 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
     return;
   }
   if (active === "BOLL") {
-    chart.createIndicator(
+    createChartIndicator(
+      chart,
       { name: "BOLL", calcParams: [params.BOLL.period, params.BOLL.multiplier], precision: 3 },
       stackOptions,
     );
     return;
   }
   if (active === "BBI") {
-    chart.createIndicator({ name: "BBI", calcParams: [...params.BBI.periods], precision: 3 }, stackOptions);
+    createChartIndicator(chart, { name: "BBI", calcParams: [...params.BBI.periods], precision: 3 }, stackOptions);
     return;
   }
   if (active === "EXPMA") {
-    chart.createIndicator({ name: "EXPMA", calcParams: [...params.EXPMA.periods], precision: 3 }, stackOptions);
+    createChartIndicator(chart, { name: "EXPMA", calcParams: [...params.EXPMA.periods], precision: 3 }, stackOptions);
     return;
   }
   if (active === "ENE") {
-    chart.createIndicator(
+    createChartIndicator(
+      chart,
       {
         name: "ENE",
         calcParams: [params.ENE.period, params.ENE.upperPercent, params.ENE.lowerPercent],
@@ -1288,7 +1317,8 @@ function createMainPaneIndicator(chart: Chart, mainIndicator: MainIndicatorState
     );
     return;
   }
-  chart.createIndicator(
+  createChartIndicator(
+    chart,
     { name: "DKX", calcParams: [params.DKX.midPeriod, params.DKX.maPeriod], precision: 3 },
     stackOptions,
   );
