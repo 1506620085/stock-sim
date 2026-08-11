@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { CircleMinus, CirclePlus, Settings } from "lucide-react";
 import { AppDialogShell } from "../../components/AppDialog";
+import { FieldHelpTip } from "../../components/FieldHelpTip";
 import {
   SUB_CHART_COUNT_MAX,
   SUB_CHART_COUNT_MIN,
@@ -21,6 +22,7 @@ import {
   subIndicatorShortName,
   updateSubIndicatorParams,
   type SubIndicatorId,
+  type SubIndicatorMeta,
   type SubIndicatorState,
 } from "./subIndicators";
 
@@ -240,6 +242,7 @@ function SubFavoriteSettingsDialog({
             <li className="sub-favorite-row" key={item.id}>
               <span className="sub-favorite-name">{item.fullName}</span>
               <div className="sub-favorite-actions">
+                <SubIndicatorHelpTip item={item} />
                 <button
                   aria-label={`添加${item.fullName}`}
                   className="sub-favorite-action is-add"
@@ -254,6 +257,24 @@ function SubFavoriteSettingsDialog({
         </ul>
       </section>
     </AppDialogShell>
+  );
+}
+
+function SubIndicatorHelpTip({ item }: { item: SubIndicatorMeta }) {
+  return (
+    <FieldHelpTip
+      aria-label={`${item.helpTitle}说明`}
+      className="sub-favorite-help"
+      mode="click"
+      placement="top-left"
+      size={16}
+      tip={
+        <div className="sub-indicator-help-content">
+          <p className="sub-indicator-help-title">{item.helpTitle}</p>
+          <p className="sub-indicator-help-body">{item.helpBody}</p>
+        </div>
+      }
+    />
   );
 }
 
