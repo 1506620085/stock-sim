@@ -25,6 +25,8 @@ class Settings:
     storage_type: str = getenv("STORAGE_TYPE", "minio")
 
     minio_endpoint: str = getenv("MINIO_ENDPOINT", "http://127.0.0.1:9000")
+    # 浏览器可访问的 MinIO 地址（Docker 内部用 minio:9000，对外签名 URL 用 localhost:9000）
+    minio_public_endpoint: str = getenv("MINIO_PUBLIC_ENDPOINT", "")
     minio_access_key: str = getenv("MINIO_ACCESS_KEY", "minioadmin")
     minio_secret_key: str = getenv("MINIO_SECRET_KEY", "minioadmin")
     minio_bucket: str = getenv("MINIO_BUCKET", "stock-review")

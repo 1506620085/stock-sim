@@ -23,6 +23,7 @@ def create_storage_provider(settings: Settings) -> StorageProvider:
             bucket=_require(settings.minio_bucket, "MINIO_BUCKET", storage_type),
             region=settings.minio_region,
             use_ssl=settings.minio_use_ssl,
+            public_endpoint=settings.minio_public_endpoint,
         )
 
     if storage_type == "tencent":

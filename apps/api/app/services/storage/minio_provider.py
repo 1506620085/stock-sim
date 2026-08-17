@@ -29,9 +29,11 @@ class MinioStorageProvider(StorageProvider):
         bucket: str,
         region: str = "",
         use_ssl: bool = False,
+        public_endpoint: str = "",
     ) -> None:
         host, secure = _parse_minio_endpoint(endpoint, use_ssl)
         self._bucket = bucket
+        self._public_endpoint = public_endpoint.strip()
         self._client = Minio(
             host,
             access_key=access_key,
@@ -76,11 +78,22 @@ class MinioStorageProvider(StorageProvider):
     def get_url(self, key: str, *, expires_in: int = 3600) -> str:
         from datetime import timedelta
 
-        return self._client.presigned_get_object(
+        url = self._client.presigned_get_object(
             self._bucket,
             normalize_key(key),
             expires=timedelta(seconds=expires_in),
         )
+        if not self._public_endpoint:
+            return url
+
+        signed = urlparse(url)
+        public = urlparse(
+            self._public_endpoint if "://" in self._public_endpoint else f"http://{self._public_endpoint}"
+        )
+        public_netloc = public.netloc or public.path
+        if not public_netloc:
+            return url
+        return url.replace(f"{signed.scheme}://{signed.netloc}", f"{public.scheme or 'http'}://{public_netloc}", 1)
 
     def exists(self, key: str) -> bool:
         try:
