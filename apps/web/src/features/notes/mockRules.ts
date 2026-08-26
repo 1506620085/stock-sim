@@ -2,7 +2,7 @@ import type { TradingRule, TradingRuleInput, TradingRuleReorderItem } from "./ty
 import { emptyDocContent } from "./treeUtils";
 
 /** 操作规则/总结笔记暂用本地 mock，切回 API 时关闭此开关即可。 */
-export const USE_RULES_MOCK = true;
+export const USE_RULES_MOCK = false;
 
 const now = () => new Date().toISOString();
 

@@ -1,7 +1,7 @@
 import type { JournalEntry, JournalEntryInput, JournalPeriodSummary } from "./types";
 
 /** 实盘笔记暂用本地 mock，后续切回 API 时关闭此开关即可。 */
-export const USE_JOURNAL_MOCK = true;
+export const USE_JOURNAL_MOCK = false;
 
 const now = () => new Date().toISOString();
 
