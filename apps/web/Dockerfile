@@ -1,10 +1,12 @@
-# 构建阶段
-FROM node:22-alpine AS build
+# 构建阶段：用 bookworm（glibc），避免 Alpine/musl 下 rollup 可选依赖缺失
+FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# Windows 生成的 lock 常缺 Linux 的 rollup 可选依赖，构建时显式补上
+RUN npm ci \
+ && npm install --no-save @rollup/rollup-linux-x64-gnu
 
 COPY . .
 

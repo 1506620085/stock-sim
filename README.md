@@ -100,4 +100,4 @@ docker compose up -d --build
 http://127.0.0.1:8080
 ```
 
-完整步骤、备份与排错见 [`docs/Docker部署.md`](docs/Docker部署.md)。
+若服务器上**已有**名为 `postgres`、`minio` 的容器，请改用「模式 B」：只启动 `api` + `web` 并配置共享网络。完整步骤、两种部署模式、备份与排错见 [`docs/Docker部署.md`](docs/Docker部署.md)。
