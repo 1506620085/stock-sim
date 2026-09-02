@@ -2,6 +2,8 @@
  * toast
  * Toast 状态与命令式 API：提供订阅、推送与关闭能力，供 ToastProvider 与业务侧直接调用。
  */
+import { createId } from "../utils/id";
+
 export type ToastKind = "error" | "success" | "info";
 
 export type ToastItem = {
@@ -42,7 +44,7 @@ export function pushToast(kind: ToastKind, message: string, durationMs = DEFAULT
   const text = message.trim();
   if (!text) return;
 
-  const toast: ToastItem = { id: crypto.randomUUID(), kind, message: text };
+  const toast: ToastItem = { id: createId(), kind, message: text };
   items = [...items, toast];
   emit();
 

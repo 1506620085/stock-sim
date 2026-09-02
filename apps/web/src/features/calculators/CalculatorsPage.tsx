@@ -5,6 +5,7 @@ import { AppNumberStepper } from "../../components/AppNumberStepper";
 import { AppConfirmDialog, AppPromptDialog } from "../../components/AppDialog";
 import { FieldLabelWithTip } from "../../components/FieldHelpTip";
 import { showInfo, showSuccess } from "../../components/ToastProvider";
+import { createId } from "../../utils/id";
 import {
   buildTLedger,
   calculateAverage,
@@ -325,7 +326,7 @@ function TCalculator() {
     if (dialog?.type !== "saveName") return;
     const suggested = defaultTHistoryName();
     const name = dialog.draft.trim() || suggested;
-    const id = crypto.randomUUID();
+    const id = createId();
     const now = new Date().toISOString();
     const next = upsertTHistory(buildSnapshot(id, name, now));
     setHistoryList(next);
@@ -405,7 +406,7 @@ function TCalculator() {
       showInfo("请先填写有效的底仓成本价与底仓数量。");
       return;
     }
-    setEntries([{ id: crypto.randomUUID(), side: "init", price: cost, quantity }]);
+    setEntries([{ id: createId(), side: "init", price: cost, quantity }]);
     setSelectedIds([]);
     markDirty();
     showSuccess("底仓已初始化");
@@ -426,7 +427,7 @@ function TCalculator() {
       showInfo(`持仓不足，当前可卖 ${summary.positionQuantity.toLocaleString("zh-CN")} 股。`);
       return;
     }
-    setEntries((items) => [...items, { id: crypto.randomUUID(), side: tradeSide, price, quantity }]);
+    setEntries((items) => [...items, { id: createId(), side: tradeSide, price, quantity }]);
     setTradePrice(null);
     setTradeQuantity(null);
     markDirty();
@@ -1032,8 +1033,8 @@ function AveragePriceCalculator() {
 
   function clearWorkspace() {
     setLines([
-      { id: crypto.randomUUID(), price: null, quantity: null },
-      { id: crypto.randomUUID(), price: null, quantity: null },
+      { id: createId(), price: null, quantity: null },
+      { id: createId(), price: null, quantity: null },
     ]);
     setActiveHistoryId(null);
     setDirty(false);
@@ -1063,7 +1064,7 @@ function AveragePriceCalculator() {
     if (dialog?.type !== "saveName") return;
     const suggested = defaultAverageHistoryName();
     const name = dialog.draft.trim() || suggested;
-    const id = crypto.randomUUID();
+    const id = createId();
     const now = new Date().toISOString();
     const next = upsertAverageHistory(buildSnapshot(id, name, now));
     setHistoryList(next);
@@ -1137,7 +1138,7 @@ function AveragePriceCalculator() {
   }
 
   function addLine() {
-    setLines((items) => [...items, { id: crypto.randomUUID(), price: null, quantity: null }]);
+    setLines((items) => [...items, { id: createId(), price: null, quantity: null }]);
     markDirty();
   }
 

@@ -1,4 +1,5 @@
 import type { FeeSettings } from "../calculators/calculations";
+import { createId } from "../../utils/id";
 import { calculateMaxBuyableShares, normalizeTradeQuantity, SHARES_PER_LOT } from "./tradeFunds";
 
 export type QuickPositionMode = "fraction" | "fixedShares" | "fixedAmount";
@@ -91,7 +92,7 @@ export function saveQuickPositions(presets: QuickPositionPreset[]) {
 
 export function createEmptyQuickPositionDraft(): { id: string; mode: QuickPositionMode; valueText: string } {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     mode: "fraction",
     valueText: "",
   };
