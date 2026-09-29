@@ -1,0 +1,56 @@
+########################################
+# 模式 A：一体机（单容器 = 前端 + API + PostgreSQL + MinIO）
+# 用法（仓库根目录）：
+#   cp .env.example.A .env          # 按需改 CORS / MINIO_PUBLIC_ENDPOINT
+#   docker compose -f docker-compose.allinone.yml up -d --build
+########################################
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/allinone/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    container_name: stock-sim
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      TIMEZONE: ${TIMEZONE:-Asia/Shanghai}
+      TZ: ${TIMEZONE:-Asia/Shanghai}
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER:-akshare}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
+      # 容器内固定走本机回环；对外浏览器请改 MINIO_PUBLIC_ENDPOINT / CORS_ORIGINS
+      POSTGRES_DB: ${POSTGRES_DB:-stock_sim}
+      POSTGRES_USER: ${POSTGRES_USER:-stock_sim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stock_sim}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-stock_sim}:${POSTGRES_PASSWORD:-stock_sim}@127.0.0.1:5432/${POSTGRES_DB:-stock_sim}
+      STORAGE_TYPE: minio
+      MINIO_ENDPOINT: http://127.0.0.1:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://127.0.0.1:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-stock-review}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - stock_sim_allinone_pgdata:/var/lib/postgresql/data
+      - stock_sim_allinone_minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+
+volumes:
+  stock_sim_allinone_pgdata:
+  stock_sim_allinone_minio:

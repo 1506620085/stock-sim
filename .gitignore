@@ -6,6 +6,8 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.example.A
+!.env.example.B
 __pycache__/
 *.py[cod]
 .pytest_cache/

@@ -1,0 +1,16 @@
+.git
+.idea
+**/__pycache__
+**/.venv
+**/node_modules
+**/dist
+**/.vite
+**/*.md
+!docs/Docker部署.md
+prototype
+.env
+.env.*
+!.env.example
+**/.DS_Store
+**/tsbuildinfo
+**/*.tsbuildinfo

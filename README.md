@@ -85,19 +85,25 @@ http://127.0.0.1:5173
 - `docs/设计文档.md`（产品原则与早期设计）
 - `docs/archive/`（已归档的历史规划文档）
 
-## Docker 一键部署
+## Docker 部署
 
-需要本机已安装 Docker。在仓库根目录：
+需要本机已安装 Docker。在仓库根目录按模式复制环境文件：
+
+**模式 A（推荐干净机器）— 单容器含前端 + API + PostgreSQL + MinIO：**
 
 ```bash
-Copy-Item .env.example .env
+cp .env.example.A .env   # Windows: Copy-Item .env.example.A .env
+docker compose -f docker-compose.allinone.yml up -d --build
+```
+
+**模式 B — 复用已有 postgres / minio，只起 api + web：**
+
+```bash
+cp .env.example.B .env   # Windows: Copy-Item .env.example.B .env
+docker network create stock-sim-shared
+docker network connect stock-sim-shared postgres
+docker network connect stock-sim-shared minio
 docker compose up -d --build
 ```
 
-浏览器打开：
-
-```text
-http://127.0.0.1:8080
-```
-
-若服务器上**已有**名为 `postgres`、`minio` 的容器，请改用「模式 B」：只启动 `api` + `web` 并配置共享网络。完整步骤、两种部署模式、备份与排错见 [`docs/Docker部署.md`](docs/Docker部署.md)。
+浏览器打开 `http://127.0.0.1:8080`。完整说明见 [`docs/Docker部署.md`](docs/Docker部署.md)。
