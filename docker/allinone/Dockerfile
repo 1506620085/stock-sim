@@ -49,15 +49,9 @@ RUN apt-get update \
  && mkdir -p /var/log/supervisor /data /run/postgresql /var/lib/postgresql \
  && chown -R postgres:postgres /var/lib/postgresql /run/postgresql
 
-# MinIO 二进制（按构建平台选择）
-ARG TARGETARCH
-RUN ARCH="$TARGETARCH" \
- && if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "arm64" ]; then \
-      curl -fsSL "https://dl.min.io/server/minio/release/linux-${ARCH}/minio" -o /usr/local/bin/minio \
-      && chmod +x /usr/local/bin/minio; \
-    else \
-      echo "Unsupported TARGETARCH=$ARCH" >&2; exit 1; \
-    fi
+# MinIO：从官方镜像拷贝二进制（直链 dl.min.io 的未版本路径已返回 410）
+COPY --from=minio/minio:RELEASE.2025-04-22T22-12-26Z /usr/bin/minio /usr/local/bin/minio
+RUN chmod +x /usr/local/bin/minio
 
 COPY apps/api/requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt

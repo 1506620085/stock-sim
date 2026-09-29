@@ -114,7 +114,7 @@ cp .env.example.A .env   # 首次
 docker compose -f docker-compose.allinone.yml up -d --build
 ```
 
-首次构建可能较慢（前端 npm + pip + 拉取 MinIO 二进制）。
+首次构建可能较慢（前端 npm + pip + 拉取 MinIO 官方镜像以拷贝二进制）。
 
 查看状态：
 
@@ -303,9 +303,9 @@ docker builder prune -f
 docker compose -f docker-compose.allinone.yml build --no-cache app
 ```
 
-### 8.4 拉取基础镜像 / MinIO 二进制失败
+### 8.4 拉取基础镜像 / MinIO 镜像失败
 
-配置 Docker registry mirror，或检查出网；一体机还需能访问 `dl.min.io` 下载 MinIO。
+配置 Docker registry mirror，或检查出网。一体机构建需能拉取 `python`、`node`、以及 `minio/minio`（用于拷贝二进制，已不再使用 `dl.min.io` 直链）。
 
 ### 8.5 迁移版本冲突
 
