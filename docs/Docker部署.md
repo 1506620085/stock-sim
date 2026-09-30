@@ -7,7 +7,7 @@
 | 模式 | 形态 | 适用场景 | 启动命令 |
 | --- | --- | --- | --- |
 | **A. 一体机（推荐干净机器）** | **单个容器**内含 Nginx 前端 + FastAPI + PostgreSQL + MinIO | 无已有库/对象存储，希望一条命令拉起 | `docker compose -f docker-compose.allinone.yml up -d --build` |
-| **B. 复用已有中间件** | `api` + `web` 两个容器，连接已有 `postgres` / `minio` | 服务器上已有数据库与 MinIO | `docker compose up -d --build`（需先配网络或宿主机地址） |
+| **B. 复用已有中间件** | `api` + `web` 两个容器，连接已有 `postgres` / `minio` | 服务器上已有数据库与 MinIO | `docker compose -f docker-compose.external.yml up -d --build`（需先配网络或宿主机地址） |
 
 相关文件：
 
@@ -15,12 +15,12 @@
 | --- | --- |
 | `docker-compose.allinone.yml` | **模式 A**：单容器编排 |
 | `docker/allinone/` | 一体机 Dockerfile、Nginx、supervisord、启动脚本 |
-| `docker-compose.yml` | **模式 B**：仅 api + web，依赖外部 `stock-sim-shared` 网络 |
+| `docker-compose.external.yml` | **模式 B**：仅 api + web，依赖外部 `stock-sim-shared` 网络 |
+| `docker-compose.yml` | 模式 B 快捷入口（`include` 上述 external 编排） |
+| `docker/external/` | 模式 B Dockerfile、Nginx、entrypoint、网络/预拉镜像脚本 |
 | `.env.example` | 索引说明（指向 A/B） |
 | `.env.example.A` | **模式 A** 环境变量模板 → 复制为 `.env` |
 | `.env.example.B` | **模式 B** 环境变量模板 → 复制为 `.env` |
-| `apps/api/Dockerfile` | 模式 B 后端镜像 |
-| `apps/web/Dockerfile` | 模式 B 前端镜像 |
 
 ---
 
@@ -86,7 +86,7 @@ MINIO_SECRET_KEY=改成强密码
 `git pull` 只更新源码；更新后需重新 `build`（见第 7 节）。若 pull 因本地改过 compose/Dockerfile 失败：
 
 ```bash
-git checkout -- docker-compose.yml apps/web/Dockerfile
+git checkout -- docker-compose.yml docker-compose.external.yml docker/external
 git pull
 ```
 
@@ -215,7 +215,7 @@ docker compose -f docker-compose.allinone.yml up -d --force-recreate app
 
 ## 4. 模式 B：复用已有 postgres / minio
 
-使用默认 `docker-compose.yml`，只启动 `stock-sim-api` + `stock-sim-web`。
+使用 `docker-compose.external.yml`（或根目录 `docker-compose.yml` include），只启动 `stock-sim-api` + `stock-sim-web`。相关文件在 `docker/external/`。
 
 ### 4.1 前置
 
@@ -224,34 +224,45 @@ docker ps   # 确认已有 postgres、minio，且映射 5432 / 9000
 docker exec -it postgres psql -U postgres -c "CREATE DATABASE stock_sim;"
 ```
 
-`.env` 账号与已有库一致。
+`.env` 账号与已有库一致（`cp .env.example.B .env`）。
+
+可选：弱网环境先预拉基础镜像：
+
+```bash
+chmod +x docker/external/*.sh
+./docker/external/preload-images.sh   # 有网机器
+# 拷贝 docker/external/images/*.tar 到部署机后：
+./docker/external/load-images.sh
+```
 
 ### 4.2 连通方式（二选一）
 
-**共享网络：**
+**共享网络（推荐）：**
 
 ```bash
-docker network create stock-sim-shared
-docker network connect stock-sim-shared postgres
-docker network connect stock-sim-shared minio
+chmod +x docker/external/*.sh
+./docker/external/setup-network.sh
+# 自定义容器名：
+# POSTGRES_CONTAINER=my-pg MINIO_CONTAINER=my-minio ./docker/external/setup-network.sh
 ```
 
-compose 会把 **api** 自动加入 `shared`；**不会**自动加入外部 postgres/minio。  
+compose 会把 **api** 自动加入 `shared`；脚本负责把外部 postgres/minio 接进 `stock-sim-shared`。  
 若未创建网络，会报：`network stock-sim-shared not found`。
 
-**或宿主机端口（Linux 常用）：** 改 `docker-compose.yml` 中：
+**或宿主机端口（Linux 常用）：** 改 `docker-compose.external.yml` 中：
 
 ```yaml
 DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.17.0.1:${POSTGRES_PORT:-5432}/${POSTGRES_DB}
 MINIO_ENDPOINT: http://172.17.0.1:${MINIO_API_PORT:-9000}
 ```
 
-（Windows Docker Desktop 可用 `host.docker.internal`。）
+（Windows Docker Desktop 可用 `host.docker.internal`。）走宿主机时可不创建 `stock-sim-shared`，但需去掉或改写 compose 里对 `shared` 外部网络的依赖。
 
 ### 4.3 启动
 
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.external.yml up -d --build
+# 或：docker compose up -d --build
 ```
 
 验证：`http://127.0.0.1:8080/api/health/db`。
@@ -315,10 +326,11 @@ docker exec -it stock-sim bash
 ### 模式 B
 
 ```bash
-docker compose ps
-docker compose logs -f api
-docker compose build --no-cache web api
-docker compose up -d --force-recreate web api
+docker compose -f docker-compose.external.yml ps
+docker compose -f docker-compose.external.yml logs -f api
+docker compose -f docker-compose.external.yml build --no-cache web api
+docker compose -f docker-compose.external.yml up -d --force-recreate web api
+# 上述也可用简写：docker compose ...（根目录 include）
 ```
 
 ---
@@ -327,10 +339,10 @@ docker compose up -d --force-recreate web api
 
 ### 8.1 `network stock-sim-shared not found`
 
-你在跑 **模式 B** 的 `docker-compose.yml`。先：
+你在跑 **模式 B**。先：
 
 ```bash
-docker network create stock-sim-shared
+./docker/external/setup-network.sh
 ```
 
 或改用模式 A：`docker compose -f docker-compose.allinone.yml up -d --build`。
@@ -352,7 +364,7 @@ docker compose -f docker-compose.allinone.yml build --no-cache app
 
 一体机构建需要本地已有或能拉取：`golang:1.24-bookworm`、`node:22-bookworm-slim`、`python:3.12-slim-bookworm`。**不要**再 pull `minio/minio` 或 `quay.io/minio/minio`（已不可用）；MinIO 在构建时由 Go 编译。
 
-可先按 [3.1 可选：手动下载基础镜像](#31-启动) 用 `docker pull` 或 `preload-images.sh` / `load-images.sh` 准备好，再 `up -d --build`。也可配置 Docker registry mirror。若 Go 模块下载慢，可在 Dockerfile 的 `minio-build` 阶段把 `GOPROXY` 改为 `https://goproxy.cn,direct`。
+可先按 [3.1 可选：手动下载基础镜像](#31-启动)（模式 A）或 [4.1](#41-前置)（模式 B：`docker/external/preload-images.sh`）用 `docker pull` / 预导 tar 准备好，再 `up -d --build`。也可配置 Docker registry mirror。模式 A 若 Go 模块下载慢，可在 Dockerfile 的 `minio-build` 阶段把 `GOPROXY` 改为 `https://goproxy.cn,direct`。
 
 ### 8.5 迁移版本冲突
 
@@ -394,8 +406,8 @@ docker compose exec api alembic current
 
 1. [ ] 已有 `postgres`、`minio`  
 2. [ ] `cp .env.example.B .env`，账号与已有服务一致；局域网改 CORS / `MINIO_PUBLIC_ENDPOINT`  
-3. [ ] 创建库 + 配网络（`stock-sim-shared`）或宿主机连接  
-4. [ ] `docker compose up -d --build`  
+3. [ ] 创建库 + `./docker/external/setup-network.sh`（或宿主机连接）  
+4. [ ] `docker compose -f docker-compose.external.yml up -d --build`  
 5. [ ] 验证健康检查  
 
 ---
@@ -421,3 +433,4 @@ docker compose exec api alembic current
 | 2026-08-26 | 模式 B、排错合集 |
 | 2026-09-02 | 对照实践修正文档 |
 | 2026-09-29 | **模式 A 改为单容器一体机**（`docker-compose.allinone.yml` + `docker/allinone`）；原多服务全栈改为一体机；`docker-compose.yml` 专用于模式 B |
+| 2026-09-30 | **模式 B 收敛到 `docker/external/`**（`docker-compose.external.yml` + Dockerfile/nginx/entrypoint/网络脚本）；根 `docker-compose.yml` 改为 include |

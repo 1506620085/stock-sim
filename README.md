@@ -100,10 +100,15 @@ docker compose -f docker-compose.allinone.yml up -d --build
 
 ```bash
 cp .env.example.B .env   # Windows: Copy-Item .env.example.B .env
-docker network create stock-sim-shared
-docker network connect stock-sim-shared postgres
-docker network connect stock-sim-shared minio
-docker compose up -d --build
+chmod +x docker/external/*.sh
+./docker/external/setup-network.sh
+docker compose -f docker-compose.external.yml up -d --build
+# 或：docker compose up -d --build
 ```
 
 浏览器打开 `http://127.0.0.1:8080`。完整说明见 [`docs/Docker部署.md`](docs/Docker部署.md)。
+
+目录对照：
+
+- 模式 A：`docker/allinone/` + `docker-compose.allinone.yml` + `.env.example.A`
+- 模式 B：`docker/external/` + `docker-compose.external.yml` + `.env.example.B`

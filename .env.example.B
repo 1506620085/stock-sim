@@ -1,20 +1,20 @@
 ########################################
 # 模式 B：复用已有 postgres / minio，只启动 api + web
 #
+# 相关文件：
+#   docker-compose.external.yml      # 编排（推荐）
+#   docker-compose.yml               # include 上述文件，可简写 docker compose up
+#   docker/external/                 # Dockerfile、nginx、entrypoint、网络脚本
+#
 # 用法：
-#   cp .env.example.B .env                 # Linux / macOS
-#   Copy-Item .env.example.B .env          # Windows PowerShell
-#   # 账号密码改成与已有 postgres/minio 一致
-#   # 局域网请改 CORS_ORIGINS / MINIO_PUBLIC_ENDPOINT
+#   cp .env.example.B .env
+#   chmod +x docker/external/*.sh
+#   ./docker/external/setup-network.sh
+#   docker compose -f docker-compose.external.yml up -d --build
+#   # 或：docker compose up -d --build
 #
-#   # 方式 1（共享网络，默认 compose 用主机名 postgres / minio）：
-#   docker network create stock-sim-shared
-#   docker network connect stock-sim-shared postgres
-#   docker network connect stock-sim-shared minio
-#   docker compose up -d --build
-#
-#   # 方式 2（走宿主机端口）：改 docker-compose.yml 里 DATABASE_URL / MINIO_ENDPOINT
-#   # 为 host.docker.internal 或 172.17.0.1，再 up
+# 备选：不配共享网络时，改 compose 中 DATABASE_URL / MINIO_ENDPOINT
+# 为 host.docker.internal 或 172.17.0.1
 ########################################
 
 APP_ENV=production
