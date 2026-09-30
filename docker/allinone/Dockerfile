@@ -1,5 +1,17 @@
 # 一体机镜像：Nginx(前端) + FastAPI + PostgreSQL + MinIO
 # 构建上下文必须是仓库根目录
+#
+# MinIO：Docker Hub / Quay 的 minio 镜像与 dl.min.io 直链均已不可用，
+# 改为用 Go 从 GitHub 源码编译二进制。
+
+# ---------- MinIO 源码编译 ----------
+FROM golang:1.24-bookworm AS minio-build
+
+ARG MINIO_VERSION=RELEASE.2025-04-22T22-12-26Z
+ENV CGO_ENABLED=0 \
+    GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
+
+RUN go install -v "github.com/minio/minio@${MINIO_VERSION}"
 
 # ---------- 前端构建 ----------
 FROM node:22-bookworm-slim AS web-build
@@ -49,8 +61,7 @@ RUN apt-get update \
  && mkdir -p /var/log/supervisor /data /run/postgresql /var/lib/postgresql \
  && chown -R postgres:postgres /var/lib/postgresql /run/postgresql
 
-# MinIO：从官方镜像拷贝二进制（直链 dl.min.io 的未版本路径已返回 410）
-COPY --from=minio/minio:RELEASE.2025-04-22T22-12-26Z /usr/bin/minio /usr/local/bin/minio
+COPY --from=minio-build /go/bin/minio /usr/local/bin/minio
 RUN chmod +x /usr/local/bin/minio
 
 COPY apps/api/requirements.txt /app/requirements.txt

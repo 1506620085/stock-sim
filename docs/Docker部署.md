@@ -114,7 +114,52 @@ cp .env.example.A .env   # 首次
 docker compose -f docker-compose.allinone.yml up -d --build
 ```
 
-首次构建可能较慢（前端 npm + pip + 拉取 MinIO 官方镜像以拷贝二进制）。
+首次构建可能较慢（前端 npm + pip；还会用到已本地存在或临时拉取的基础镜像）。
+
+#### 可选：先手动下载基础镜像再 compose（推荐网络不稳时）
+
+一体机构建依赖这些基础镜像（须与 `Dockerfile` 一致）：
+
+| 镜像 | 用途 |
+| --- | --- |
+| `golang:1.24-bookworm` | 从源码编译 MinIO（Hub/Quay 的 minio 镜像已不可用） |
+| `node:22-bookworm-slim` | 构建前端 |
+| `python:3.12-slim-bookworm` | 运行后端 / 安装系统包 |
+
+**方式 1：在部署机上直接 pull（能访问 Docker Hub 时）**
+
+```bash
+docker pull golang:1.24-bookworm
+docker pull node:22-bookworm-slim
+docker pull python:3.12-slim-bookworm
+
+docker compose -f docker-compose.allinone.yml up -d --build
+```
+
+本地已有同名镜像时，`docker compose build` **不会再从网上拉**（除非标签不存在或你强制 `--pull`）。
+
+> **说明**：自约 2026-09 起，Docker Hub 上的 `minio/minio` 已删除；`quay.io/minio/minio` 也可能 `unauthorized`。一体机改为构建时用 **Go 编译 MinIO**，构建阶段仍需能访问 `proxy.golang.org` / GitHub（可配 `GOPROXY`，如国内用 `https://goproxy.cn,direct`）。
+
+**方式 2：在能上网的机器导出，拷到部署机导入**
+
+```bash
+# 能访问 Hub 的机器
+chmod +x docker/allinone/preload-images.sh docker/allinone/load-images.sh
+./docker/allinone/preload-images.sh
+# 把 docker/allinone/images/*.tar 拷到部署机同路径
+
+# 部署机
+./docker/allinone/load-images.sh
+docker compose -f docker-compose.allinone.yml up -d --build
+```
+
+手动导入示例：
+
+```bash
+docker load -i docker/allinone/images/golang__1.24-bookworm.tar
+docker load -i docker/allinone/images/node__22-bookworm-slim.tar
+docker load -i docker/allinone/images/python__3.12-slim-bookworm.tar
+```
 
 查看状态：
 
@@ -305,7 +350,9 @@ docker compose -f docker-compose.allinone.yml build --no-cache app
 
 ### 8.4 拉取基础镜像 / MinIO 镜像失败
 
-配置 Docker registry mirror，或检查出网。一体机构建需能拉取 `python`、`node`、以及 `minio/minio`（用于拷贝二进制，已不再使用 `dl.min.io` 直链）。
+一体机构建需要本地已有或能拉取：`golang:1.24-bookworm`、`node:22-bookworm-slim`、`python:3.12-slim-bookworm`。**不要**再 pull `minio/minio` 或 `quay.io/minio/minio`（已不可用）；MinIO 在构建时由 Go 编译。
+
+可先按 [3.1 可选：手动下载基础镜像](#31-启动) 用 `docker pull` 或 `preload-images.sh` / `load-images.sh` 准备好，再 `up -d --build`。也可配置 Docker registry mirror。若 Go 模块下载慢，可在 Dockerfile 的 `minio-build` 阶段把 `GOPROXY` 改为 `https://goproxy.cn,direct`。
 
 ### 8.5 迁移版本冲突
 

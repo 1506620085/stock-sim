@@ -14,3 +14,4 @@ prototype
 **/.DS_Store
 **/tsbuildinfo
 **/*.tsbuildinfo
+docker/allinone/images/*.tar
