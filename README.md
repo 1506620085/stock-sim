@@ -108,6 +108,11 @@ docker compose -f docker-compose.external.yml up -d --build
 
 浏览器打开 `http://127.0.0.1:8080`。完整说明见 [`docs/Docker部署.md`](docs/Docker部署.md)。
 
+默认账号（详见文档）：
+
+- 模式 A：Postgres `stock_sim` / `stock_sim`（库 `stock_sim`）；MinIO `minioadmin` / `minioadmin`
+- 模式 B：模板为 Postgres `postgres` / `postgres`；MinIO `minioadmin` / `minioadmin`（须改成与已有服务一致）
+
 目录对照：
 
 - 模式 A：`docker/allinone/` + `docker-compose.allinone.yml` + `.env.example.A`

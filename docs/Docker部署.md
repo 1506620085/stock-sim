@@ -51,7 +51,17 @@ git clone <仓库地址> stock-sim
 cd stock-sim
 ```
 
-按模式复制环境文件：
+按模式复制环境文件后，默认账号如下（可按需改强密码）：
+
+| | 模式 A（`.env.example.A`，一体机自建） | 模式 B（`.env.example.B`，须与已有服务一致） |
+| --- | --- | --- |
+| PostgreSQL 库名 | `stock_sim` | `stock_sim` |
+| PostgreSQL 用户 | `stock_sim` | `postgres` |
+| PostgreSQL 密码 | `stock_sim` | `postgres` |
+| MinIO Access Key | `minioadmin` | `minioadmin` |
+| MinIO Secret Key | `minioadmin` | `minioadmin` |
+| MinIO Bucket | `stock-review` | `stock-review` |
+| MinIO 控制台 | `http://127.0.0.1:9001`（账号同上 Access/Secret） | 已有 MinIO 的控制台地址 |
 
 ```bash
 # 模式 A 一体机
@@ -69,18 +79,17 @@ Copy-Item .env.example.A .env
 Copy-Item .env.example.B .env
 ```
 
-局域网示例（假设 IP `192.168.1.100`），在对应 `.env` 中修改：
+局域网示例（假设 IP `192.168.1.100`），在对应 `.env` 中至少改地址；生产环境建议同时改密码：
 
 ```env
 WEB_PORT=8080
 CORS_ORIGINS=http://192.168.1.100:8080,http://127.0.0.1:8080,http://localhost:8080
 MINIO_PUBLIC_ENDPOINT=http://192.168.1.100:9000
-POSTGRES_PASSWORD=改成强密码
-MINIO_ACCESS_KEY=改成强账号
-MINIO_SECRET_KEY=改成强密码
+# 模式 A 默认：POSTGRES_USER/PASSWORD=stock_sim，MINIO_ACCESS_KEY/SECRET_KEY=minioadmin
+# 模式 B 默认模板：POSTGRES_USER/PASSWORD=postgres，MINIO 同上；必须改成与已有容器一致
 ```
 
-> `0.0.0.0` 不能写进 `CORS_ORIGINS` / `MINIO_PUBLIC_ENDPOINT`。模式 B 的 `POSTGRES_USER` / `POSTGRES_PASSWORD` 必须与已有 Postgres 一致。
+> `0.0.0.0` 不能写进 `CORS_ORIGINS` / `MINIO_PUBLIC_ENDPOINT`。模式 B 的 `POSTGRES_*` / `MINIO_*` 必须与已有 Postgres / MinIO 一致，否则 api 连不上库或对象存储。
 
 `git pull` 只更新源码；更新后需重新 `build`（见第 7 节）。若 pull 因本地改过 compose/Dockerfile 失败：
 
@@ -104,11 +113,24 @@ MinIO       → :9000 / 控制台 :9001
 
 由 `supervisord` 托管进程；数据落在 Docker volume，容器重建不丢库。
 
+### 默认账号（一体机自建）
+
+| 服务 | 变量 | 默认值 |
+| --- | --- | --- |
+| PostgreSQL | `POSTGRES_DB` | `stock_sim` |
+| PostgreSQL | `POSTGRES_USER` | `stock_sim` |
+| PostgreSQL | `POSTGRES_PASSWORD` | `stock_sim` |
+| MinIO | `MINIO_ACCESS_KEY` / `MINIO_ROOT_USER` | `minioadmin` |
+| MinIO | `MINIO_SECRET_KEY` / `MINIO_ROOT_PASSWORD` | `minioadmin` |
+| MinIO | `MINIO_BUCKET` | `stock-review` |
+
+MinIO 控制台：`http://127.0.0.1:9001`，用上述 Access/Secret 登录。
+
 ### 3.1 启动
 
 ```bash
-cp .env.example.A .env   # 首次
-# 编辑 CORS_ORIGINS、MINIO_PUBLIC_ENDPOINT、密码
+cp .env.example.A .env   # 首次；默认账号见上表
+# 局域网请改 CORS_ORIGINS、MINIO_PUBLIC_ENDPOINT；生产建议改密码
 
 docker compose -f docker-compose.allinone.yml up -d --build
 ```
@@ -223,7 +245,18 @@ docker ps   # 确认已有 postgres、minio，且映射 5432 / 9000
 docker exec -it postgres psql -U postgres -c "CREATE DATABASE stock_sim;"
 ```
 
-`.env` 账号与已有库一致（`cp .env.example.B .env`）。
+`.env` 账号须与已有库一致：`cp .env.example.B .env` 后按实况修改。模板里的占位默认值为：
+
+| 服务 | 变量 | 模板默认值（仅示例） |
+| --- | --- | --- |
+| PostgreSQL | `POSTGRES_DB` | `stock_sim` |
+| PostgreSQL | `POSTGRES_USER` | `postgres` |
+| PostgreSQL | `POSTGRES_PASSWORD` | `postgres` |
+| MinIO | `MINIO_ACCESS_KEY` | `minioadmin` |
+| MinIO | `MINIO_SECRET_KEY` | `minioadmin` |
+| MinIO | `MINIO_BUCKET` | `stock-review` |
+
+若你的 Postgres 不是 `postgres`/`postgres`，或 MinIO 不是 `minioadmin`，必须改 `.env`，否则会出现连库失败或上传笔记图片 403。
 
 可选：弱网环境先预拉基础镜像：
 
@@ -275,6 +308,9 @@ docker compose -f docker-compose.external.yml up -d --build
 | `CORS_ORIGINS` | 浏览器 Origin 白名单；局域网必须加 `http://局域网IP:8080` |
 | `MINIO_PUBLIC_ENDPOINT` | 返回给浏览器的对象 URL；局域网勿用 `127.0.0.1` |
 | `MINIO_ENDPOINT` | api **容器内**访问 MinIO（模式 A 固定本机；模式 B 为 `minio` 或宿主机） |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | 数据库账号；模式 A 默认 `stock_sim`/`stock_sim`/`stock_sim`；模式 B 须与已有库一致 |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | MinIO 账号；两边模板默认均为 `minioadmin`/`minioadmin` |
+| `MINIO_BUCKET` | 桶名，默认 `stock-review` |
 | `VITE_API_BASE_URL` | 留空，走同域 `/api` |
 
 ### 哪些数据跨设备共享
