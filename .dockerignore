@@ -11,7 +11,8 @@ prototype
 .env
 .env.*
 !.env.example
-**/.DS_Store
+!.env.example.A
+!.env.example.B
 **/tsbuildinfo
 **/*.tsbuildinfo
 docker/allinone/images/*.tar

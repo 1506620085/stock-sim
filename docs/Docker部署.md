@@ -18,7 +18,6 @@
 | `docker-compose.external.yml` | **模式 B**：仅 api + web，依赖外部 `stock-sim-shared` 网络 |
 | `docker-compose.yml` | 模式 B 快捷入口（`include` 上述 external 编排） |
 | `docker/external/` | 模式 B Dockerfile、Nginx、entrypoint、网络/预拉镜像脚本 |
-| `.env.example` | 索引说明（指向 A/B） |
 | `.env.example.A` | **模式 A** 环境变量模板 → 复制为 `.env` |
 | `.env.example.B` | **模式 B** 环境变量模板 → 复制为 `.env` |
 
@@ -52,7 +51,7 @@ git clone <仓库地址> stock-sim
 cd stock-sim
 ```
 
-按模式复制环境文件（**不要**再复制笼统的 `.env.example`，它只是索引）：
+按模式复制环境文件：
 
 ```bash
 # 模式 A 一体机
