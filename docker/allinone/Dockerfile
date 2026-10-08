@@ -82,10 +82,16 @@ RUN set -eux; \
         /etc/apt/sources.list; \
     fi; \
     for i in 1 2 3 4 5; do \
-      apt-get update && break; \
-      echo "[apt] update failed (attempt $$i), retrying in 10s..."; \
+      if apt-get -o Acquire::Retries=3 update \
+        && apt-cache show curl >/dev/null 2>&1; then \
+        break; \
+      fi; \
+      echo "[apt] update/DNS failed (attempt $$i), retrying in 10s..."; \
       sleep 10; \
-      if [ "$$i" -eq 5 ]; then exit 1; fi; \
+      if [ "$$i" -eq 5 ]; then \
+        echo "[apt] still cannot resolve apt mirrors. Fix Docker DNS or build with --network=host"; \
+        exit 1; \
+      fi; \
     done; \
     apt-get install -y --no-install-recommends \
       curl \

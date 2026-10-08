@@ -10,6 +10,9 @@ services:
     build:
       context: .
       dockerfile: docker/allinone/Dockerfile
+      # 构建时用宿主机网络，避免 BuildKit 默认桥接 DNS 解析失败
+      # （Temporary failure resolving deb.debian.org / mirrors.aliyun.com）
+      network: host
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     container_name: stock-sim
