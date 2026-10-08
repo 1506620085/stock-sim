@@ -386,13 +386,26 @@ docker compose -f docker-compose.external.yml up -d --force-recreate web api
 
 api 解析不到 `postgres`。按 [4.2](#42-连通方式二选一) 做网络 connect 或改宿主机地址。
 
-### 8.3 一体机构建失败（rollup）
+### 8.3 一体机构建失败（rollup / npm 超时）
 
-一体机 Dockerfile 已使用 bookworm + 显式安装 `@rollup/rollup-linux-x64-gnu`。仍失败时：
+一体机 Dockerfile 已使用 bookworm + 显式安装 `@rollup/rollup-linux-x64-gnu`，前端 `npm ci` 默认走 **npmmirror**，并带超时加大与最多 5 次重试。
+
+若仍出现 `Exit handler never called!` / `npm ci` 失败：多为弱网或内存不足，**不是**「下到一半会自动续传」——该层失败后重跑会重新 `npm ci`，换镜像源后通常一次就能过：
 
 ```bash
-docker builder prune -f
-docker compose -f docker-compose.allinone.yml build --no-cache app
+# 用已改好的 Dockerfile 重新构建（保留其它层缓存）
+docker compose -f docker-compose.allinone.yml build app
+docker compose -f docker-compose.allinone.yml up -d
+
+# 仍慢时可显式指定源：
+# docker compose -f docker-compose.allinone.yml build \
+#   --build-arg NPM_REGISTRY=https://registry.npmmirror.com \
+#   --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+#   app
+
+# 彻底干净重建（更慢）：
+# docker builder prune -f
+# docker compose -f docker-compose.allinone.yml build --no-cache app
 ```
 
 ### 8.4 拉取基础镜像 / MinIO 镜像失败

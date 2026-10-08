@@ -16,11 +16,27 @@ RUN go install -v "github.com/minio/minio@${MINIO_VERSION}"
 # ---------- 前端构建 ----------
 FROM node:22-bookworm-slim AS web-build
 
+# 国内默认走 npmmirror；可用 --build-arg NPM_REGISTRY=https://registry.npmjs.org 覆盖
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+ENV NPM_CONFIG_REGISTRY=${NPM_REGISTRY} \
+    NPM_CONFIG_FETCH_RETRIES=10 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=300000 \
+    NPM_CONFIG_FETCH_TIMEOUT=600000 \
+    NPM_CONFIG_MAXSOCKETS=20
+
 WORKDIR /web
 
 COPY apps/web/package.json apps/web/package-lock.json ./
-RUN npm ci \
- && npm install --no-save @rollup/rollup-linux-x64-gnu
+# 弱网下失败则自动重试（npm 本身不支持跨进程断点续传）
+RUN set -eux; \
+    for i in 1 2 3 4 5; do \
+      npm ci && break; \
+      echo "[web-build] npm ci failed (attempt $$i), retrying in 15s..."; \
+      sleep 15; \
+      if [ "$$i" -eq 5 ]; then exit 1; fi; \
+    done; \
+    npm install --no-save @rollup/rollup-linux-x64-gnu
 
 COPY apps/web/ ./
 
@@ -65,7 +81,9 @@ COPY --from=minio-build /go/bin/minio /usr/local/bin/minio
 RUN chmod +x /usr/local/bin/minio
 
 COPY apps/api/requirements.txt /app/requirements.txt
-RUN pip install -r /app/requirements.txt
+# pip 同样默认国内源，避免构建后期再慢挂
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install -i "${PIP_INDEX_URL}" -r /app/requirements.txt
 
 COPY apps/api/ /app/
 COPY --from=web-build /web/dist /usr/share/nginx/html
