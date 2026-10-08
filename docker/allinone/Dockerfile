@@ -63,8 +63,31 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
+# 默认换国内 Debian 源（deb.debian.org 在部分机房 DNS/网络不可达）
+# 覆盖：--build-arg DEBIAN_MIRROR=http://deb.debian.org/debian
+ARG DEBIAN_MIRROR=https://mirrors.aliyun.com/debian
+ARG DEBIAN_SECURITY_MIRROR=https://mirrors.aliyun.com/debian-security
+RUN set -eux; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i \
+        -e "s|https\\?://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+        -e "s|https\\?://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+        /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    if [ -f /etc/apt/sources.list ]; then \
+      sed -i \
+        -e "s|https\\?://deb.debian.org/debian|${DEBIAN_MIRROR}|g" \
+        -e "s|https\\?://security.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+        -e "s|https\\?://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR}|g" \
+        /etc/apt/sources.list; \
+    fi; \
+    for i in 1 2 3 4 5; do \
+      apt-get update && break; \
+      echo "[apt] update failed (attempt $$i), retrying in 10s..."; \
+      sleep 10; \
+      if [ "$$i" -eq 5 ]; then exit 1; fi; \
+    done; \
+    apt-get install -y --no-install-recommends \
       curl \
       ca-certificates \
       nginx \

@@ -414,6 +414,33 @@ docker compose -f docker-compose.allinone.yml up -d
 
 可先按 [3.1 可选：手动下载基础镜像](#31-启动)（模式 A）或 [4.1](#41-前置)（模式 B：`docker/external/preload-images.sh`）用 `docker pull` / 预导 tar 准备好，再 `up -d --build`。也可配置 Docker registry mirror。模式 A 若 Go 模块下载慢，可在 Dockerfile 的 `minio-build` 阶段把 `GOPROXY` 改为 `https://goproxy.cn,direct`。
 
+### 8.4.1 `Temporary failure resolving 'deb.debian.org'` / apt 找不到包
+
+构建运行阶段访问不了官方 Debian 源。一体机 Dockerfile 已默认改写为 **阿里云 Debian 镜像**，并带 apt 重试。同步代码后重新：
+
+```bash
+docker compose -f docker-compose.allinone.yml build app
+```
+
+若仍报 DNS 失败，给 Docker 配国内 DNS（改完重启 Docker）：
+
+```bash
+# /etc/docker/daemon.json 示例
+{
+  "dns": ["223.5.5.5", "119.29.29.29", "8.8.8.8"]
+}
+systemctl restart docker
+```
+
+也可改用清华源构建：
+
+```bash
+docker compose -f docker-compose.allinone.yml build \
+  --build-arg DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian \
+  --build-arg DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security \
+  app
+```
+
 ### 8.5 迁移版本冲突
 
 ```bash
